@@ -177,7 +177,16 @@ describe('handleCallToolRequest', () => {
     const result = await handleCallToolRequest(request, mockKnowledgeGraphManager);
     
     // Assert
-    expect(mockKnowledgeGraphManager.addObservations).toHaveBeenCalledWith(observations);
+    expect(mockKnowledgeGraphManager.addObservations).toHaveBeenCalledWith([
+      {
+        entityName: 'Entity1', 
+        contents: ['New observation'],
+        strength: 0.9,
+        confidence: 0.95,
+        metadata: { source: "API call" }
+      }
+    ]);
+    
     expect(result).toEqual({
       content: [{ 
         type: 'text', 

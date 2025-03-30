@@ -116,25 +116,38 @@ export async function handleListToolsRequest() {
                   items: { type: "string" },
                   description: "An array of observation contents to add"
                 },
-                // Temporal fields - optional, added for backward compatibility
-                id: { type: "string", description: "Optional entity ID" },
-                version: { type: "number", description: "Optional entity version" },
-                createdAt: { type: "number", description: "Optional creation timestamp" },
-                updatedAt: { type: "number", description: "Optional update timestamp" },
-                validFrom: { type: "number", description: "Optional validity start timestamp" },
-                validTo: { type: "number", description: "Optional validity end timestamp" },
-                changedBy: { type: "string", description: "Optional user/system identifier" },
-                // Entity fields
-                entityType: { type: "string", description: "Optional entity type" },
-                observations: { 
-                  type: "array", 
-                  items: { type: "string" },
-                  description: "Optional existing observations" 
+                // Optional parameters at the observation level
+                strength: { 
+                  type: "number", 
+                  description: "Strength value (0.0 to 1.0) for this specific observation"
                 },
+                confidence: { 
+                  type: "number", 
+                  description: "Confidence level (0.0 to 1.0) for this specific observation"
+                },
+                metadata: { 
+                  type: "object", 
+                  description: "Metadata for this specific observation",
+                  additionalProperties: true
+                }
               },
-              required: ["entityName", "contents"],
+              required: ["entityName", "contents"]
             },
           },
+          // Optional parameters at the top level (apply to all observations)
+          strength: {
+            type: "number",
+            description: "Default strength value (0.0 to 1.0) for all observations"
+          },
+          confidence: {
+            type: "number",
+            description: "Default confidence level (0.0 to 1.0) for all observations"
+          },
+          metadata: {
+            type: "object", 
+            description: "Default metadata for all observations",
+            additionalProperties: true
+          }
         },
         required: ["observations"],
       },

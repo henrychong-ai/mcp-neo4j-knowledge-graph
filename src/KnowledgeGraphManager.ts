@@ -662,14 +662,35 @@ export class KnowledgeGraphManager {
     };
   }
 
-  async addObservations(observations: { entityName: string; contents: string[] }[]): Promise<{ entityName: string; addedObservations: string[] }[]> {
+  /**
+   * Add observations to entities
+   * @param observations Array of observation objects
+   * @returns Promise resolving to array of added observations
+   */
+  async addObservations(
+    observations: Array<{ 
+      entityName: string; 
+      contents: string[];
+      // Additional parameters that may be present in the MCP schema but ignored by storage providers
+      strength?: number;
+      confidence?: number;
+      metadata?: any;
+      [key: string]: any; // Allow any other properties
+    }>
+  ): Promise<{ entityName: string; addedObservations: string[] }[]> {
     if (!observations || observations.length === 0) {
       return [];
     }
 
+    // Extract only the fields needed by storage providers
+    const simplifiedObservations = observations.map(obs => ({
+      entityName: obs.entityName,
+      contents: obs.contents
+    }));
+
     if (this.storageProvider) {
       // Use storage provider for adding observations
-      const results = await this.storageProvider.addObservations(observations);
+      const results = await this.storageProvider.addObservations(simplifiedObservations);
       
       // Schedule re-embedding for affected entities if manager is provided
       if (this.embeddingJobManager) {
@@ -688,7 +709,7 @@ export class KnowledgeGraphManager {
       // Check if all entity names exist first
       const entityNames = new Set(graph.entities.map(e => e.name));
       
-      for (const obs of observations) {
+      for (const obs of simplifiedObservations) {
         if (!entityNames.has(obs.entityName)) {
           throw new Error(`Entity with name ${obs.entityName} does not exist.`);
         }
@@ -697,7 +718,7 @@ export class KnowledgeGraphManager {
       const results: { entityName: string; addedObservations: string[] }[] = [];
       
       // Process each observation addition
-      for (const obs of observations) {
+      for (const obs of simplifiedObservations) {
         const entity = graph.entities.find(e => e.name === obs.entityName);
         if (entity) {
           // Create a set of existing observations for deduplication
