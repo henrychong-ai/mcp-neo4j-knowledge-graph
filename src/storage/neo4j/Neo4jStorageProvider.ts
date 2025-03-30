@@ -992,11 +992,11 @@ export class Neo4jStorageProvider implements StorageProvider {
                 toId: outRel.to.properties.id,
                 id: newRelId,
                 relationType: relProps.relationType,
-                strength: relProps.strength,
-                confidence: relProps.confidence,
-                metadata: relProps.metadata,
-                version: relProps.version,
-                createdAt: relProps.createdAt,
+                strength: relProps.strength !== undefined ? relProps.strength : 0.9,
+                confidence: relProps.confidence !== undefined ? relProps.confidence : 0.95,
+                metadata: relProps.metadata || null,
+                version: relProps.version || 1,
+                createdAt: relProps.createdAt || Date.now(),
                 now,
                 changedBy: null
               });
@@ -1031,11 +1031,11 @@ export class Neo4jStorageProvider implements StorageProvider {
                 toId: newEntityId,
                 id: newRelId,
                 relationType: relProps.relationType,
-                strength: relProps.strength,
-                confidence: relProps.confidence,
-                metadata: relProps.metadata,
-                version: relProps.version,
-                createdAt: relProps.createdAt,
+                strength: relProps.strength !== undefined ? relProps.strength : 0.9,
+                confidence: relProps.confidence !== undefined ? relProps.confidence : 0.95,
+                metadata: relProps.metadata || null,
+                version: relProps.version || 1,
+                createdAt: relProps.createdAt || Date.now(),
                 now,
                 changedBy: null
               });

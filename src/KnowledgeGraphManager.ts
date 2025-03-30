@@ -683,6 +683,7 @@ export class KnowledgeGraphManager {
     }
 
     // Extract only the fields needed by storage providers
+    // Keep the simplified format for compatibility with existing storage providers
     const simplifiedObservations = observations.map(obs => ({
       entityName: obs.entityName,
       contents: obs.contents
@@ -690,18 +691,24 @@ export class KnowledgeGraphManager {
 
     if (this.storageProvider) {
       // Use storage provider for adding observations
-      const results = await this.storageProvider.addObservations(simplifiedObservations);
-      
-      // Schedule re-embedding for affected entities if manager is provided
-      if (this.embeddingJobManager) {
-        for (const result of results) {
-          if (result.addedObservations.length > 0) {
-            await this.embeddingJobManager.scheduleEntityEmbedding(result.entityName, 1);
+      try {
+        const results = await this.storageProvider.addObservations(simplifiedObservations);
+        
+        // Schedule re-embedding for affected entities if manager is provided
+        if (this.embeddingJobManager) {
+          for (const result of results) {
+            if (result.addedObservations.length > 0) {
+              await this.embeddingJobManager.scheduleEntityEmbedding(result.entityName, 1);
+            }
           }
         }
+        
+        return results;
+      } catch (error) {
+        // Log the error with more details
+        process.stderr.write(`[ERROR] Failed to add observations: ${error}\n`);
+        throw error;
       }
-      
-      return results;
     } else {
       // Fallback to file-based implementation
       const graph = await this.loadGraph();
