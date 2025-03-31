@@ -1,0 +1,16 @@
+node_modules/
+src/
+tests/
+.github/
+.vscode/
+.cursor/
+coverage/
+.env*
+*.log
+*.tsbuildinfo
+neo4j-data/
+docker-compose.yml
+.eslintrc*
+.prettierrc*
+tsconfig.json
+vitest.config.ts 
