@@ -439,6 +439,35 @@ Add this to your `claude_desktop_config.json`:
 {
   "mcpServers": {
     "memento": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@gannonh/memento-mcp"
+      ],
+      "env": {
+        "MEMORY_STORAGE_TYPE": "neo4j",
+        "NEO4J_URI": "bolt://localhost:7687",
+        "NEO4J_USERNAME": "neo4j",
+        "NEO4J_PASSWORD": "memento_password",
+        "NEO4J_DATABASE": "neo4j",
+        "NEO4J_VECTOR_INDEX": "entity_embeddings",
+        "NEO4J_VECTOR_DIMENSIONS": "1536",
+        "NEO4J_SIMILARITY_FUNCTION": "cosine",
+        "OPENAI_API_KEY": "your-openai-api-key",
+        "OPENAI_EMBEDDING_MODEL": "text-embedding-3-small",
+        "DEBUG": "true"
+      }
+    }
+  }
+}
+```
+
+Alternatively, for local development, you can use:
+
+```json
+{
+  "mcpServers": {
+    "memento": {
       "command": "/path/to/node",
       "args": [
         "/path/to/memento-mcp/dist/index.js"
@@ -556,6 +585,32 @@ npm test
 
 # Check test coverage
 npm run test:coverage
+```
+
+## Installation
+
+### Global Installation with npx
+
+You can run Memento MCP directly using npx without installing it globally:
+
+```bash
+npx -y @gannonh/memento-mcp
+```
+
+This method is recommended for use with Claude Desktop and other MCP-compatible clients.
+
+### Local Installation
+
+For development or contributing to the project:
+
+```bash
+# Install locally
+npm install @gannonh/memento-mcp
+
+# Or clone the repository
+git clone https://github.com/gannonh/memento-mcp.git
+cd memento-mcp
+npm install
 ```
 
 ## License
