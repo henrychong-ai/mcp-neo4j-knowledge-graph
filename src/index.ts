@@ -220,7 +220,7 @@ export async function main() {
 }
 
 // Only run main if this is the entry point
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (process.argv[1]?.endsWith('src/index.ts') || process.argv[1]?.endsWith('dist/index.js')) {
   main().catch((error) => {
     // Log error but don't use console.error
     logger.error(`Main process terminated: ${error}`);

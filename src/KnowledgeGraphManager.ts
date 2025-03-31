@@ -1,6 +1,5 @@
 import { fs } from './utils/fs.js';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import { StorageProvider } from './storage/StorageProvider.js';
 import { Relation } from './types/relation.js';
 import { EntityEmbedding, SemanticSearchOptions } from './types/entity-embedding.js';
@@ -8,9 +7,6 @@ import { EmbeddingJobManager } from './embeddings/EmbeddingJobManager.js';
 import { VectorStore } from './types/vector-store.js';
 import { VectorStoreFactory, VectorStoreFactoryOptions } from './storage/VectorStoreFactory.js';
 import { logger } from './utils/logger.js';
-
-// Define default memory file path
-const defaultMemoryPath = path.join(path.dirname(fileURLToPath(import.meta.url)), 'memory.json');
 
 // We are storing our memory using entities, relations, and observations in a graph structure
 export interface Entity {
@@ -67,7 +63,7 @@ interface KnowledgeGraphManagerOptions {
 
 // The KnowledgeGraphManager class contains all operations to interact with the knowledge graph
 export class KnowledgeGraphManager {
-  private memoryFilePath: string;
+  private memoryFilePath: string = '';
   private storageProvider?: StorageProvider;
   private embeddingJobManager?: EmbeddingJobManager;
   private vectorStore?: VectorStore;
@@ -83,16 +79,12 @@ export class KnowledgeGraphManager {
       logger.warn('WARNING: Using deprecated file-based storage. This will be removed in a future version. Please use a StorageProvider implementation instead.');
     }
     
-    // If memoryFilePath is just a filename, put it in the same directory as the script
-    this.memoryFilePath = options?.memoryFilePath
-      ? path.isAbsolute(options.memoryFilePath)
-        ? options.memoryFilePath
-        : path.join(path.dirname(fileURLToPath(import.meta.url)), options.memoryFilePath)
-      : process.env.MEMORY_FILE_PATH
-        ? path.isAbsolute(process.env.MEMORY_FILE_PATH)
-          ? process.env.MEMORY_FILE_PATH
-          : path.join(path.dirname(fileURLToPath(import.meta.url)), process.env.MEMORY_FILE_PATH)
-        : defaultMemoryPath;
+    // If memoryFilePath is provided, use it (for backward compatibility)
+    if (options?.memoryFilePath) {
+      this.memoryFilePath = options.memoryFilePath;
+    } else if (process.env.MEMORY_FILE_PATH) {
+      this.memoryFilePath = process.env.MEMORY_FILE_PATH;
+    }
     
     // Initialize vector store if options provided
     if (options?.vectorStoreOptions) {
@@ -200,6 +192,12 @@ export class KnowledgeGraphManager {
 
     // Fallback to file-based implementation
     try {
+      // If no memory file path is set, return empty graph
+      if (!this.memoryFilePath) {
+        logger.warn('No memory file path set, returning empty graph');
+        return { entities: [], relations: [] };
+      }
+
       // Check if file exists before reading
       try {
         await this.fsModule.access(this.memoryFilePath);
@@ -287,6 +285,12 @@ export class KnowledgeGraphManager {
 
     // Fallback to file-based implementation
     try {
+      // If no memory file path is set, log warning and return
+      if (!this.memoryFilePath) {
+        logger.warn('No memory file path set, cannot save graph');
+        return;
+      }
+
       // Convert entities and relations to JSON lines with type field
       // Use newlines for better readability and append
       const lines: string[] = [];
