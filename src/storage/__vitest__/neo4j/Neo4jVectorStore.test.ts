@@ -121,7 +121,7 @@ describe('Neo4jVectorStore', () => {
       const createIndexSpy = vi.spyOn(mockSchemaManager, 'createVectorIndex').mockResolvedValue(undefined);
       
       // Replace the vectorStore's schemaManager with our mock
-      // @ts-ignore - Private property access for testing
+      // @ts-expect-error - Private property access for testing
       vectorStore.schemaManager = mockSchemaManager;
       
       // Act
@@ -145,7 +145,7 @@ describe('Neo4jVectorStore', () => {
       const createIndexSpy = vi.spyOn(mockSchemaManager, 'createVectorIndex').mockResolvedValue(undefined);
       
       // Replace the vectorStore's schemaManager with our mock
-      // @ts-ignore - Private property access for testing
+      // @ts-expect-error - Private property access for testing
       vectorStore.schemaManager = mockSchemaManager;
       
       // Act
@@ -166,7 +166,7 @@ describe('Neo4jVectorStore', () => {
     
     it('should validate vector dimensions', async () => {
       // Arrange
-      // @ts-ignore - Setting private property for testing
+      // @ts-expect-error - Setting private property for testing
       vectorStore.initialized = true;
       
       // Act & Assert
@@ -176,7 +176,7 @@ describe('Neo4jVectorStore', () => {
     
     it('should add vector to entity node', async () => {
       // Arrange
-      // @ts-ignore - Setting private property for testing
+      // @ts-expect-error - Setting private property for testing
       vectorStore.initialized = true;
       
       const session = await mockConnectionManager.getSession();
@@ -219,7 +219,7 @@ describe('Neo4jVectorStore', () => {
     
     it('should remove vector from entity node', async () => {
       // Arrange
-      // @ts-ignore - Setting private property for testing
+      // @ts-expect-error - Setting private property for testing
       vectorStore.initialized = true;
       
       const session = await mockConnectionManager.getSession();
@@ -242,7 +242,7 @@ describe('Neo4jVectorStore', () => {
   describe('search', () => {
     it('should throw error if not initialized', async () => {
       // Arrange
-      // @ts-ignore - Setting private property for testing
+      // @ts-expect-error - Setting private property for testing
       vectorStore.initialized = false;
       
       // Mock the ensureInitialized method to throw the expected error
@@ -267,7 +267,7 @@ describe('Neo4jVectorStore', () => {
     
     it('should validate vector dimensions', async () => {
       // Arrange
-      // @ts-ignore - Setting private property for testing
+      // @ts-expect-error - Setting private property for testing
       vectorStore.initialized = true;
       
       // Mock vector dimensions validation by catching the error in the searchByPatternFallback
@@ -287,7 +287,7 @@ describe('Neo4jVectorStore', () => {
     
     it('should perform vector search query and return results', async () => {
       // Arrange
-      // @ts-ignore - Setting private property for testing
+      // @ts-expect-error - Setting private property for testing
       vectorStore.initialized = true;
       
       const session = await mockConnectionManager.getSession();
@@ -331,7 +331,7 @@ describe('Neo4jVectorStore', () => {
     
     it('should handle array filter values', async () => {
       // Arrange
-      // @ts-ignore - Setting private property for testing
+      // @ts-expect-error - Setting private property for testing
       vectorStore.initialized = true;
       
       const session = await mockConnectionManager.getSession();
