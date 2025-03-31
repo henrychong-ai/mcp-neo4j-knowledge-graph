@@ -1,5 +1,6 @@
 import { EmbeddingService, EmbeddingModelInfo } from './EmbeddingService.js';
 import { EmbeddingServiceConfig } from './EmbeddingServiceFactory.js';
+import { logger } from '../utils/logger.js';
 
 /**
  * Default embedding service implementation that generates random vectors.
@@ -41,7 +42,7 @@ export class DefaultEmbeddingService extends EmbeddingService {
     }
     
     if (process.env.MOCK_EMBEDDINGS === 'true') {
-      console.log(`[INFO] Using DefaultEmbeddingService in mock mode with dimensions: ${this.dimensions}`);
+      logger.info(`Using DefaultEmbeddingService in mock mode with dimensions: ${this.dimensions}`);
     }
   }
   

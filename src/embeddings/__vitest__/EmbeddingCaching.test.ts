@@ -1,10 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, afterAll, vi } from 'vitest';
 import fs from 'fs';
 import path from 'path';
-import { OpenAIEmbeddingService } from '../OpenAIEmbeddingService.js';
 import { EmbeddingJobManager } from '../EmbeddingJobManager.js';
-import BetterSqlite3 from 'better-sqlite3';
-import type { StorageProvider } from '../../storage/StorageProvider.js';
 import type { EmbeddingService } from '../EmbeddingService.js';
 import type { Entity, KnowledgeGraph } from '../../KnowledgeGraphManager.js';
 import type { EntityEmbedding } from '../../types/entity-embedding.js';
@@ -115,6 +112,11 @@ describe('EmbeddingJobManager Caching', () => {
         name: 'test-model',
         dimensions: 384,
         version: '1.0.0'
+      }),
+      getProviderInfo: vi.fn().mockReturnValue({
+        provider: 'test-provider',
+        model: 'test-model',
+        dimensions: 384
       })
     };
     

@@ -9,8 +9,20 @@ vi.mock('@modelcontextprotocol/sdk/server/index.js', () => {
   return {
     Server: vi.fn(function() {
       return {
-        _serverInfo: { name: 'memento-mcp', version: '1.0.0', description: 'Memento MCP: Your persistent knowledge graph memory system' },
-        _options: { capabilities: { tools: {} } },
+        _serverInfo: { 
+          name: 'memento-mcp', 
+          version: '1.0.0', 
+          description: 'Memento MCP: Your persistent knowledge graph memory system',
+          publisher: 'gannonh' 
+        },
+        _options: { 
+          capabilities: { 
+            tools: {},
+            serverInfo: {},
+            notifications: {},
+            logging: {}
+          } 
+        },
         setRequestHandler: vi.fn(),
         start: vi.fn().mockResolvedValue(undefined),
         stop: vi.fn().mockResolvedValue(undefined)
@@ -92,8 +104,20 @@ describe('setupServer', () => {
     
     // Assert server was created with the right parameters
     expect(ServerMock).toHaveBeenCalledWith(
-      { name: 'memento-mcp', version: '1.0.0', description: 'Memento MCP: Your persistent knowledge graph memory system' },
-      { capabilities: { tools: {} } }
+      { 
+        name: 'memento-mcp', 
+        version: '1.0.0', 
+        description: 'Memento MCP: Your persistent knowledge graph memory system',
+        publisher: 'gannonh'
+      },
+      { 
+        capabilities: { 
+          tools: {},
+          serverInfo: {},
+          notifications: {},
+          logging: {}
+        } 
+      }
     );
     
     // Assert server instance was returned

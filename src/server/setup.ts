@@ -17,10 +17,15 @@ export function setupServer(knowledgeGraphManager: any): Server {
   const server = new Server({
     name: "memento-mcp",
     version: "1.0.0",
-    description: "Memento MCP: Your persistent knowledge graph memory system"
+    description: "Memento MCP: Your persistent knowledge graph memory system",
+    publisher:"gannonh"
+
   }, {
     capabilities: {
       tools: {},
+      serverInfo: {}, // Add this capability to fix the error
+      notifications: {}, // Add this capability for complete support
+      logging: {} // Add this capability for complete support
     },
   });
 
@@ -44,4 +49,4 @@ export function setupServer(knowledgeGraphManager: any): Server {
   });
 
   return server;
-} 
+}
