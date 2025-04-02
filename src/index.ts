@@ -219,18 +219,8 @@ export async function main() {
   await server.connect(transport);
 }
 
-// Only run main if this is the entry point
-if (process.argv[1]?.endsWith('src/index.ts') || 
-    process.argv[1]?.endsWith('dist/index.js') ||
-    process.argv[1]?.endsWith('memento-mcp') ||
-    process.argv[1]?.includes('@gannonh/memento-mcp') ||
-    // This is the module.id check
-    module.id === '.' ||
-    // This is the special Node.js ESM case when it's the entry point
-    import.meta.url.includes(process.argv[1])) {
-  main().catch((error) => {
-    // Log error but don't use console.error
-    logger.error(`Main process terminated: ${error}`);
-    process.exit(1);
-  });
-}
+main().catch((error) => {
+  // Log error but don't use console.error
+  logger.error(`Main process terminated: ${error}`);
+  process.exit(1);
+});
