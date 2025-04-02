@@ -107,6 +107,65 @@ When using Docker, the Neo4j database will be available at:
 * **HTTP**: `http://127.0.0.1:7474` (for Neo4j Browser UI)
 * **Default credentials**: username: `neo4j`, password: `memento_password`
 
+#### Data Persistence and Management
+
+Neo4j data persists across container restarts and even version upgrades due to the Docker volume configuration in the `docker-compose.yml` file:
+
+```yaml
+volumes:
+  - ./neo4j-data:/data
+  - ./neo4j-logs:/logs
+  - ./neo4j-import:/import
+```
+
+These mappings ensure that:
+
+* `/data` directory (contains all database files) persists on your host at `./neo4j-data`
+* `/logs` directory persists on your host at `./neo4j-logs`
+* `/import` directory (for importing data files) persists at `./neo4j-import`
+
+You can modify these paths in your `docker-compose.yml` file to store data in different locations if needed.
+
+##### Upgrading Neo4j Version
+
+You can change Neo4j editions and versions without losing data:
+
+1. Update the Neo4j image version in `docker-compose.yml`
+2. Restart the container with `docker-compose down && docker-compose up -d neo4j`
+3. Reinitialize the schema with `npm run neo4j:init`
+
+The data will persist through this process as long as the volume mappings remain the same.
+
+##### Complete Database Reset
+
+If you need to completely reset your Neo4j database:
+
+```bash
+# Stop the container
+docker-compose stop neo4j
+
+# Remove the container
+docker-compose rm -f neo4j
+
+# Delete the data directory contents
+rm -rf ./neo4j-data/*
+
+# Restart the container
+docker-compose up -d neo4j
+
+# Reinitialize the schema
+npm run neo4j:init
+```
+
+##### Backing Up Data
+
+To back up your Neo4j data, you can simply copy the data directory:
+
+```bash
+# Make a backup of the Neo4j data
+cp -r ./neo4j-data ./neo4j-data-backup-$(date +%Y%m%d)
+```
+
 ### Neo4j CLI Utilities
 
 Memento MCP includes command-line utilities for managing Neo4j operations:
@@ -141,65 +200,6 @@ npm run neo4j:init -- --recreate
 
 # Combine multiple options
 npm run neo4j:init -- --vector-index custom_index --dimensions 384 --recreate
-```
-
-### Data Persistence and Management
-
-Neo4j data persists across container restarts and even version upgrades due to the Docker volume configuration in the `docker-compose.yml` file:
-
-```yaml
-volumes:
-  - ./neo4j-data:/data
-  - ./neo4j-logs:/logs
-  - ./neo4j-import:/import
-```
-
-These mappings ensure that:
-
-* `/data` directory (contains all database files) persists on your host at `./neo4j-data`
-* `/logs` directory persists on your host at `./neo4j-logs`
-* `/import` directory (for importing data files) persists at `./neo4j-import`
-
-You can modify these paths in your `docker-compose.yml` file to store data in different locations if needed.
-
-#### Upgrading Neo4j Version
-
-You can change Neo4j editions and versions without losing data:
-
-1. Update the Neo4j image version in `docker-compose.yml`
-2. Restart the container with `docker-compose down && docker-compose up -d neo4j`
-3. Reinitialize the schema with `npm run neo4j:init`
-
-The data will persist through this process as long as the volume mappings remain the same.
-
-#### Complete Database Reset
-
-If you need to completely reset your Neo4j database:
-
-```bash
-# Stop the container
-docker-compose stop neo4j
-
-# Remove the container
-docker-compose rm -f neo4j
-
-# Delete the data directory contents
-rm -rf ./neo4j-data/*
-
-# Restart the container
-docker-compose up -d neo4j
-
-# Reinitialize the schema
-npm run neo4j:init
-```
-
-#### Backing Up Data
-
-To back up your Neo4j data, you can simply copy the data directory:
-
-```bash
-# Make a backup of the Neo4j data
-cp -r ./neo4j-data ./neo4j-data-backup-$(date +%Y%m%d)
 ```
 
 ## Advanced Features
