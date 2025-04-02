@@ -110,3 +110,53 @@ jobs:
         OPENAI_API_KEY: sk-mock-api-key-for-tests
         OPENAI_EMBEDDING_MODEL: text-embedding-3-small
         MOCK_EMBEDDINGS: true
+
+  publish:
+    name: Publish to npm
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Use Node.js 20.x
+      uses: actions/setup-node@v4
+      with:
+        node-version: 20.x
+        registry-url: 'https://registry.npmjs.org'
+        
+    - name: Install dependencies
+      run: |
+        rm -rf node_modules
+        rm -f package-lock.json
+        npm install
+      
+    - name: Build package
+      run: npm run build
+      
+    - name: Set executable permissions
+      run: chmod +x dist/*.js
+      
+    - name: Publish to npm
+      run: npm publish
+      env:
+        NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        
+    - name: Verify package
+      run: |
+        # Create test directory
+        mkdir -p /tmp/npm-test
+        cd /tmp/npm-test
+        
+        # Initialize test project
+        npm init -y
+        
+        # Install the just-published package
+        npm install @gannonh/memento-mcp
+        
+        # Test that the package can be required
+        node -e "require('@gannonh/memento-mcp')"
+        
+        echo "✅ Package verification successful"
