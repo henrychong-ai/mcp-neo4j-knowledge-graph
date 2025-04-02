@@ -162,10 +162,33 @@ jobs:
         NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         
     - name: Verify package
+      timeout-minutes: 5
       run: |
-        # Wait for npm registry propagation (can take a few minutes)
+        # Extract version from package.json
+        VERSION=$(node -p "require('./package.json').version")
+        echo "Current package version: $VERSION"
+        
+        # Wait for npm registry propagation with timeout
         echo "Waiting for package to propagate to npm registry..."
-        sleep 60
+        MAX_RETRIES=10
+        RETRY_COUNT=0
+        
+        while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+          echo "Check attempt $((RETRY_COUNT+1))/$MAX_RETRIES..."
+          if npm view @gannonh/memento-mcp@$VERSION version &> /dev/null; then
+            echo "✅ Package found in registry!"
+            break
+          fi
+          
+          RETRY_COUNT=$((RETRY_COUNT+1))
+          if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
+            echo "⚠️ Maximum retry attempts reached. Continuing anyway since package may exist..."
+            break
+          fi
+          
+          echo "Waiting 15 seconds before next check..."
+          sleep 15
+        done
         
         # Create test directory
         mkdir -p /tmp/npm-test
@@ -179,12 +202,9 @@ jobs:
           "main": "index.js"
         }' > package.json
         
-        # Show npm registry information
-        echo "Checking npm registry for package..."
-        npm view @gannonh/memento-mcp version || echo "Package not yet visible in registry"
-        
-        # Install the just-published package
-        npm install @gannonh/memento-mcp --verbose
+        # Direct install with version to avoid registry caching issues
+        echo "Installing package @gannonh/memento-mcp@$VERSION..."
+        npm install @gannonh/memento-mcp@$VERSION --verbose
         
         # List installed packages and structure
         echo "Installed packages:"

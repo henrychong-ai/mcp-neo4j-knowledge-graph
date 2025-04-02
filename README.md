@@ -68,12 +68,27 @@ Memento MCP uses Neo4j as its storage backend, providing a unified solution for 
 
 ### Prerequisites
 
-* Docker and Docker Compose for running Neo4j
 * Neo4j 5.13+ (required for vector search capabilities)
 
-### Neo4j Setup with Docker
+### Neo4j Desktop Setup (Recommended)
 
-The project includes a Docker Compose configuration for Neo4j:
+The easiest way to get started with Neo4j is to use [Neo4j Desktop](https://neo4j.com/download/):
+
+1. Download and install Neo4j Desktop from <https://neo4j.com/download/>
+2. Create a new project
+3. Add a new database
+4. Set password to `memento_password` (or your preferred password)
+5. Start the database
+
+The Neo4j database will be available at:
+
+* **Bolt URI**: `bolt://127.0.0.1:7687` (for driver connections)
+* **HTTP**: `http://127.0.0.1:7474` (for Neo4j Browser UI)
+* **Default credentials**: username: `neo4j`, password: `memento_password` (or whatever you configured)
+
+### Neo4j Setup with Docker (Alternative)
+
+Alternatively, you can use Docker Compose to run Neo4j:
 
 ```bash
 # Start Neo4j container
@@ -86,10 +101,10 @@ docker-compose stop neo4j
 docker-compose rm neo4j
 ```
 
-The Neo4j database will be available at:
+When using Docker, the Neo4j database will be available at:
 
-* **Bolt URI**: `bolt://localhost:7687` (for driver connections)
-* **HTTP**: `http://localhost:7474` (for Neo4j Browser UI)
+* **Bolt URI**: `bolt://127.0.0.1:7687` (for driver connections)
+* **HTTP**: `http://127.0.0.1:7474` (for Neo4j Browser UI)
 * **Default credentials**: username: `neo4j`, password: `memento_password`
 
 ### Neo4j CLI Utilities
@@ -105,7 +120,7 @@ Test the connection to your Neo4j database:
 npm run neo4j:test
 
 # Test with custom settings
-npm run neo4j:test -- --uri bolt://custom-host:7687 --username myuser --password mypass --database neo4j
+npm run neo4j:test -- --uri bolt://127.0.0.1:7687 --username myuser --password mypass --database neo4j
 ```
 
 #### Initializing Schema
@@ -370,7 +385,7 @@ Configure Memento MCP with these environment variables:
 
 ```bash
 # Neo4j Connection Settings
-NEO4J_URI=bolt://localhost:7687
+NEO4J_URI=bolt://127.0.0.1:7687
 NEO4J_USERNAME=neo4j
 NEO4J_PASSWORD=memento_password
 NEO4J_DATABASE=neo4j
@@ -394,7 +409,7 @@ DEBUG=true
 The Neo4j CLI tools support the following options:
 
 ```
---uri <uri>              Neo4j server URI (default: bolt://localhost:7687)
+--uri <uri>              Neo4j server URI (default: bolt://127.0.0.1:7687)
 --username <username>    Neo4j username (default: neo4j)
 --password <password>    Neo4j password (default: memento_password)
 --database <n>           Neo4j database name (default: neo4j)
@@ -446,7 +461,7 @@ Add this to your `claude_desktop_config.json`:
       ],
       "env": {
         "MEMORY_STORAGE_TYPE": "neo4j",
-        "NEO4J_URI": "bolt://localhost:7687",
+        "NEO4J_URI": "bolt://127.0.0.1:7687",
         "NEO4J_USERNAME": "neo4j",
         "NEO4J_PASSWORD": "memento_password",
         "NEO4J_DATABASE": "neo4j",
@@ -474,7 +489,7 @@ Alternatively, for local development, you can use:
       ],
       "env": {
         "MEMORY_STORAGE_TYPE": "neo4j",
-        "NEO4J_URI": "bolt://localhost:7687",
+        "NEO4J_URI": "bolt://127.0.0.1:7687",
         "NEO4J_USERNAME": "neo4j",
         "NEO4J_PASSWORD": "memento_password",
         "NEO4J_DATABASE": "neo4j",
@@ -551,17 +566,23 @@ Additional diagnostic tools become available when debug mode is enabled:
 To completely reset your Neo4j database during development:
 
 ```bash
-# Stop the container
+# Stop the container (if using Docker)
 docker-compose stop neo4j
 
-# Remove the container
+# Remove the container (if using Docker)
 docker-compose rm -f neo4j
 
-# Delete the data directory
+# Delete the data directory (if using Docker)
 rm -rf ./neo4j-data/*
 
-# Restart the container
+# For Neo4j Desktop, right-click your database and select "Drop database"
+
+# Restart the database
+# For Docker:
 docker-compose up -d neo4j
+
+# For Neo4j Desktop:
+# Click the "Start" button for your database
 
 # Reinitialize the schema
 npm run neo4j:init
