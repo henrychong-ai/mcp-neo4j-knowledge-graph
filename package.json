@@ -1,14 +1,16 @@
 {
   "name": "@gannonh/memento-mcp",
-  "version": "0.3.3",
+  "version": "0.3.4",
   "description": "Memento MCP: Knowledge graph memory system for LLMs",
   "license": "MIT",
   "author": "Gannon Hall",
   "homepage": "https://github.com/gannonh/memento-mcp",
   "bugs": "https://github.com/gannonh/memento-mcp/issues",
   "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "bin": {
-    "mcp-server-memento": "dist/index.js"
+    "memento-mcp": "dist/index.js"
   },
   "repository": {
     "type": "git",
