@@ -139,6 +139,23 @@ jobs:
     - name: Set executable permissions
       run: chmod +x dist/*.js
       
+    - name: Check and bump version if needed
+      run: |
+        # Get current version from package.json
+        CURRENT_VERSION=$(node -p "require('./package.json').version")
+        echo "Current version in package.json: $CURRENT_VERSION"
+        
+        # Check if version exists on npm
+        if npm view @gannonh/memento-mcp@$CURRENT_VERSION version &> /dev/null; then
+          echo "Version $CURRENT_VERSION already exists on npm, bumping patch version"
+          # Increment patch version
+          npm version patch
+          NEW_VERSION=$(node -p "require('./package.json').version")
+          echo "Bumped to version: $NEW_VERSION"
+        else
+          echo "Version $CURRENT_VERSION does not exist on npm, continuing with publish"
+        fi
+      
     - name: Publish to npm
       run: npm publish
       env:
