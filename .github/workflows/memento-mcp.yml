@@ -195,8 +195,8 @@ jobs:
         cat node_modules/@gannonh/memento-mcp/package.json
         
         # Create test file using ESM imports
-        echo 'import pkg from "@gannonh/memento-mcp";
-        console.log("Package loaded successfully:", Object.keys(pkg));' > test.mjs
+        echo 'import * as mementoMcp from "@gannonh/memento-mcp";
+        console.log("Package loaded successfully:", Object.keys(mementoMcp));' > test.mjs
         
         # Test with Node ESM
         echo "Testing ESM import..."
