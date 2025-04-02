@@ -1,6 +1,6 @@
 {
   "name": "@gannonh/memento-mcp",
-  "version": "0.3.5",
+  "version": "0.3.6",
   "description": "Memento MCP: Knowledge graph memory system for LLMs",
   "license": "MIT",
   "author": "Gannon Hall",
@@ -68,5 +68,4 @@
   "engines": {
     "node": ">=20.0.0"
   }
-
 }
