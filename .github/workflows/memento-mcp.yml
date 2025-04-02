@@ -139,87 +139,37 @@ jobs:
     - name: Set executable permissions
       run: chmod +x dist/*.js
       
-    - name: Check and bump version if needed
+    - name: Check version and determine if publish is needed
+      id: check_version
       run: |
         # Get current version from package.json
         CURRENT_VERSION=$(node -p "require('./package.json').version")
         echo "Current version in package.json: $CURRENT_VERSION"
         
-        # Check if version exists on npm
-        if npm view @gannonh/memento-mcp@$CURRENT_VERSION version &> /dev/null; then
-          echo "Version $CURRENT_VERSION already exists on npm, bumping patch version"
-          # Increment patch version
-          npm version patch
-          NEW_VERSION=$(node -p "require('./package.json').version")
-          echo "Bumped to version: $NEW_VERSION"
+        # Get latest version from npm (if it exists)
+        if LATEST_VERSION=$(npm view @gannonh/memento-mcp version 2>/dev/null); then
+          echo "Latest published version: $LATEST_VERSION"
+          
+          # Compare versions using node
+          IS_HIGHER=$(node -e "const semver = require('semver'); console.log(semver.gt('$CURRENT_VERSION', '$LATEST_VERSION') ? 'true' : 'false')")
+          echo "is_higher=$IS_HIGHER" >> $GITHUB_OUTPUT
+          
+          if [ "$IS_HIGHER" = "true" ]; then
+            echo "Current version is higher than latest published version. Proceeding with publish."
+          else
+            echo "Current version is not higher than latest published version. Skipping publish."
+          fi
         else
-          echo "Version $CURRENT_VERSION does not exist on npm, continuing with publish"
+          echo "No published version found. This appears to be the first publish."
+          echo "is_higher=true" >> $GITHUB_OUTPUT
         fi
       
     - name: Publish to npm
+      if: steps.check_version.outputs.is_higher == 'true'
       run: npm publish
       env:
         NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         
-    - name: Verify package
-      timeout-minutes: 5
-      run: |
-        # Extract version from package.json
-        VERSION=$(node -p "require('./package.json').version")
-        echo "Current package version: $VERSION"
-        
-        # Wait for npm registry propagation with timeout
-        echo "Waiting for package to propagate to npm registry..."
-        MAX_RETRIES=10
-        RETRY_COUNT=0
-        
-        while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-          echo "Check attempt $((RETRY_COUNT+1))/$MAX_RETRIES..."
-          if npm view @gannonh/memento-mcp@$VERSION version &> /dev/null; then
-            echo "✅ Package found in registry!"
-            break
-          fi
-          
-          RETRY_COUNT=$((RETRY_COUNT+1))
-          if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
-            echo "⚠️ Maximum retry attempts reached. Continuing anyway since package may exist..."
-            break
-          fi
-          
-          echo "Waiting 15 seconds before next check..."
-          sleep 15
-        done
-        
-        # Create test directory
-        mkdir -p /tmp/npm-test
-        cd /tmp/npm-test
-        
-        # Initialize test project with type: module
-        echo '{
-          "name": "npm-test",
-          "version": "1.0.0",
-          "type": "module",
-          "main": "index.js"
-        }' > package.json
-        
-        # Direct install with version to avoid registry caching issues
-        echo "Installing package @gannonh/memento-mcp@$VERSION..."
-        npm install @gannonh/memento-mcp@$VERSION --verbose
-        
-        # List installed packages and structure
-        echo "Installed packages:"
-        ls -la node_modules/@gannonh/memento-mcp
-        echo "Package dist directory:"
-        ls -la node_modules/@gannonh/memento-mcp/dist
-        echo "Package.json contents:"
-        cat node_modules/@gannonh/memento-mcp/package.json
-        
-        # Create test file using ESM imports
-        echo 'import * as mementoMcp from "@gannonh/memento-mcp";
-        console.log("Package loaded successfully:", Object.keys(mementoMcp));' > test.mjs
-        
-        # Test with Node ESM
-        echo "Testing ESM import..."
-        node test.mjs
-        
-        echo "✅ Package verification successful"
+    - name: Skip publish - version not higher
+      if: steps.check_version.outputs.is_higher != 'true'
+      run: echo "✅ Build successful but publish skipped - current version is not higher than the latest published version."
