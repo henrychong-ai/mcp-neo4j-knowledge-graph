@@ -219,8 +219,11 @@ export async function main() {
   await server.connect(transport);
 }
 
-main().catch((error) => {
-  // Log error but don't use console.error
-  logger.error(`Main process terminated: ${error}`);
-  process.exit(1);
-});
+// Only run main if not in a test environment
+if (!process.env.VITEST && !process.env.NODE_ENV?.includes('test')) {
+  main().catch((error) => {
+    // Log error but don't use console.error
+    logger.error(`Main process terminated: ${error}`);
+    process.exit(1);
+  });
+}
