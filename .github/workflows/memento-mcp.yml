@@ -146,6 +146,10 @@ jobs:
         
     - name: Verify package
       run: |
+        # Wait for npm registry propagation (can take a few minutes)
+        echo "Waiting for package to propagate to npm registry..."
+        sleep 60
+        
         # Create test directory
         mkdir -p /tmp/npm-test
         cd /tmp/npm-test
@@ -153,10 +157,18 @@ jobs:
         # Initialize test project
         npm init -y
         
+        # Show npm registry information
+        echo "Checking npm registry for package..."
+        npm view @gannonh/memento-mcp version || echo "Package not yet visible in registry"
+        
         # Install the just-published package
-        npm install @gannonh/memento-mcp
+        npm install @gannonh/memento-mcp --verbose
+        
+        # List installed packages
+        echo "Installed packages:"
+        ls -la node_modules/@gannonh
         
         # Test that the package can be required
-        node -e "require('@gannonh/memento-mcp')"
+        node -e "console.log('Attempting to require package...'); const pkg = require('@gannonh/memento-mcp'); console.log('Package loaded successfully:', Object.keys(pkg));"
         
         echo "✅ Package verification successful"
