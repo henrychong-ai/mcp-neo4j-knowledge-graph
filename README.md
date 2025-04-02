@@ -5,6 +5,7 @@
 Scalable, high performance knowledge graph memory system with semantic search, temporal awareness, and advanced relation management. Provides any LLM client that supports the model context protocol (e.g., Claude Desktop, Cursor, Github Copilot) with persistent ontological memory.
 
 [![Memento MCP Tests](https://github.com/gannonh/memento-mcp/actions/workflows/memento-mcp.yml/badge.svg)](https://github.com/gannonh/memento-mcp/actions/workflows/memento-mcp.yml)
+[![smithery badge](https://smithery.ai/badge/@gannonh/memento-mcp)](https://smithery.ai/server/@gannonh/memento-mcp)
 
 ## Core Concepts
 
@@ -611,6 +612,14 @@ npm run test:coverage
 ```
 
 ## Installation
+
+### Installing via Smithery
+
+To install memento-mcp for Claude Desktop automatically via [Smithery](https://smithery.ai/server/@gannonh/memento-mcp):
+
+```bash
+npx -y @smithery/cli install @gannonh/memento-mcp --client claude
+```
 
 ### Global Installation with npx
 

@@ -1,0 +1,60 @@
+# Smithery configuration file: https://smithery.ai/docs/config#smitheryyaml
+
+startCommand:
+  type: stdio
+  configSchema:
+    # JSON Schema defining the configuration options for the MCP.
+    type: object
+    required:
+      - neo4jUri
+      - neo4jUsername
+      - neo4jPassword
+      - neo4jDatabase
+      - openAiApiKey
+    properties:
+      neo4jUri:
+        type: string
+        default: bolt://127.0.0.1:7687
+        description: Neo4j connection URI
+      neo4jUsername:
+        type: string
+        default: neo4j
+        description: Neo4j username
+      neo4jPassword:
+        type: string
+        default: memento_password
+        description: Neo4j password
+      neo4jDatabase:
+        type: string
+        default: neo4j
+        description: Neo4j database name
+      openAiApiKey:
+        type: string
+        default: your-openai-api-key
+        description: OpenAI API key for embeddings
+  commandFunction:
+    # A JS function that produces the CLI command based on the given config to start the MCP on stdio.
+    |-
+    (config) => ({
+      command: 'node',
+      args: ['dist/index.js'],
+      env: {
+        NEO4J_URI: config.neo4jUri,
+        NEO4J_USERNAME: config.neo4jUsername,
+        NEO4J_PASSWORD: config.neo4jPassword,
+        NEO4J_DATABASE: config.neo4jDatabase,
+        // Additional environment variables with defaults
+        NEO4J_VECTOR_INDEX: 'entity_embeddings',
+        NEO4J_VECTOR_DIMENSIONS: '1536',
+        NEO4J_SIMILARITY_FUNCTION: 'cosine',
+        OPENAI_API_KEY: config.openAiApiKey,
+        OPENAI_EMBEDDING_MODEL: 'text-embedding-3-small',
+        DEBUG: 'true'
+      }
+    })
+  exampleConfig:
+    neo4jUri: bolt://127.0.0.1:7687
+    neo4jUsername: neo4j
+    neo4jPassword: memento_password
+    neo4jDatabase: neo4j
+    openAiApiKey: your-openai-api-key
