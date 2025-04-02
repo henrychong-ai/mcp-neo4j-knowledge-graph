@@ -125,10 +125,12 @@ npm run neo4j:test -- --uri bolt://127.0.0.1:7687 --username myuser --password m
 
 #### Initializing Schema
 
-Initialize the Neo4j schema with required constraints and indexes:
+For normal operation, Neo4j schema initialization happens automatically when Memento MCP connects to the database. You don't need to run any manual commands for regular usage.
+
+The following commands are only necessary for development, testing, or advanced customization scenarios:
 
 ```bash
-# Initialize with default settings
+# Initialize with default settings (only needed for development or troubleshooting)
 npm run neo4j:init
 
 # Initialize with custom vector dimensions
