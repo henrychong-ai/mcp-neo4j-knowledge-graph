@@ -171,8 +171,13 @@ jobs:
         mkdir -p /tmp/npm-test
         cd /tmp/npm-test
         
-        # Initialize test project
-        npm init -y
+        # Initialize test project with type: module
+        echo '{
+          "name": "npm-test",
+          "version": "1.0.0",
+          "type": "module",
+          "main": "index.js"
+        }' > package.json
         
         # Show npm registry information
         echo "Checking npm registry for package..."
@@ -181,11 +186,20 @@ jobs:
         # Install the just-published package
         npm install @gannonh/memento-mcp --verbose
         
-        # List installed packages
+        # List installed packages and structure
         echo "Installed packages:"
-        ls -la node_modules/@gannonh
+        ls -la node_modules/@gannonh/memento-mcp
+        echo "Package dist directory:"
+        ls -la node_modules/@gannonh/memento-mcp/dist
+        echo "Package.json contents:"
+        cat node_modules/@gannonh/memento-mcp/package.json
         
-        # Test that the package can be required
-        node -e "console.log('Attempting to require package...'); const pkg = require('@gannonh/memento-mcp'); console.log('Package loaded successfully:', Object.keys(pkg));"
+        # Create test file using ESM imports
+        echo 'import pkg from "@gannonh/memento-mcp";
+        console.log("Package loaded successfully:", Object.keys(pkg));' > test.mjs
+        
+        # Test with Node ESM
+        echo "Testing ESM import..."
+        node test.mjs
         
         echo "✅ Package verification successful"
