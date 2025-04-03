@@ -2,7 +2,7 @@
 
 ![Memento MCP Logo](assets/memento-logo-gray.svg)
 
-Scalable, high performance knowledge graph memory system with semantic search, temporal awareness, and advanced relation management. Provides any LLM client that supports the model context protocol (e.g., Claude Desktop, Cursor, Github Copilot) with persistent ontological memory.
+Scalable, high performance knowledge graph memory system with semantic retrieval, contextual recall, and temporal awareness. Provides any LLM client that supports the model context protocol (e.g., Claude Desktop, Cursor, Github Copilot) with resilient, adaptive, and persistent long-term ontological memory.
 
 [![Memento MCP Tests](https://github.com/gannonh/memento-mcp/actions/workflows/memento-mcp.yml/badge.svg)](https://github.com/gannonh/memento-mcp/actions/workflows/memento-mcp.yml)
 [![smithery badge](https://smithery.ai/badge/@gannonh/memento-mcp)](https://smithery.ai/server/@gannonh/memento-mcp)
@@ -217,6 +217,9 @@ Find semantically related entities based on meaning rather than just keywords:
 * **Contextual Retrieval**: Retrieve information based on semantic meaning rather than exact keyword matches
 * **Optimized Defaults**: Tuned parameters for balance between precision and recall (0.6 similarity threshold, hybrid search enabled)
 * **Hybrid Search**: Combines semantic and keyword search for more comprehensive results
+* **Adaptive Search**: System intelligently chooses between vector-only, keyword-only, or hybrid search based on query characteristics and available data
+* **Performance Optimization**: Prioritizes vector search for semantic understanding while maintaining fallback mechanisms for resilience
+* **Query-Aware Processing**: Adjusts search strategy based on query complexity and available entity embeddings
 
 ### Temporal Awareness
 
@@ -351,6 +354,10 @@ The following tools are available to LLM client hosts through the Model Context 
     * `entity_types` (string[], optional): Filter results by entity types
     * `hybrid_search` (boolean, optional): Combine keyword and semantic search (default: true)
     * `semantic_weight` (number, optional): Weight of semantic results in hybrid search (0.0-1.0, default: 0.6)
+  * Features:
+    * Intelligently selects optimal search method (vector, keyword, or hybrid) based on query context
+    * Gracefully handles queries with no semantic matches through fallback mechanisms
+    * Maintains high performance with automatic optimization decisions
 
 * **get_entity_embedding**
   * Get the vector embedding for a specific entity
@@ -544,6 +551,20 @@ Once configured, Claude can access the semantic search capabilities through natu
    ```
 
 The power of this approach is that users can interact naturally, while the LLM handles the complexity of selecting and using the appropriate memory tools.
+
+### Real-World Applications
+
+Memento's adaptive search capabilities provide practical benefits:
+
+1. **Query Versatility**: Users don't need to worry about how to phrase questions - the system adapts to different query types automatically
+
+2. **Failure Resilience**: Even when semantic matches aren't available, the system can fall back to alternative methods without user intervention
+
+3. **Performance Efficiency**: By intelligently selecting the optimal search method, the system balances performance and relevance for each query
+
+4. **Improved Context Retrieval**: LLM conversations benefit from better context retrieval as the system can find relevant information across complex knowledge graphs
+
+For example, when a user asks "What do you know about machine learning?", the system can retrieve conceptually related entities even if they don't explicitly mention "machine learning" - perhaps entities about neural networks, data science, or specific algorithms. But if semantic search yields insufficient results, the system automatically adjusts its approach to ensure useful information is still returned.
 
 ## Troubleshooting
 
