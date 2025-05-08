@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { KnowledgeGraphManager } from './KnowledgeGraphManager.js';
 import { initializeStorageProvider } from './config/storage.js';
 import { setupServer } from './server/setup.js';
@@ -22,30 +22,34 @@ try {
   logger.debug(`OpenAI API key exists: ${!!process.env.OPENAI_API_KEY}`);
   logger.debug(`OpenAI Embedding model: ${process.env.OPENAI_EMBEDDING_MODEL || 'not set'}`);
   logger.debug(`Storage provider type: ${process.env.MEMORY_STORAGE_TYPE || 'default'}`);
-  
+
   // Ensure OPENAI_API_KEY is defined for embedding generation
   if (!process.env.OPENAI_API_KEY) {
-    logger.warn('OPENAI_API_KEY environment variable is not set. Semantic search will use random embeddings.');
+    logger.warn(
+      'OPENAI_API_KEY environment variable is not set. Semantic search will use random embeddings.'
+    );
   } else {
     logger.info('OpenAI API key found, will use for generating embeddings');
   }
-  
+
   // Initialize the embedding service
   const embeddingService = EmbeddingServiceFactory.createFromEnvironment();
   logger.debug(`Embedding service model info: ${JSON.stringify(embeddingService.getModelInfo())}`);
-  
+
   // Configure rate limiting options - stricter limits to prevent OpenAI API abuse
   const rateLimiterOptions = {
-    tokensPerInterval: process.env.EMBEDDING_RATE_LIMIT_TOKENS ? 
-      parseInt(process.env.EMBEDDING_RATE_LIMIT_TOKENS, 10) : 20, // Default: 20 requests per minute
-    interval: process.env.EMBEDDING_RATE_LIMIT_INTERVAL ? 
-      parseInt(process.env.EMBEDDING_RATE_LIMIT_INTERVAL, 10) : 60 * 1000 // Default: 1 minute
+    tokensPerInterval: process.env.EMBEDDING_RATE_LIMIT_TOKENS
+      ? parseInt(process.env.EMBEDDING_RATE_LIMIT_TOKENS, 10)
+      : 20, // Default: 20 requests per minute
+    interval: process.env.EMBEDDING_RATE_LIMIT_INTERVAL
+      ? parseInt(process.env.EMBEDDING_RATE_LIMIT_INTERVAL, 10)
+      : 60 * 1000, // Default: 1 minute
   };
-  
-  logger.info('Initializing EmbeddingJobManager', { 
-    rateLimiterOptions, 
+
+  logger.info('Initializing EmbeddingJobManager', {
+    rateLimiterOptions,
     model: embeddingService.getModelInfo().name,
-    storageType: process.env.MEMORY_STORAGE_TYPE || 'neo4j'
+    storageType: process.env.MEMORY_STORAGE_TYPE || 'neo4j',
   });
 
   // For Neo4j (which is always the storage provider)
@@ -62,8 +66,8 @@ try {
       prepare: () => ({
         run: () => null,
         all: () => [],
-        get: () => null
-      })
+        get: () => null,
+      }),
     },
     // Make sure getEntity is available
     getEntity: async (name: string) => {
@@ -78,16 +82,16 @@ try {
       logger.debug(`Neo4j adapter: storeEntityVector called for ${name}`, {
         embeddingType: typeof embedding,
         vectorLength: embedding?.vector?.length || 'no vector',
-        model: embedding?.model || 'no model'
+        model: embedding?.model || 'no model',
       });
-      
+
       // Ensure embedding has the correct format
       const formattedEmbedding = {
         vector: embedding.vector || embedding,
         model: embedding.model || 'unknown',
-        lastUpdated: embedding.lastUpdated || Date.now()
+        lastUpdated: embedding.lastUpdated || Date.now(),
       };
-      
+
       if (typeof (storageProvider as any).updateEntityEmbedding === 'function') {
         try {
           logger.debug(`Neo4j adapter: Using updateEntityEmbedding for ${name}`);
@@ -101,18 +105,18 @@ try {
         logger.error(errorMsg);
         throw new Error(errorMsg);
       }
-    }
+    },
   };
 
   // Create the embedding job manager with adapted storage provider
   embeddingJobManager = new EmbeddingJobManager(
-    adaptedStorageProvider as any, 
+    adaptedStorageProvider as any,
     embeddingService,
     rateLimiterOptions,
     null, // Use default cache options
-    logger 
+    logger
   );
-  
+
   // Schedule periodic processing for embedding jobs
   const EMBEDDING_PROCESS_INTERVAL = 10000; // 10 seconds - more frequent processing
   setInterval(async () => {
@@ -121,56 +125,69 @@ try {
       await embeddingJobManager?.processJobs(10);
     } catch (error) {
       // Log error but don't crash
-      logger.error('Error in scheduled job processing', { 
+      logger.error('Error in scheduled job processing', {
         error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined
+        stack: error instanceof Error ? error.stack : undefined,
       });
     }
   }, EMBEDDING_PROCESS_INTERVAL);
 } catch (error) {
   // Fail gracefully if embedding job manager initialization fails
-  logger.error('Failed to initialize EmbeddingJobManager', { 
+  logger.error('Failed to initialize EmbeddingJobManager', {
     error: error instanceof Error ? error.message : String(error),
-    stack: error instanceof Error ? error.stack : undefined
+    stack: error instanceof Error ? error.stack : undefined,
   });
   embeddingJobManager = undefined;
 }
 
 // Create the KnowledgeGraphManager with the storage provider, embedding job manager, and vector store options
-const knowledgeGraphManager = new KnowledgeGraphManager({ 
+const knowledgeGraphManager = new KnowledgeGraphManager({
   storageProvider,
   embeddingJobManager,
   // Pass vector store options from storage provider if available
-  vectorStoreOptions: (storageProvider as any).vectorStoreOptions
+  vectorStoreOptions: (storageProvider as any).vectorStoreOptions,
 });
 
 // Ensure the storeEntityVector method is available on KnowledgeGraphManager's storageProvider
 // Cast to any to bypass type checking for internal properties
 const knowledgeGraphManagerAny = knowledgeGraphManager as any;
 
-if (knowledgeGraphManagerAny.storageProvider && 
-    typeof knowledgeGraphManagerAny.storageProvider.storeEntityVector !== 'function') {
+if (
+  knowledgeGraphManagerAny.storageProvider &&
+  typeof knowledgeGraphManagerAny.storageProvider.storeEntityVector !== 'function'
+) {
   // Add the storeEntityVector method to the storage provider
-  knowledgeGraphManagerAny.storageProvider.storeEntityVector = async (name: string, embedding: any) => {
+  knowledgeGraphManagerAny.storageProvider.storeEntityVector = async (
+    name: string,
+    embedding: any
+  ) => {
     logger.debug(`Neo4j knowledgeGraphManager adapter: storeEntityVector called for ${name}`, {
       embeddingType: typeof embedding,
       vectorLength: embedding?.vector?.length || 'no vector',
-      model: embedding?.model || 'no model'
+      model: embedding?.model || 'no model',
     });
-    
+
     // Ensure embedding has the correct format
     const formattedEmbedding = {
       vector: embedding.vector || embedding,
       model: embedding.model || 'unknown',
-      lastUpdated: embedding.lastUpdated || Date.now()
+      lastUpdated: embedding.lastUpdated || Date.now(),
     };
-    
+
     if (typeof knowledgeGraphManagerAny.storageProvider.updateEntityEmbedding === 'function') {
       try {
-        logger.debug(`Neo4j knowledgeGraphManager adapter: Using updateEntityEmbedding for ${name}`);
-        return await knowledgeGraphManagerAny.storageProvider.updateEntityEmbedding(name, formattedEmbedding);
+        logger.debug(
+          `Neo4j knowledgeGraphManager adapter: Using updateEntityEmbedding for ${name}`
+        );
+        return await knowledgeGraphManagerAny.storageProvider.updateEntityEmbedding(
+          name,
+          formattedEmbedding
+        );
       } catch (error) {
-        logger.error(`Neo4j knowledgeGraphManager adapter: Error in storeEntityVector for ${name}`, error);
+        logger.error(
+          `Neo4j knowledgeGraphManager adapter: Error in storeEntityVector for ${name}`,
+          error
+        );
         throw error;
       }
     } else {
@@ -179,33 +196,35 @@ if (knowledgeGraphManagerAny.storageProvider &&
       throw new Error(errorMsg);
     }
   };
-  
-  logger.info('Added storeEntityVector adapter method to Neo4j storage provider for KnowledgeGraphManager');
+
+  logger.info(
+    'Added storeEntityVector adapter method to Neo4j storage provider for KnowledgeGraphManager'
+  );
 }
 
 // Use a custom createEntities method for immediate job processing, but only if knowledgeGraphManager exists
 if (knowledgeGraphManager && typeof knowledgeGraphManager.createEntities === 'function') {
   const originalCreateEntities = knowledgeGraphManager.createEntities.bind(knowledgeGraphManager);
-  knowledgeGraphManager.createEntities = async function(entities) {
+  knowledgeGraphManager.createEntities = async function (entities) {
     // First call the original method to create the entities
     const result = await originalCreateEntities(entities);
-    
+
     // Then process jobs immediately if we have an embedding job manager
     if (embeddingJobManager) {
       try {
-        logger.info('Processing embedding jobs immediately after entity creation', { 
+        logger.info('Processing embedding jobs immediately after entity creation', {
           entityCount: entities.length,
-          entityNames: entities.map(e => e.name).join(', ') 
+          entityNames: entities.map((e) => e.name).join(', '),
         });
         await embeddingJobManager.processJobs(entities.length);
       } catch (error) {
-        logger.error('Error processing embedding jobs immediately', { 
+        logger.error('Error processing embedding jobs immediately', {
           error: error instanceof Error ? error.message : String(error),
-          stack: error instanceof Error ? error.stack : undefined
+          stack: error instanceof Error ? error.stack : undefined,
         });
       }
     }
-    
+
     return result;
   };
 }

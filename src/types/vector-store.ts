@@ -6,15 +6,11 @@ export interface VectorSearchResult {
 
 export interface VectorStore {
   initialize(): Promise<void>;
-  
-  addVector(
-    id: string | number,
-    vector: number[],
-    metadata?: Record<string, any>
-  ): Promise<void>;
-  
+
+  addVector(id: string | number, vector: number[], metadata?: Record<string, any>): Promise<void>;
+
   removeVector(id: string | number): Promise<void>;
-  
+
   search(
     queryVector: number[],
     options?: {

@@ -6,10 +6,12 @@
  */
 export async function handleCreateEntities(args: any, knowledgeGraphManager: any) {
   const result = await knowledgeGraphManager.createEntities(args.entities);
-  return { 
-    content: [{ 
-      type: 'text', 
-      text: JSON.stringify(result, null, 2) 
-    }] 
+  return {
+    content: [
+      {
+        type: 'text',
+        text: JSON.stringify(result, null, 2),
+      },
+    ],
   };
-} 
+}

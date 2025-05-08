@@ -6,10 +6,12 @@
  */
 export async function handleCreateRelations(args: any, knowledgeGraphManager: any) {
   const result = await knowledgeGraphManager.createRelations(args.relations);
-  return { 
-    content: [{ 
-      type: 'text', 
-      text: JSON.stringify(result, null, 2) 
-    }] 
+  return {
+    content: [
+      {
+        type: 'text',
+        text: JSON.stringify(result, null, 2),
+      },
+    ],
   };
-} 
+}

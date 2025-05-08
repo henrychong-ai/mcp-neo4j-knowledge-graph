@@ -13,11 +13,11 @@ Scalable, high performance knowledge graph memory system with semantic retrieval
 
 Entities are the primary nodes in the knowledge graph. Each entity has:
 
-* A unique name (identifier)
-* An entity type (e.g., "person", "organization", "event")
-* A list of observations
-* Vector embeddings (for semantic search)
-* Complete version history
+- A unique name (identifier)
+- An entity type (e.g., "person", "organization", "event")
+- A list of observations
+- Vector embeddings (for semantic search)
+- Complete version history
 
 Example:
 
@@ -33,11 +33,11 @@ Example:
 
 Relations define directed connections between entities with enhanced properties:
 
-* Strength indicators (0.0-1.0)
-* Confidence levels (0.0-1.0)
-* Rich metadata (source, timestamps, tags)
-* Temporal awareness with version history
-* Time-based confidence decay
+- Strength indicators (0.0-1.0)
+- Confidence levels (0.0-1.0)
+- Rich metadata (source, timestamps, tags)
+- Temporal awareness with version history
+- Time-based confidence decay
 
 Example:
 
@@ -61,15 +61,15 @@ Memento MCP uses Neo4j as its storage backend, providing a unified solution for 
 
 ### Why Neo4j?
 
-* **Unified Storage**: Consolidates both graph and vector storage into a single database
-* **Native Graph Operations**: Built specifically for graph traversal and queries
-* **Integrated Vector Search**: Vector similarity search for embeddings built directly into Neo4j
-* **Scalability**: Better performance with large knowledge graphs
-* **Simplified Architecture**: Clean design with a single database for all operations
+- **Unified Storage**: Consolidates both graph and vector storage into a single database
+- **Native Graph Operations**: Built specifically for graph traversal and queries
+- **Integrated Vector Search**: Vector similarity search for embeddings built directly into Neo4j
+- **Scalability**: Better performance with large knowledge graphs
+- **Simplified Architecture**: Clean design with a single database for all operations
 
 ### Prerequisites
 
-* Neo4j 5.13+ (required for vector search capabilities)
+- Neo4j 5.13+ (required for vector search capabilities)
 
 ### Neo4j Desktop Setup (Recommended)
 
@@ -83,9 +83,9 @@ The easiest way to get started with Neo4j is to use [Neo4j Desktop](https://neo4
 
 The Neo4j database will be available at:
 
-* **Bolt URI**: `bolt://127.0.0.1:7687` (for driver connections)
-* **HTTP**: `http://127.0.0.1:7474` (for Neo4j Browser UI)
-* **Default credentials**: username: `neo4j`, password: `memento_password` (or whatever you configured)
+- **Bolt URI**: `bolt://127.0.0.1:7687` (for driver connections)
+- **HTTP**: `http://127.0.0.1:7474` (for Neo4j Browser UI)
+- **Default credentials**: username: `neo4j`, password: `memento_password` (or whatever you configured)
 
 ### Neo4j Setup with Docker (Alternative)
 
@@ -104,9 +104,9 @@ docker-compose rm neo4j
 
 When using Docker, the Neo4j database will be available at:
 
-* **Bolt URI**: `bolt://127.0.0.1:7687` (for driver connections)
-* **HTTP**: `http://127.0.0.1:7474` (for Neo4j Browser UI)
-* **Default credentials**: username: `neo4j`, password: `memento_password`
+- **Bolt URI**: `bolt://127.0.0.1:7687` (for driver connections)
+- **HTTP**: `http://127.0.0.1:7474` (for Neo4j Browser UI)
+- **Default credentials**: username: `neo4j`, password: `memento_password`
 
 #### Data Persistence and Management
 
@@ -121,9 +121,9 @@ volumes:
 
 These mappings ensure that:
 
-* `/data` directory (contains all database files) persists on your host at `./neo4j-data`
-* `/logs` directory persists on your host at `./neo4j-logs`
-* `/import` directory (for importing data files) persists at `./neo4j-import`
+- `/data` directory (contains all database files) persists on your host at `./neo4j-data`
+- `/logs` directory persists on your host at `./neo4j-logs`
+- `/import` directory (for importing data files) persists at `./neo4j-import`
 
 You can modify these paths in your `docker-compose.yml` file to store data in different locations if needed.
 
@@ -209,54 +209,54 @@ npm run neo4j:init -- --vector-index custom_index --dimensions 384 --recreate
 
 Find semantically related entities based on meaning rather than just keywords:
 
-* **Vector Embeddings**: Entities are automatically encoded into high-dimensional vector space using OpenAI's embedding models
-* **Cosine Similarity**: Find related concepts even when they use different terminology
-* **Configurable Thresholds**: Set minimum similarity scores to control result relevance
-* **Cross-Modal Search**: Query with text to find relevant entities regardless of how they were described
-* **Multi-Model Support**: Compatible with multiple embedding models (OpenAI text-embedding-3-small/large)
-* **Contextual Retrieval**: Retrieve information based on semantic meaning rather than exact keyword matches
-* **Optimized Defaults**: Tuned parameters for balance between precision and recall (0.6 similarity threshold, hybrid search enabled)
-* **Hybrid Search**: Combines semantic and keyword search for more comprehensive results
-* **Adaptive Search**: System intelligently chooses between vector-only, keyword-only, or hybrid search based on query characteristics and available data
-* **Performance Optimization**: Prioritizes vector search for semantic understanding while maintaining fallback mechanisms for resilience
-* **Query-Aware Processing**: Adjusts search strategy based on query complexity and available entity embeddings
+- **Vector Embeddings**: Entities are automatically encoded into high-dimensional vector space using OpenAI's embedding models
+- **Cosine Similarity**: Find related concepts even when they use different terminology
+- **Configurable Thresholds**: Set minimum similarity scores to control result relevance
+- **Cross-Modal Search**: Query with text to find relevant entities regardless of how they were described
+- **Multi-Model Support**: Compatible with multiple embedding models (OpenAI text-embedding-3-small/large)
+- **Contextual Retrieval**: Retrieve information based on semantic meaning rather than exact keyword matches
+- **Optimized Defaults**: Tuned parameters for balance between precision and recall (0.6 similarity threshold, hybrid search enabled)
+- **Hybrid Search**: Combines semantic and keyword search for more comprehensive results
+- **Adaptive Search**: System intelligently chooses between vector-only, keyword-only, or hybrid search based on query characteristics and available data
+- **Performance Optimization**: Prioritizes vector search for semantic understanding while maintaining fallback mechanisms for resilience
+- **Query-Aware Processing**: Adjusts search strategy based on query complexity and available entity embeddings
 
 ### Temporal Awareness
 
 Track complete history of entities and relations with point-in-time graph retrieval:
 
-* **Full Version History**: Every change to an entity or relation is preserved with timestamps
-* **Point-in-Time Queries**: Retrieve the exact state of the knowledge graph at any moment in the past
-* **Change Tracking**: Automatically records createdAt, updatedAt, validFrom, and validTo timestamps
-* **Temporal Consistency**: Maintain a historically accurate view of how knowledge evolved
-* **Non-Destructive Updates**: Updates create new versions rather than overwriting existing data
-* **Time-Based Filtering**: Filter graph elements based on temporal criteria
-* **History Exploration**: Investigate how specific information changed over time
+- **Full Version History**: Every change to an entity or relation is preserved with timestamps
+- **Point-in-Time Queries**: Retrieve the exact state of the knowledge graph at any moment in the past
+- **Change Tracking**: Automatically records createdAt, updatedAt, validFrom, and validTo timestamps
+- **Temporal Consistency**: Maintain a historically accurate view of how knowledge evolved
+- **Non-Destructive Updates**: Updates create new versions rather than overwriting existing data
+- **Time-Based Filtering**: Filter graph elements based on temporal criteria
+- **History Exploration**: Investigate how specific information changed over time
 
 ### Confidence Decay
 
 Relations automatically decay in confidence over time based on configurable half-life:
 
-* **Time-Based Decay**: Confidence in relations naturally decreases over time if not reinforced
-* **Configurable Half-Life**: Define how quickly information becomes less certain (default: 30 days)
-* **Minimum Confidence Floors**: Set thresholds to prevent over-decay of important information
-* **Decay Metadata**: Each relation includes detailed decay calculation information
-* **Non-Destructive**: Original confidence values are preserved alongside decayed values
-* **Reinforcement Learning**: Relations regain confidence when reinforced by new observations
-* **Reference Time Flexibility**: Calculate decay based on arbitrary reference times for historical analysis
+- **Time-Based Decay**: Confidence in relations naturally decreases over time if not reinforced
+- **Configurable Half-Life**: Define how quickly information becomes less certain (default: 30 days)
+- **Minimum Confidence Floors**: Set thresholds to prevent over-decay of important information
+- **Decay Metadata**: Each relation includes detailed decay calculation information
+- **Non-Destructive**: Original confidence values are preserved alongside decayed values
+- **Reinforcement Learning**: Relations regain confidence when reinforced by new observations
+- **Reference Time Flexibility**: Calculate decay based on arbitrary reference times for historical analysis
 
 ### Advanced Metadata
 
 Rich metadata support for both entities and relations with custom fields:
 
-* **Source Tracking**: Record where information originated (user input, analysis, external sources)
-* **Confidence Levels**: Assign confidence scores (0.0-1.0) to relations based on certainty
-* **Relation Strength**: Indicate importance or strength of relationships (0.0-1.0)
-* **Temporal Metadata**: Track when information was added, modified, or verified
-* **Custom Tags**: Add arbitrary tags for classification and filtering
-* **Structured Data**: Store complex structured data within metadata fields
-* **Query Support**: Search and filter based on metadata properties
-* **Extensible Schema**: Add custom fields as needed without modifying the core data model
+- **Source Tracking**: Record where information originated (user input, analysis, external sources)
+- **Confidence Levels**: Assign confidence scores (0.0-1.0) to relations based on certainty
+- **Relation Strength**: Indicate importance or strength of relationships (0.0-1.0)
+- **Temporal Metadata**: Track when information was added, modified, or verified
+- **Custom Tags**: Add arbitrary tags for classification and filtering
+- **Structured Data**: Store complex structured data within metadata fields
+- **Query Support**: Search and filter based on metadata properties
+- **Extensible Schema**: Add custom fields as needed without modifying the core data model
 
 ## MCP API Tools
 
@@ -264,128 +264,140 @@ The following tools are available to LLM client hosts through the Model Context 
 
 ### Entity Management
 
-* **create_entities**
-  * Create multiple new entities in the knowledge graph
-  * Input: `entities` (array of objects)
-    * Each object contains:
-      * `name` (string): Entity identifier
-      * `entityType` (string): Type classification
-      * `observations` (string[]): Associated observations
+- **create_entities**
 
-* **add_observations**
-  * Add new observations to existing entities
-  * Input: `observations` (array of objects)
-    * Each object contains:
-      * `entityName` (string): Target entity
-      * `contents` (string[]): New observations to add
+  - Create multiple new entities in the knowledge graph
+  - Input: `entities` (array of objects)
+    - Each object contains:
+      - `name` (string): Entity identifier
+      - `entityType` (string): Type classification
+      - `observations` (string[]): Associated observations
 
-* **delete_entities**
-  * Remove entities and their relations
-  * Input: `entityNames` (string[])
+- **add_observations**
 
-* **delete_observations**
-  * Remove specific observations from entities
-  * Input: `deletions` (array of objects)
-    * Each object contains:
-      * `entityName` (string): Target entity
-      * `observations` (string[]): Observations to remove
+  - Add new observations to existing entities
+  - Input: `observations` (array of objects)
+    - Each object contains:
+      - `entityName` (string): Target entity
+      - `contents` (string[]): New observations to add
+
+- **delete_entities**
+
+  - Remove entities and their relations
+  - Input: `entityNames` (string[])
+
+- **delete_observations**
+  - Remove specific observations from entities
+  - Input: `deletions` (array of objects)
+    - Each object contains:
+      - `entityName` (string): Target entity
+      - `observations` (string[]): Observations to remove
 
 ### Relation Management
 
-* **create_relations**
-  * Create multiple new relations between entities with enhanced properties
-  * Input: `relations` (array of objects)
-    * Each object contains:
-      * `from` (string): Source entity name
-      * `to` (string): Target entity name
-      * `relationType` (string): Relationship type
-      * `strength` (number, optional): Relation strength (0.0-1.0)
-      * `confidence` (number, optional): Confidence level (0.0-1.0)
-      * `metadata` (object, optional): Custom metadata fields
+- **create_relations**
 
-* **get_relation**
-  * Get a specific relation with its enhanced properties
-  * Input:
-    * `from` (string): Source entity name
-    * `to` (string): Target entity name
-    * `relationType` (string): Relationship type
+  - Create multiple new relations between entities with enhanced properties
+  - Input: `relations` (array of objects)
+    - Each object contains:
+      - `from` (string): Source entity name
+      - `to` (string): Target entity name
+      - `relationType` (string): Relationship type
+      - `strength` (number, optional): Relation strength (0.0-1.0)
+      - `confidence` (number, optional): Confidence level (0.0-1.0)
+      - `metadata` (object, optional): Custom metadata fields
 
-* **update_relation**
-  * Update an existing relation with enhanced properties
-  * Input: `relation` (object):
-    * Contains:
-      * `from` (string): Source entity name
-      * `to` (string): Target entity name
-      * `relationType` (string): Relationship type
-      * `strength` (number, optional): Relation strength (0.0-1.0)
-      * `confidence` (number, optional): Confidence level (0.0-1.0)
-      * `metadata` (object, optional): Custom metadata fields
+- **get_relation**
 
-* **delete_relations**
-  * Remove specific relations from the graph
-  * Input: `relations` (array of objects)
-    * Each object contains:
-      * `from` (string): Source entity name
-      * `to` (string): Target entity name
-      * `relationType` (string): Relationship type
+  - Get a specific relation with its enhanced properties
+  - Input:
+    - `from` (string): Source entity name
+    - `to` (string): Target entity name
+    - `relationType` (string): Relationship type
+
+- **update_relation**
+
+  - Update an existing relation with enhanced properties
+  - Input: `relation` (object):
+    - Contains:
+      - `from` (string): Source entity name
+      - `to` (string): Target entity name
+      - `relationType` (string): Relationship type
+      - `strength` (number, optional): Relation strength (0.0-1.0)
+      - `confidence` (number, optional): Confidence level (0.0-1.0)
+      - `metadata` (object, optional): Custom metadata fields
+
+- **delete_relations**
+  - Remove specific relations from the graph
+  - Input: `relations` (array of objects)
+    - Each object contains:
+      - `from` (string): Source entity name
+      - `to` (string): Target entity name
+      - `relationType` (string): Relationship type
 
 ### Graph Operations
 
-* **read_graph**
-  * Read the entire knowledge graph
-  * No input required
+- **read_graph**
 
-* **search_nodes**
-  * Search for nodes based on query
-  * Input: `query` (string)
+  - Read the entire knowledge graph
+  - No input required
 
-* **open_nodes**
-  * Retrieve specific nodes by name
-  * Input: `names` (string[])
+- **search_nodes**
+
+  - Search for nodes based on query
+  - Input: `query` (string)
+
+- **open_nodes**
+  - Retrieve specific nodes by name
+  - Input: `names` (string[])
 
 ### Semantic Search
 
-* **semantic_search**
-  * Search for entities semantically using vector embeddings and similarity
-  * Input:
-    * `query` (string): The text query to search for semantically
-    * `limit` (number, optional): Maximum results to return (default: 10)
-    * `min_similarity` (number, optional): Minimum similarity threshold (0.0-1.0, default: 0.6)
-    * `entity_types` (string[], optional): Filter results by entity types
-    * `hybrid_search` (boolean, optional): Combine keyword and semantic search (default: true)
-    * `semantic_weight` (number, optional): Weight of semantic results in hybrid search (0.0-1.0, default: 0.6)
-  * Features:
-    * Intelligently selects optimal search method (vector, keyword, or hybrid) based on query context
-    * Gracefully handles queries with no semantic matches through fallback mechanisms
-    * Maintains high performance with automatic optimization decisions
+- **semantic_search**
 
-* **get_entity_embedding**
-  * Get the vector embedding for a specific entity
-  * Input:
-    * `entity_name` (string): The name of the entity to get the embedding for
+  - Search for entities semantically using vector embeddings and similarity
+  - Input:
+    - `query` (string): The text query to search for semantically
+    - `limit` (number, optional): Maximum results to return (default: 10)
+    - `min_similarity` (number, optional): Minimum similarity threshold (0.0-1.0, default: 0.6)
+    - `entity_types` (string[], optional): Filter results by entity types
+    - `hybrid_search` (boolean, optional): Combine keyword and semantic search (default: true)
+    - `semantic_weight` (number, optional): Weight of semantic results in hybrid search (0.0-1.0, default: 0.6)
+  - Features:
+    - Intelligently selects optimal search method (vector, keyword, or hybrid) based on query context
+    - Gracefully handles queries with no semantic matches through fallback mechanisms
+    - Maintains high performance with automatic optimization decisions
+
+- **get_entity_embedding**
+  - Get the vector embedding for a specific entity
+  - Input:
+    - `entity_name` (string): The name of the entity to get the embedding for
 
 ### Temporal Features
 
-* **get_entity_history**
-  * Get complete version history of an entity
-  * Input: `entityName` (string)
+- **get_entity_history**
 
-* **get_relation_history**
-  * Get complete version history of a relation
-  * Input:
-    * `from` (string): Source entity name
-    * `to` (string): Target entity name
-    * `relationType` (string): Relationship type
+  - Get complete version history of an entity
+  - Input: `entityName` (string)
 
-* **get_graph_at_time**
-  * Get the state of the graph at a specific timestamp
-  * Input: `timestamp` (number): Unix timestamp (milliseconds since epoch)
+- **get_relation_history**
 
-* **get_decayed_graph**
-  * Get graph with time-decayed confidence values
-  * Input: `options` (object, optional):
-    * `reference_time` (number): Reference timestamp for decay calculation (milliseconds since epoch)
-    * `decay_factor` (number): Optional decay factor override
+  - Get complete version history of a relation
+  - Input:
+    - `from` (string): Source entity name
+    - `to` (string): Target entity name
+    - `relationType` (string): Relationship type
+
+- **get_graph_at_time**
+
+  - Get the state of the graph at a specific timestamp
+  - Input: `timestamp` (number): Unix timestamp (milliseconds since epoch)
+
+- **get_decayed_graph**
+  - Get graph with time-decayed confidence values
+  - Input: `options` (object, optional):
+    - `reference_time` (number): Reference timestamp for decay calculation (milliseconds since epoch)
+    - `decay_factor` (number): Optional decay factor override
 
 ## Configuration
 
@@ -434,9 +446,9 @@ The Neo4j CLI tools support the following options:
 
 Available OpenAI embedding models:
 
-* `text-embedding-3-small`: Efficient, cost-effective (1536 dimensions)
-* `text-embedding-3-large`: Higher accuracy, more expensive (3072 dimensions)
-* `text-embedding-ada-002`: Legacy model (1536 dimensions)
+- `text-embedding-3-small`: Efficient, cost-effective (1536 dimensions)
+- `text-embedding-3-large`: Higher accuracy, more expensive (3072 dimensions)
+- `text-embedding-ada-002`: Legacy model (1536 dimensions)
 
 #### OpenAI API Configuration
 
@@ -465,10 +477,7 @@ Add this to your `claude_desktop_config.json`:
   "mcpServers": {
     "memento": {
       "command": "npx",
-      "args": [
-        "-y",
-        "@gannonh/memento-mcp"
-      ],
+      "args": ["-y", "@gannonh/memento-mcp"],
       "env": {
         "MEMORY_STORAGE_TYPE": "neo4j",
         "NEO4J_URI": "bolt://127.0.0.1:7687",
@@ -494,9 +503,7 @@ Alternatively, for local development, you can use:
   "mcpServers": {
     "memento": {
       "command": "/path/to/node",
-      "args": [
-        "/path/to/memento-mcp/dist/index.js"
-      ],
+      "args": ["/path/to/memento-mcp/dist/index.js"],
       "env": {
         "MEMORY_STORAGE_TYPE": "neo4j",
         "NEO4J_URI": "bolt://127.0.0.1:7687",
@@ -572,18 +579,18 @@ For example, when a user asks "What do you know about machine learning?", the sy
 
 Memento MCP includes built-in diagnostic capabilities to help troubleshoot vector search issues:
 
-* **Embedding Verification**: The system checks if entities have valid embeddings and automatically generates them if missing
-* **Vector Index Status**: Verifies that the vector index exists and is in the ONLINE state
-* **Fallback Search**: If vector search fails, the system falls back to text-based search
-* **Detailed Logging**: Comprehensive logging of vector search operations for troubleshooting
+- **Embedding Verification**: The system checks if entities have valid embeddings and automatically generates them if missing
+- **Vector Index Status**: Verifies that the vector index exists and is in the ONLINE state
+- **Fallback Search**: If vector search fails, the system falls back to text-based search
+- **Detailed Logging**: Comprehensive logging of vector search operations for troubleshooting
 
 ### Debug Tools (when DEBUG=true)
 
 Additional diagnostic tools become available when debug mode is enabled:
 
-* **diagnose_vector_search**: Information about the Neo4j vector index, embedding counts, and search functionality
-* **force_generate_embedding**: Forces the generation of an embedding for a specific entity
-* **debug_embedding_config**: Information about the current embedding service configuration
+- **diagnose_vector_search**: Information about the Neo4j vector index, embedding counts, and search functionality
+- **force_generate_embedding**: Forces the generation of an embedding for a specific entity
+- **debug_embedding_config**: Information about the current embedding service configuration
 
 ### Developer Reset
 

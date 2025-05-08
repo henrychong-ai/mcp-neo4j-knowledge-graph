@@ -12,5 +12,5 @@ export const mockWriteFile = jest.fn();
 // The original module imports { promises as fs } from 'fs' and exports { fs }
 export const fs = {
   readFile: mockReadFile,
-  writeFile: mockWriteFile
+  writeFile: mockWriteFile,
 };

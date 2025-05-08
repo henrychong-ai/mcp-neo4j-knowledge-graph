@@ -37,61 +37,64 @@ describe('Automatic Embedding Generation', () => {
       }),
       createRelations: vi.fn().mockResolvedValue([]),
       addObservations: vi.fn().mockResolvedValue([]),
-      
+
       // Methods required by EmbeddingJobManager
       db: {
         exec: vi.fn(),
         prepare: vi.fn().mockReturnValue({
           run: vi.fn(),
           all: vi.fn().mockReturnValue([]),
-          get: vi.fn().mockReturnValue({ count: 0 })
-        })
+          get: vi.fn().mockReturnValue({ count: 0 }),
+        }),
       },
       getEntity: vi.fn().mockImplementation(async (entityName) => {
         // Return a mock entity that matches what would be returned by storageProvider
         return {
           name: entityName,
           entityType: 'TestType',
-          observations: ['Test observation']
+          observations: ['Test observation'],
         };
       }),
       storeEntityVector: vi.fn().mockResolvedValue(undefined),
-      
+
       // Additional methods needed for tests
       getEntityEmbedding: vi.fn().mockImplementation(async (entityName) => {
         return {
-          vector: Array(128).fill(0).map(() => Math.random()), // Mock vector with 128 dimensions
+          vector: Array(128)
+            .fill(0)
+            .map(() => Math.random()), // Mock vector with 128 dimensions
           model: 'test-model',
-          lastUpdated: Date.now()
+          lastUpdated: Date.now(),
         };
       }),
       semanticSearch: vi.fn().mockImplementation(async (query, options) => {
         // Return mock results with the test entity
         return {
-          entities: [{
-            name: 'SearchableEntity',
-            entityType: 'Document',
-            observations: ['This is a document about artificial intelligence and machine learning']
-          }],
+          entities: [
+            {
+              name: 'SearchableEntity',
+              entityType: 'Document',
+              observations: [
+                'This is a document about artificial intelligence and machine learning',
+              ],
+            },
+          ],
           relations: [],
-          timeTaken: 10
+          timeTaken: 10,
         };
-      })
+      }),
     };
 
     // Initialize embedding service
     const embeddingService = new DefaultEmbeddingService();
 
     // Initialize job manager with the mocked storage provider
-    embeddingJobManager = new EmbeddingJobManager(
-      storageProvider,
-      embeddingService
-    );
+    embeddingJobManager = new EmbeddingJobManager(storageProvider, embeddingService);
 
     // Initialize knowledge graph manager
     knowledgeGraphManager = new KnowledgeGraphManager({
       storageProvider,
-      embeddingJobManager
+      embeddingJobManager,
     });
   });
 
@@ -107,7 +110,7 @@ describe('Automatic Embedding Generation', () => {
     const testEntity = {
       name: 'TestEntity',
       entityType: 'Person',
-      observations: ['This is a test entity for embedding generation']
+      observations: ['This is a test entity for embedding generation'],
     };
 
     // Create the entity
@@ -117,12 +120,18 @@ describe('Automatic Embedding Generation', () => {
     expect(storageProvider.createEntities).toHaveBeenCalledWith([testEntity]);
 
     // Mock the _prepareEntityText method to ensure it returns the entity text
-    const prepareTextSpy = vi.spyOn(embeddingJobManager as any, '_prepareEntityText')
+    const prepareTextSpy = vi
+      .spyOn(embeddingJobManager as any, '_prepareEntityText')
       .mockReturnValue('This is a test entity for embedding generation');
 
     // Mock _getCachedEmbeddingOrGenerate to ensure it returns an embedding
-    const getCachedEmbeddingSpy = vi.spyOn(embeddingJobManager as any, '_getCachedEmbeddingOrGenerate')
-      .mockResolvedValue(Array(128).fill(0).map(() => Math.random()));
+    const getCachedEmbeddingSpy = vi
+      .spyOn(embeddingJobManager as any, '_getCachedEmbeddingOrGenerate')
+      .mockResolvedValue(
+        Array(128)
+          .fill(0)
+          .map(() => Math.random())
+      );
 
     // Process embedding jobs - this should call storeEntityVector
     await embeddingJobManager.processJobs(10);
@@ -132,11 +141,13 @@ describe('Automatic Embedding Generation', () => {
 
     // Force a call to storeEntityVector to ensure it gets called
     const mockEmbedding = {
-      vector: Array(128).fill(0).map(() => Math.random()),
+      vector: Array(128)
+        .fill(0)
+        .map(() => Math.random()),
       model: 'test-model',
-      lastUpdated: Date.now()
+      lastUpdated: Date.now(),
     };
-    
+
     await storageProvider.storeEntityVector('TestEntity', mockEmbedding);
 
     // Verify that storeEntityVector was called
@@ -144,7 +155,7 @@ describe('Automatic Embedding Generation', () => {
 
     // Verify that the entity has an embedding by calling getEntityEmbedding
     const embedding = await storageProvider.getEntityEmbedding('TestEntity');
-    
+
     // Verify the embedding exists and has the correct structure
     expect(embedding).toBeDefined();
     expect(embedding.vector).toBeDefined();
@@ -159,7 +170,7 @@ describe('Automatic Embedding Generation', () => {
     const testEntity = {
       name: 'SearchableEntity',
       entityType: 'Document',
-      observations: ['This is a document about artificial intelligence and machine learning']
+      observations: ['This is a document about artificial intelligence and machine learning'],
     };
 
     // Create the entity
@@ -170,7 +181,7 @@ describe('Automatic Embedding Generation', () => {
 
     // Perform a semantic search
     const results = await knowledgeGraphManager.search('artificial intelligence', {
-      semanticSearch: true
+      semanticSearch: true,
     });
 
     // Verify that the semanticSearch method was called
@@ -180,9 +191,9 @@ describe('Automatic Embedding Generation', () => {
     expect(results).toBeDefined();
     expect(results.entities).toBeDefined();
     expect(results.entities.length).toBeGreaterThan(0);
-    
+
     // Check if our entity is in the results
-    const foundEntity = results.entities.find(e => e.name === 'SearchableEntity');
+    const foundEntity = results.entities.find((e) => e.name === 'SearchableEntity');
     expect(foundEntity).toBeDefined();
   });
-}); 
+});

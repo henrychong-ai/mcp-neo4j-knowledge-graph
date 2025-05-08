@@ -16,9 +16,9 @@ describe('TemporalEntity Interface', () => {
       observations: ['observation 1'],
       createdAt: now,
       updatedAt: now,
-      version: 1
+      version: 1,
     };
-    
+
     // Verify required properties
     expect(entity.name).toBe('TestEntity');
     expect(entity.entityType).toBe('TestType');
@@ -26,17 +26,17 @@ describe('TemporalEntity Interface', () => {
     expect(entity.createdAt).toBe(now);
     expect(entity.updatedAt).toBe(now);
     expect(entity.version).toBe(1);
-    
+
     // Verify the TemporalEntity interface exists and can be imported
     expect(typeof TemporalEntity).toBe('function');
     expect(TemporalEntity.isTemporalEntity(entity)).toBe(true);
   });
-  
+
   // Optional properties tests
   it('should support optional validity period properties', () => {
     const now = Date.now();
     const future = now + 86400000; // 24 hours in the future
-    
+
     const entity = {
       name: 'TimeLimitedEntity',
       entityType: 'TemporalTest',
@@ -45,18 +45,18 @@ describe('TemporalEntity Interface', () => {
       updatedAt: now,
       version: 1,
       validFrom: now,
-      validTo: future
+      validTo: future,
     };
-    
+
     expect(entity.validFrom).toBe(now);
     expect(entity.validTo).toBe(future);
     expect(TemporalEntity.isTemporalEntity(entity)).toBe(true);
     expect(TemporalEntity.hasValidTimeRange(entity)).toBe(true);
   });
-  
+
   it('should support changedBy property', () => {
     const now = Date.now();
-    
+
     const entity = {
       name: 'EntityWithChangeInfo',
       entityType: 'TemporalTest',
@@ -64,13 +64,13 @@ describe('TemporalEntity Interface', () => {
       createdAt: now,
       updatedAt: now,
       version: 1,
-      changedBy: 'system'
+      changedBy: 'system',
     };
-    
+
     expect(entity.changedBy).toBe('system');
     expect(TemporalEntity.isTemporalEntity(entity)).toBe(true);
   });
-  
+
   // Validation tests
   it('should validate temporal entity structure', () => {
     const validEntity = {
@@ -79,38 +79,38 @@ describe('TemporalEntity Interface', () => {
       observations: [],
       createdAt: Date.now(),
       updatedAt: Date.now(),
-      version: 1
+      version: 1,
     };
-    
-    const invalidEntity1 = { 
+
+    const invalidEntity1 = {
       // Missing required properties
       name: 'Invalid',
       entityType: 'Test',
-      observations: []
+      observations: [],
       // No temporal properties
     };
-    
+
     const invalidEntity2 = {
       name: 'Invalid',
       entityType: 'Test',
       observations: [],
       createdAt: 'not-a-number', // Wrong type
       updatedAt: Date.now(),
-      version: 1
+      version: 1,
     };
-    
+
     expect(TemporalEntity.isTemporalEntity(validEntity)).toBe(true);
     expect(TemporalEntity.isTemporalEntity(invalidEntity1)).toBe(false);
     expect(TemporalEntity.isTemporalEntity(invalidEntity2)).toBe(false);
     expect(TemporalEntity.isTemporalEntity(null)).toBe(false);
     expect(TemporalEntity.isTemporalEntity(undefined)).toBe(false);
   });
-  
+
   it('should validate temporal range correctly', () => {
     const now = Date.now();
     const past = now - 86400000; // 24 hours in the past
     const future = now + 86400000; // 24 hours in the future
-    
+
     const validEntity1 = {
       name: 'ValidRange1',
       entityType: 'Test',
@@ -119,9 +119,9 @@ describe('TemporalEntity Interface', () => {
       updatedAt: now,
       version: 1,
       validFrom: past,
-      validTo: future
+      validTo: future,
     };
-    
+
     const validEntity2 = {
       name: 'ValidRange2',
       entityType: 'Test',
@@ -130,9 +130,9 @@ describe('TemporalEntity Interface', () => {
       updatedAt: now,
       version: 1,
       validFrom: now,
-      validTo: now // Same time is considered valid
+      validTo: now, // Same time is considered valid
     };
-    
+
     const invalidEntity = {
       name: 'InvalidRange',
       entityType: 'Test',
@@ -141,18 +141,18 @@ describe('TemporalEntity Interface', () => {
       updatedAt: now,
       version: 1,
       validFrom: future,
-      validTo: past // Future before past is invalid
+      validTo: past, // Future before past is invalid
     };
-    
+
     expect(TemporalEntity.hasValidTimeRange(validEntity1)).toBe(true);
     expect(TemporalEntity.hasValidTimeRange(validEntity2)).toBe(true);
     expect(TemporalEntity.hasValidTimeRange(invalidEntity)).toBe(false);
   });
-  
+
   // Add more comprehensive validation tests for isTemporalEntity
   it('should validate optional properties types correctly', () => {
     const now = Date.now();
-    
+
     // Test invalid validFrom type
     const invalidValidFrom = {
       name: 'InvalidValidFrom',
@@ -161,9 +161,9 @@ describe('TemporalEntity Interface', () => {
       createdAt: now,
       updatedAt: now,
       version: 1,
-      validFrom: "not-a-number", // Wrong type - should be a number
+      validFrom: 'not-a-number', // Wrong type - should be a number
     };
-    
+
     // Test invalid validTo type
     const invalidValidTo = {
       name: 'InvalidValidTo',
@@ -172,9 +172,9 @@ describe('TemporalEntity Interface', () => {
       createdAt: now,
       updatedAt: now,
       version: 1,
-      validTo: "not-a-number", // Wrong type - should be a number
+      validTo: 'not-a-number', // Wrong type - should be a number
     };
-    
+
     // Test invalid changedBy type
     const invalidChangedBy = {
       name: 'InvalidChangedBy',
@@ -185,12 +185,12 @@ describe('TemporalEntity Interface', () => {
       version: 1,
       changedBy: 123, // Wrong type - should be a string
     };
-    
+
     expect(TemporalEntity.isTemporalEntity(invalidValidFrom)).toBe(false);
     expect(TemporalEntity.isTemporalEntity(invalidValidTo)).toBe(false);
     expect(TemporalEntity.isTemporalEntity(invalidChangedBy)).toBe(false);
   });
-  
+
   // Add tests for edge cases in hasValidTimeRange
   it('should validate time range for non-TemporalEntity objects', () => {
     // Test with object that will fail isTemporalEntity check
@@ -198,13 +198,13 @@ describe('TemporalEntity Interface', () => {
       name: 'NotAnEntity',
       // Missing required properties
     };
-    
+
     expect(TemporalEntity.hasValidTimeRange(notAnEntity)).toBe(false);
   });
-  
+
   it('should handle partial time ranges correctly', () => {
     const now = Date.now();
-    
+
     // Entity with only validFrom
     const onlyValidFrom = {
       name: 'OnlyValidFrom',
@@ -216,7 +216,7 @@ describe('TemporalEntity Interface', () => {
       validFrom: now,
       // No validTo
     };
-    
+
     // Entity with only validTo
     const onlyValidTo = {
       name: 'OnlyValidTo',
@@ -228,8 +228,8 @@ describe('TemporalEntity Interface', () => {
       // No validFrom
       validTo: now + 86400000,
     };
-    
+
     expect(TemporalEntity.hasValidTimeRange(onlyValidFrom)).toBe(true);
     expect(TemporalEntity.hasValidTimeRange(onlyValidTo)).toBe(true);
   });
-}); 
+});

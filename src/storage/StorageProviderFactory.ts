@@ -1,8 +1,8 @@
-import { StorageProvider } from './StorageProvider.js';
+import type { StorageProvider } from './StorageProvider.js';
 import { FileStorageProvider } from './FileStorageProvider.js';
-import { VectorStoreFactoryOptions } from './VectorStoreFactory.js';
+import type { VectorStoreFactoryOptions } from './VectorStoreFactory.js';
 import { Neo4jStorageProvider } from './neo4j/Neo4jStorageProvider.js';
-import { Neo4jConfig } from './neo4j/Neo4jConfig.js';
+import type { Neo4jConfig } from './neo4j/Neo4jConfig.js';
 import path from 'path';
 import os from 'os';
 
@@ -66,7 +66,7 @@ export class StorageProviderFactory {
         }
         provider = new FileStorageProvider({
           filePath: config.options.memoryFilePath,
-          vectorStoreOptions: config.vectorStoreOptions
+          vectorStoreOptions: config.vectorStoreOptions,
         });
         break;
       }
@@ -79,16 +79,18 @@ export class StorageProviderFactory {
           database: config.options.neo4jDatabase,
           vectorIndexName: config.options.neo4jVectorIndexName,
           vectorDimensions: config.options.neo4jVectorDimensions,
-          similarityFunction: config.options.neo4jSimilarityFunction
+          similarityFunction: config.options.neo4jSimilarityFunction,
         };
-        
+
         provider = new Neo4jStorageProvider({
           config: neo4jConfig,
-          decayConfig: config.options.decayConfig ? {
-            enabled: config.options.decayConfig.enabled ?? true,
-            halfLifeDays: config.options.decayConfig.halfLifeDays,
-            minConfidence: config.options.decayConfig.minConfidence
-          } : undefined
+          decayConfig: config.options.decayConfig
+            ? {
+                enabled: config.options.decayConfig.enabled ?? true,
+                halfLifeDays: config.options.decayConfig.halfLifeDays,
+                minConfidence: config.options.decayConfig.minConfidence,
+              }
+            : undefined,
         });
         break;
       }
@@ -148,9 +150,7 @@ export class StorageProviderFactory {
   async cleanupAllProviders(): Promise<void> {
     const providers = Array.from(this.connectedProviders);
     await Promise.all(
-      providers.map(provider => 
-        this.cleanupProvider(provider as CleanableProvider)
-      )
+      providers.map((provider) => this.cleanupProvider(provider as CleanableProvider))
     );
   }
 }

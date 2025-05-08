@@ -102,9 +102,7 @@ Or directly in the Claude Desktop configuration:
   "mcpServers": {
     "memento": {
       "command": "/path/to/node",
-      "args": [
-        "/path/to/memento-mcp/dist/index.js"
-      ],
+      "args": ["/path/to/memento-mcp/dist/index.js"],
       "env": {
         "MEMORY_STORAGE_TYPE": "neo4j",
         "NEO4J_URI": "bolt://localhost:7687",
@@ -242,7 +240,7 @@ When the `DEBUG` environment variable is set to `true`, additional diagnostic to
   }
   ```
 
-  *Note: This tool may be deprecated in future releases as embedding generation becomes more automated*
+  _Note: This tool may be deprecated in future releases as embedding generation becomes more automated_
 
 - **debug_embedding_config**: Provides information about the current embedding service configuration
 

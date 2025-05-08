@@ -19,10 +19,10 @@ describe('KnowledgeGraphManager with Enhanced Relations', () => {
         createdAt: timestamp,
         updatedAt: timestamp,
         inferredFrom: [], // Correct property according to RelationMetadata
-        lastAccessed: timestamp
-      }
+        lastAccessed: timestamp,
+      },
     };
-    
+
     const mockProvider: Partial<StorageProvider> = {
       loadGraph: vi.fn(),
       saveGraph: vi.fn(),
@@ -30,21 +30,21 @@ describe('KnowledgeGraphManager with Enhanced Relations', () => {
       openNodes: vi.fn(),
       createRelations: vi.fn(),
       addObservations: vi.fn(),
-      getRelation: vi.fn().mockResolvedValue(enhancedRelation)
+      getRelation: vi.fn().mockResolvedValue(enhancedRelation),
     };
-    
+
     const manager = new KnowledgeGraphManager({ storageProvider: mockProvider as StorageProvider });
-    
+
     // Call getRelation method
     const relation = await manager.getRelation('entity1', 'entity2', 'knows');
-    
+
     // Verify the provider's getRelation was called with the right parameters
     expect(mockProvider.getRelation).toHaveBeenCalledWith('entity1', 'entity2', 'knows');
-    
+
     // Verify we got the expected relation back
     expect(relation).toEqual(enhancedRelation);
   });
-  
+
   it('should use StorageProvider updateRelation for updating a relation', async () => {
     const timestamp = Date.now();
     const updatedRelation: Relation = {
@@ -57,10 +57,10 @@ describe('KnowledgeGraphManager with Enhanced Relations', () => {
         createdAt: timestamp,
         updatedAt: timestamp + 1000, // Updated timestamp
         inferredFrom: [],
-        lastAccessed: timestamp
-      }
+        lastAccessed: timestamp,
+      },
     };
-    
+
     const mockProvider: Partial<StorageProvider> = {
       loadGraph: vi.fn(),
       saveGraph: vi.fn(),
@@ -68,15 +68,15 @@ describe('KnowledgeGraphManager with Enhanced Relations', () => {
       openNodes: vi.fn(),
       createRelations: vi.fn(),
       addObservations: vi.fn(),
-      updateRelation: vi.fn().mockResolvedValue(undefined)
+      updateRelation: vi.fn().mockResolvedValue(undefined),
     };
-    
+
     const manager = new KnowledgeGraphManager({ storageProvider: mockProvider as StorageProvider });
-    
+
     // Call updateRelation method
     await manager.updateRelation(updatedRelation);
-    
+
     // Verify the provider's updateRelation was called with the right parameters
     expect(mockProvider.updateRelation).toHaveBeenCalledWith(updatedRelation);
   });
-}); 
+});

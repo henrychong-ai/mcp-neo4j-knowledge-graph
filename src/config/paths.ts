@@ -9,27 +9,27 @@ import * as fs from 'fs';
 export function getDataDirectoryPath(): string {
   // Check if an absolute path is provided in the environment variable
   const envPath = process.env.MEMORY_FILE_PATH;
-  
+
   // If an absolute path is provided, extract its directory
   if (envPath && path.isAbsolute(envPath)) {
     const envDir = path.dirname(envPath);
-    
+
     // Create directory if it doesn't exist
     if (!fs.existsSync(envDir)) {
       fs.mkdirSync(envDir, { recursive: true });
     }
-    
+
     return envDir;
   }
-  
+
   // Otherwise, use the default data directory
   const dataDir = path.join(process.cwd(), 'data');
-  
+
   // Create data directory if it doesn't exist
   if (!fs.existsSync(dataDir)) {
     fs.mkdirSync(dataDir, { recursive: true });
   }
-  
+
   return dataDir;
 }
 
@@ -41,10 +41,10 @@ export function getDataDirectoryPath(): string {
  */
 export function resolveMemoryFilePath(envPath: string | undefined, dataDir: string): string {
   const defaultPath = path.join(dataDir, 'memory.sqlite');
-  
+
   if (!envPath) {
     return defaultPath;
   }
-  
+
   return path.isAbsolute(envPath) ? envPath : path.join(dataDir, envPath);
 }

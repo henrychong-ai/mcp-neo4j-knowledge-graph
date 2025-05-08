@@ -12,7 +12,7 @@ describe('FileStorageProvider Deprecation', () => {
   const testFile = path.join(testDir, 'test.json');
 
   let originalConsoleWarn: typeof console.warn;
-  
+
   beforeEach(() => {
     // Setup test directory
     if (!fs.existsSync(testDir)) {
@@ -26,7 +26,7 @@ describe('FileStorageProvider Deprecation', () => {
     // Clear mocks before each test
     vi.clearAllMocks();
   });
-  
+
   afterEach(() => {
     // Restore console.warn
     console.warn = originalConsoleWarn;
@@ -49,29 +49,29 @@ describe('FileStorageProvider Deprecation', () => {
   // it('should emit deprecation warning in constructor', () => {
   //   // Act
   //   new FileStorageProvider();
-    
+
   //   // Assert
   //   expect(console.warn).toHaveBeenCalledWith(
   //     expect.stringContaining('FileStorageProvider is deprecated')
   //   );
   // });
-  
+
   // it('should emit deprecation warning with explicit options', () => {
   //   // Act
   //   new FileStorageProvider({ memoryFilePath: TEST_FILEPATH });
-    
+
   //   // Assert
   //   expect(console.warn).toHaveBeenCalledWith(
   //     expect.stringContaining('FileStorageProvider is deprecated')
   //   );
   // });
-  
+
   // Add a new test that still validates the provider is initialized correctly
   it('should initialize correctly even with deprecation warning removed', () => {
     // Act
     const provider = new FileStorageProvider({ memoryFilePath: testFile });
-    
+
     // Assert - verify the provider initialized correctly
     expect(provider).toBeInstanceOf(FileStorageProvider);
   });
-}); 
+});

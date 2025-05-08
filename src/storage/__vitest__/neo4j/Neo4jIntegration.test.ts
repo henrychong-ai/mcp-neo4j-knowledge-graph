@@ -9,7 +9,9 @@ import { Neo4jSchemaManager } from '../../neo4j/Neo4jSchemaManager';
 // Check if we're running in integration test mode to log information
 const isIntegrationTest = process.env.TEST_INTEGRATION === 'true';
 if (!isIntegrationTest) {
-  console.warn('Running Neo4j integration tests outside of integration mode. Make sure Neo4j is available.');
+  console.warn(
+    'Running Neo4j integration tests outside of integration mode. Make sure Neo4j is available.'
+  );
 }
 
 describe('Neo4j Integration Test', () => {
@@ -21,7 +23,7 @@ describe('Neo4j Integration Test', () => {
       uri: 'bolt://localhost:7687',
       username: 'neo4j',
       password: 'memento_password',
-      database: 'neo4j'
+      database: 'neo4j',
     });
     schemaManager = new Neo4jSchemaManager(connectionManager);
   });
@@ -34,7 +36,7 @@ describe('Neo4j Integration Test', () => {
     const session = await connectionManager.getSession();
     const result = await session.run('RETURN 1 as value');
     await session.close();
-    
+
     expect(result.records[0].get('value').toNumber()).toBe(1);
   });
 
@@ -44,20 +46,19 @@ describe('Neo4j Integration Test', () => {
 
     // Verify constraint exists
     const session = await connectionManager.getSession();
-    const result = await session.run('SHOW CONSTRAINTS WHERE name = $name', { name: 'entity_name' });
+    const result = await session.run('SHOW CONSTRAINTS WHERE name = $name', {
+      name: 'entity_name',
+    });
     await session.close();
-    
+
     expect(result.records.length).toBeGreaterThan(0);
   });
 
   it('should create vector index', async () => {
     // Create a test vector index
-    await expect(schemaManager.createVectorIndex(
-      'test_vector_index',
-      'TestEntity',
-      'embedding',
-      128
-    )).resolves.not.toThrow();
+    await expect(
+      schemaManager.createVectorIndex('test_vector_index', 'TestEntity', 'embedding', 128)
+    ).resolves.not.toThrow();
 
     // Verify the index exists
     const exists = await schemaManager.vectorIndexExists('test_vector_index');

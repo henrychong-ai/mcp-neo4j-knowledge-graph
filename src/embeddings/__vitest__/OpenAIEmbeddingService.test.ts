@@ -38,120 +38,118 @@ describe('OpenAIEmbeddingService', () => {
   beforeEach(() => {
     // Reset factory
     EmbeddingServiceFactory.resetRegistry();
-    
+
     // Register the OpenAI provider for testing
     EmbeddingServiceFactory.registerProvider('openai', (config?: EmbeddingServiceConfig) => {
       return new OpenAIEmbeddingService({
         apiKey: config?.apiKey || process.env.OPENAI_API_KEY!,
         model: config?.model,
-        dimensions: config?.dimensions
+        dimensions: config?.dimensions,
       });
     });
 
     // Increase timeout for real API calls
     vi.setConfig({ testTimeout: 15000 });
   });
-  
+
   conditionalTest('should create service instance directly', () => {
     // Skip if no API key
     if (!hasApiKey) {
       console.log('Skipping test - no OpenAI API key available');
       return;
     }
-    
+
     const service = new OpenAIEmbeddingService({
       apiKey: process.env.OPENAI_API_KEY!,
-      model: 'text-embedding-3-small'
+      model: 'text-embedding-3-small',
     });
-    
+
     expect(service).toBeInstanceOf(OpenAIEmbeddingService);
   });
-  
+
   conditionalTest('should create service instance via factory', () => {
     // Skip if no API key
     if (!hasApiKey) {
       console.log('Skipping test - no OpenAI API key available');
       return;
     }
-    
+
     const service = EmbeddingServiceFactory.createService({
       provider: 'openai',
-      apiKey: process.env.OPENAI_API_KEY!
+      apiKey: process.env.OPENAI_API_KEY!,
     });
-    
+
     expect(service).toBeInstanceOf(OpenAIEmbeddingService);
   });
-  
+
   conditionalTest('should return correct model info', () => {
     // Skip if no API key
     if (!hasApiKey) {
       console.log('Skipping test - no OpenAI API key available');
       return;
     }
-    
+
     const service = new OpenAIEmbeddingService({
       apiKey: process.env.OPENAI_API_KEY!,
-      model: 'text-embedding-3-small'
+      model: 'text-embedding-3-small',
     });
-    
+
     const modelInfo = service.getModelInfo();
     expect(modelInfo.name).toBe('text-embedding-3-small');
     expect(modelInfo.dimensions).toBe(1536);
     expect(modelInfo.version).toBeDefined();
   });
-  
+
   conditionalTest('should generate embedding for single text input', async () => {
     // Skip if no API key
     if (!hasApiKey) {
       console.log('Skipping test - no OpenAI API key available');
       return;
     }
-    
+
     const service = new OpenAIEmbeddingService({
       apiKey: process.env.OPENAI_API_KEY!,
-      model: 'text-embedding-3-small'
+      model: 'text-embedding-3-small',
     });
-    
+
     const embedding = await service.generateEmbedding('Test text');
-    
+
     // Verify embedding structure
     expect(Array.isArray(embedding)).toBe(true);
     expect(embedding.length).toBe(1536);
-    
+
     // Check for normalization
     const magnitude = Math.sqrt(embedding.reduce((sum, val) => sum + val * val, 0));
     expect(magnitude).toBeCloseTo(1.0, 5);
-    
   });
-  
+
   conditionalTest('should generate embeddings for multiple texts', async () => {
     // Skip if no API key
     if (!hasApiKey) {
       console.log('Skipping test - no OpenAI API key available');
       return;
     }
-    
+
     const service = new OpenAIEmbeddingService({
       apiKey: process.env.OPENAI_API_KEY!,
-      model: 'text-embedding-3-small'
+      model: 'text-embedding-3-small',
     });
-    
+
     const texts = ['Text 1', 'Text 2', 'Text 3'];
     const embeddings = await service.generateEmbeddings(texts);
-    
+
     // Verify array structure
     expect(Array.isArray(embeddings)).toBe(true);
     expect(embeddings.length).toBe(3);
-    
+
     // Check each embedding
-    embeddings.forEach(embedding => {
+    embeddings.forEach((embedding) => {
       expect(Array.isArray(embedding)).toBe(true);
       expect(embedding.length).toBe(1536);
-      
+
       // Check for normalization
       const magnitude = Math.sqrt(embedding.reduce((sum, val) => sum + val * val, 0));
       expect(magnitude).toBeCloseTo(1.0, 5);
     });
-    
   });
-}); 
+});

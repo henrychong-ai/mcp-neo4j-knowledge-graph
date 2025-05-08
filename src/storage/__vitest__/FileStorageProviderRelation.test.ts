@@ -34,7 +34,7 @@ describe('FileStorageProvider with Enhanced Relations', () => {
     // Create a unique file path for each test with more entropy
     const testId = Date.now() + '-' + Math.random().toString(36).substring(2, 15);
     testFilePath = path.join(testDir, `test-${testId}.json`);
-    
+
     // Create a new provider for each test with the unique path
     provider = new FileStorageProvider({ memoryFilePath: testFilePath });
   });
@@ -47,7 +47,7 @@ describe('FileStorageProvider with Enhanced Relations', () => {
       }
       // Ensure we don't have any file handles open
       provider = null as any;
-      
+
       // Remove test file if it exists (with a small delay to ensure handles are closed)
       if (fs.existsSync(testFilePath)) {
         fs.unlinkSync(testFilePath);
@@ -62,28 +62,28 @@ describe('FileStorageProvider with Enhanced Relations', () => {
     const graph: KnowledgeGraph = {
       entities: [
         { name: 'EntityA', entityType: 'test', observations: [] },
-        { name: 'EntityB', entityType: 'test', observations: [] }
+        { name: 'EntityB', entityType: 'test', observations: [] },
       ],
-      relations: []
+      relations: [],
     };
-    
+
     await provider.saveGraph(graph);
-    
+
     // Create a relation with strength
     const relationWithStrength: Relation = {
       from: 'EntityA',
       to: 'EntityB',
       relationType: 'knows',
-      strength: 0.8
+      strength: 0.8,
     };
-    
+
     // Try to create the relation
     const createdRelations = await provider.createRelations([relationWithStrength]);
-    
+
     // Verify the relation was created with the strength property
     expect(createdRelations).toHaveLength(1);
     expect(createdRelations[0].strength).toBe(0.8);
-    
+
     // Load the graph and verify the relation was saved with strength
     const loadedGraph = await provider.loadGraph();
     expect(loadedGraph.relations).toHaveLength(1);
@@ -95,28 +95,28 @@ describe('FileStorageProvider with Enhanced Relations', () => {
     const graph: KnowledgeGraph = {
       entities: [
         { name: 'EntityA', entityType: 'test', observations: [] },
-        { name: 'EntityB', entityType: 'test', observations: [] }
+        { name: 'EntityB', entityType: 'test', observations: [] },
       ],
-      relations: []
+      relations: [],
     };
-    
+
     await provider.saveGraph(graph);
-    
+
     // Create a relation with confidence
     const relationWithConfidence: Relation = {
       from: 'EntityA',
       to: 'EntityB',
       relationType: 'knows',
-      confidence: 0.9
+      confidence: 0.9,
     };
-    
+
     // Try to create the relation
     const createdRelations = await provider.createRelations([relationWithConfidence]);
-    
+
     // Verify the relation was created with the confidence property
     expect(createdRelations).toHaveLength(1);
     expect(createdRelations[0].confidence).toBe(0.9);
-    
+
     // Load the graph and verify the relation was saved with confidence
     const loadedGraph = await provider.loadGraph();
     expect(loadedGraph.relations).toHaveLength(1);
@@ -128,13 +128,13 @@ describe('FileStorageProvider with Enhanced Relations', () => {
     const graph: KnowledgeGraph = {
       entities: [
         { name: 'EntityA', entityType: 'test', observations: [] },
-        { name: 'EntityB', entityType: 'test', observations: [] }
+        { name: 'EntityB', entityType: 'test', observations: [] },
       ],
-      relations: []
+      relations: [],
     };
-    
+
     await provider.saveGraph(graph);
-    
+
     // Create a relation with metadata
     const currentTime = Date.now();
     const relationWithMetadata: Relation = {
@@ -146,18 +146,18 @@ describe('FileStorageProvider with Enhanced Relations', () => {
         updatedAt: currentTime,
         source: 'test',
         timestamp: '2023-03-19T12:00:00Z',
-        tags: ['important', 'verified']
-      } as any
+        tags: ['important', 'verified'],
+      } as any,
     };
-    
+
     // Try to create the relation
     const createdRelations = await provider.createRelations([relationWithMetadata]);
-    
+
     // Verify the relation was created with the metadata property
     expect(createdRelations).toHaveLength(1);
     expect(createdRelations[0].metadata).toHaveProperty('source', 'test');
     expect(createdRelations[0].metadata).toHaveProperty('tags');
-    
+
     // Load the graph and verify the relation was saved with metadata
     const loadedGraph = await provider.loadGraph();
     expect(loadedGraph.relations).toHaveLength(1);
@@ -170,13 +170,13 @@ describe('FileStorageProvider with Enhanced Relations', () => {
     const graph: KnowledgeGraph = {
       entities: [
         { name: 'EntityA', entityType: 'test', observations: [] },
-        { name: 'EntityB', entityType: 'test', observations: [] }
+        { name: 'EntityB', entityType: 'test', observations: [] },
       ],
-      relations: []
+      relations: [],
     };
-    
+
     await provider.saveGraph(graph);
-    
+
     // Create a relation with all enhanced properties
     const currentTime = Date.now();
     const enhancedRelation: Relation = {
@@ -190,19 +190,19 @@ describe('FileStorageProvider with Enhanced Relations', () => {
         updatedAt: currentTime,
         source: 'complete test',
         tags: ['full', 'enhanced'],
-        custom: { key: 'value' }
-      } as any
+        custom: { key: 'value' },
+      } as any,
     };
-    
+
     // Try to create the relation
     const createdRelations = await provider.createRelations([enhancedRelation]);
-    
+
     // Verify the relation was created with all properties
     expect(createdRelations).toHaveLength(1);
     expect(createdRelations[0].strength).toBe(0.75);
     expect(createdRelations[0].confidence).toBe(0.95);
     expect(createdRelations[0].metadata).toHaveProperty('source', 'complete test');
-    
+
     // Load the graph and verify the relation was saved with all properties
     const loadedGraph = await provider.loadGraph();
     expect(loadedGraph.relations).toHaveLength(1);
@@ -216,24 +216,24 @@ describe('FileStorageProvider with Enhanced Relations', () => {
     const graph: KnowledgeGraph = {
       entities: [
         { name: 'EntityA', entityType: 'test', observations: [] },
-        { name: 'EntityB', entityType: 'test', observations: [] }
+        { name: 'EntityB', entityType: 'test', observations: [] },
       ],
-      relations: []
+      relations: [],
     };
-    
+
     await provider.saveGraph(graph);
-    
+
     // Create an initial relation with some properties
     const initialRelation: Relation = {
       from: 'EntityA',
       to: 'EntityB',
       relationType: 'knows',
       strength: 0.5,
-      confidence: 0.7
+      confidence: 0.7,
     };
-    
+
     await provider.createRelations([initialRelation]);
-    
+
     // Update the relation with new values
     const currentTime = Date.now();
     const updatedRelation: Relation = {
@@ -242,13 +242,14 @@ describe('FileStorageProvider with Enhanced Relations', () => {
       relationType: 'knows',
       strength: 0.8, // Updated strength
       confidence: 0.9, // Updated confidence
-      metadata: {    // Added metadata
+      metadata: {
+        // Added metadata
         createdAt: currentTime,
         updatedAt: currentTime,
-        source: 'update test'
-      } as any
+        source: 'update test',
+      } as any,
     };
-    
+
     // Try to update the relation
     // This will fail since updateRelation method doesn't exist yet
     try {
@@ -260,4 +261,4 @@ describe('FileStorageProvider with Enhanced Relations', () => {
       expect(error).toBeDefined();
     }
   });
-}); 
+});

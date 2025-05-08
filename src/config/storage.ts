@@ -1,5 +1,5 @@
 import { StorageProviderFactory } from '../storage/StorageProviderFactory.js';
-import { VectorStoreFactoryOptions } from '../storage/VectorStoreFactory.js';
+import type { VectorStoreFactoryOptions } from '../storage/VectorStoreFactory.js';
 import { logger } from '../utils/logger.js';
 
 /**
@@ -35,18 +35,16 @@ export interface StorageConfig {
  * @param storageType Storage type (forced to 'neo4j')
  * @returns Storage provider configuration
  */
-export function createStorageConfig(
-  storageType: string | undefined
-): StorageConfig {
+export function createStorageConfig(storageType: string | undefined): StorageConfig {
   // Neo4j is always the type
   const type = determineStorageType(storageType);
-  
+
   logger.info('Configuring Neo4j storage provider', {
     uri: process.env.NEO4J_URI || 'bolt://localhost:7687',
     database: process.env.NEO4J_DATABASE || 'neo4j',
-    vectorIndex: process.env.NEO4J_VECTOR_INDEX || 'entity_embeddings'
+    vectorIndex: process.env.NEO4J_VECTOR_INDEX || 'entity_embeddings',
   });
-  
+
   // Base configuration with Neo4j properties
   const config: StorageConfig = {
     type,
@@ -57,12 +55,14 @@ export function createStorageConfig(
       neo4jPassword: process.env.NEO4J_PASSWORD || 'memento_password',
       neo4jDatabase: process.env.NEO4J_DATABASE || 'neo4j',
       neo4jVectorIndexName: process.env.NEO4J_VECTOR_INDEX || 'entity_embeddings',
-      neo4jVectorDimensions: process.env.NEO4J_VECTOR_DIMENSIONS ? 
-        parseInt(process.env.NEO4J_VECTOR_DIMENSIONS, 10) : 1536,
-      neo4jSimilarityFunction: (process.env.NEO4J_SIMILARITY_FUNCTION as 'cosine' | 'euclidean') || 'cosine'
-    }
+      neo4jVectorDimensions: process.env.NEO4J_VECTOR_DIMENSIONS
+        ? parseInt(process.env.NEO4J_VECTOR_DIMENSIONS, 10)
+        : 1536,
+      neo4jSimilarityFunction:
+        (process.env.NEO4J_SIMILARITY_FUNCTION as 'cosine' | 'euclidean') || 'cosine',
+    },
   };
-  
+
   return config;
 }
 
@@ -73,6 +73,6 @@ export function createStorageConfig(
 export function initializeStorageProvider() {
   const factory = new StorageProviderFactory();
   const config = createStorageConfig(process.env.MEMORY_STORAGE_TYPE);
-  
+
   return factory.createProvider(config);
 }

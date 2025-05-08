@@ -1,8 +1,8 @@
-import { StorageProvider, SearchOptions } from './StorageProvider.js';
+import type { StorageProvider, SearchOptions } from './StorageProvider.js';
 import * as fs from 'fs';
-import { KnowledgeGraph, Relation } from '../KnowledgeGraphManager.js';
+import type { KnowledgeGraph, Relation } from '../KnowledgeGraphManager.js';
 import path from 'path';
-import { VectorStoreFactoryOptions } from './VectorStoreFactory.js';
+import type { VectorStoreFactoryOptions } from './VectorStoreFactory.js';
 
 interface FileStorageProviderOptions {
   memoryFilePath?: string;
@@ -12,7 +12,7 @@ interface FileStorageProviderOptions {
 
 /**
  * A storage provider that uses the file system to store the knowledge graph
- * @deprecated This storage provider is deprecated and will be removed in a future version. 
+ * @deprecated This storage provider is deprecated and will be removed in a future version.
  * Please migrate to SqliteStorageProvider.
  */
 export class FileStorageProvider implements StorageProvider {
@@ -32,12 +32,12 @@ export class FileStorageProvider implements StorageProvider {
     if (process.env.NODE_ENV === 'test') {
       // console.warn('WARNING: FileStorageProvider is deprecated and will be removed in a future version. Please migrate to SqliteStorageProvider.');
     }
-    
+
     this._fs = fs;
-    
+
     // Store vector store options for initialization
     this.vectorStoreOptions = options?.vectorStoreOptions;
-    
+
     // Default to test-output directory during tests
     if (!options?.memoryFilePath && !options?.filePath) {
       const testOutputDir = path.join(process.cwd(), 'test-output', 'file-storage');
@@ -94,52 +94,52 @@ export class FileStorageProvider implements StorageProvider {
   async searchNodes(query: string, options?: SearchOptions): Promise<KnowledgeGraph> {
     // Load the entire graph
     const graph = await this.loadGraph();
-    
+
     // Apply default options
     const searchOptions = {
       limit: options?.limit ?? Number.MAX_SAFE_INTEGER,
       caseSensitive: options?.caseSensitive ?? false,
-      entityTypes: options?.entityTypes ?? []
+      entityTypes: options?.entityTypes ?? [],
     };
-    
+
     // Filter entities that match the query
-    let matchingEntities = graph.entities.filter(entity => {
+    let matchingEntities = graph.entities.filter((entity) => {
       // Check if entity matches the query
       const nameMatches = searchOptions.caseSensitive
         ? entity.name.includes(query)
         : entity.name.toLowerCase().includes(query.toLowerCase());
-      
-      const observationsMatch = entity.observations.some(obs => 
+
+      const observationsMatch = entity.observations.some((obs) =>
         searchOptions.caseSensitive
           ? obs.includes(query)
           : obs.toLowerCase().includes(query.toLowerCase())
       );
-      
+
       // Match if name or any observation contains the query
       return nameMatches || observationsMatch;
     });
-    
+
     // Filter by entity type if specified
     if (searchOptions.entityTypes.length > 0) {
-      matchingEntities = matchingEntities.filter(entity =>
+      matchingEntities = matchingEntities.filter((entity) =>
         searchOptions.entityTypes.includes(entity.entityType)
       );
     }
-    
+
     // Apply limit
     matchingEntities = matchingEntities.slice(0, searchOptions.limit);
-    
+
     // Get entity names for relation filtering
-    const entityNames = new Set(matchingEntities.map(entity => entity.name));
-    
+    const entityNames = new Set(matchingEntities.map((entity) => entity.name));
+
     // Filter relations that connect matching entities
-    const matchingRelations = graph.relations.filter(relation =>
-      entityNames.has(relation.from) && entityNames.has(relation.to)
+    const matchingRelations = graph.relations.filter(
+      (relation) => entityNames.has(relation.from) && entityNames.has(relation.to)
     );
-    
+
     return {
       entities: matchingEntities,
-      relations: matchingRelations
+      relations: matchingRelations,
     };
   }
 
@@ -153,29 +153,27 @@ export class FileStorageProvider implements StorageProvider {
     if (names.length === 0) {
       return { entities: [], relations: [] };
     }
-    
+
     // Load the entire graph
     const graph = await this.loadGraph();
-    
+
     // Create a Set of names for faster lookups
     const nameSet = new Set(names);
-    
+
     // Filter entities by name
-    const filteredEntities = graph.entities.filter(entity => 
-      nameSet.has(entity.name)
-    );
-    
+    const filteredEntities = graph.entities.filter((entity) => nameSet.has(entity.name));
+
     // Create a Set of entity names that were found
-    const foundEntityNames = new Set(filteredEntities.map(entity => entity.name));
-    
+    const foundEntityNames = new Set(filteredEntities.map((entity) => entity.name));
+
     // Filter relations to only include those between found entities
-    const filteredRelations = graph.relations.filter(relation => 
-      foundEntityNames.has(relation.from) && foundEntityNames.has(relation.to)
+    const filteredRelations = graph.relations.filter(
+      (relation) => foundEntityNames.has(relation.from) && foundEntityNames.has(relation.to)
     );
-    
+
     return {
       entities: filteredEntities,
-      relations: filteredRelations
+      relations: filteredRelations,
     };
   }
 
@@ -186,18 +184,22 @@ export class FileStorageProvider implements StorageProvider {
    */
   async createRelations(relations: Relation[]): Promise<Relation[]> {
     const graph = await this.loadGraph();
-    
-    const newRelations = relations.filter(r => !graph.relations.some(existingRelation =>
-      existingRelation.from === r.from &&
-      existingRelation.to === r.to &&
-      existingRelation.relationType === r.relationType
-    ));
+
+    const newRelations = relations.filter(
+      (r) =>
+        !graph.relations.some(
+          (existingRelation) =>
+            existingRelation.from === r.from &&
+            existingRelation.to === r.to &&
+            existingRelation.relationType === r.relationType
+        )
+    );
 
     // Always save the graph, even when no new relations are found
     // This ensures backward compatibility with existing tests
     await this.saveGraph({
       entities: graph.entities,
-      relations: [...graph.relations, ...newRelations]
+      relations: [...graph.relations, ...newRelations],
     });
 
     return newRelations;
@@ -214,34 +216,34 @@ export class FileStorageProvider implements StorageProvider {
     if (!observations || observations.length === 0) {
       return [];
     }
-    
+
     const graph = await this.loadGraph();
-    
+
     // Process each observation request
-    const results = observations.map(obs => {
-      const entity = graph.entities.find(e => e.name === obs.entityName);
-      
+    const results = observations.map((obs) => {
+      const entity = graph.entities.find((e) => e.name === obs.entityName);
+
       if (!entity) {
         throw new Error(`Entity with name ${obs.entityName} not found`);
       }
-      
+
       // Filter out observations that already exist
       const newObservations = obs.contents.filter(
-        content => !entity.observations.includes(content)
+        (content) => !entity.observations.includes(content)
       );
-      
+
       // Add new observations to entity
       entity.observations.push(...newObservations);
-      
-      return { 
-        entityName: obs.entityName, 
-        addedObservations: newObservations 
+
+      return {
+        entityName: obs.entityName,
+        addedObservations: newObservations,
       };
     });
-    
+
     // Save the updated graph
     await this.saveGraph(graph);
-    
+
     return results;
   }
 
@@ -254,20 +256,18 @@ export class FileStorageProvider implements StorageProvider {
     if (!entityNames || entityNames.length === 0) {
       return;
     }
-    
+
     const graph = await this.loadGraph();
-    
+
     // Create a set for faster lookups
     const nameSet = new Set(entityNames);
-    
+
     // Filter out entities that are in the delete list
-    graph.entities = graph.entities.filter(e => !nameSet.has(e.name));
-    
+    graph.entities = graph.entities.filter((e) => !nameSet.has(e.name));
+
     // Filter out relations that reference deleted entities
-    graph.relations = graph.relations.filter(r => 
-      !nameSet.has(r.from) && !nameSet.has(r.to)
-    );
-    
+    graph.relations = graph.relations.filter((r) => !nameSet.has(r.from) && !nameSet.has(r.to));
+
     // Save the updated graph
     await this.saveGraph(graph);
   }
@@ -277,24 +277,26 @@ export class FileStorageProvider implements StorageProvider {
    * @param deletions Array of objects with entity name and observations to delete
    * @returns Promise that resolves when deletion is complete
    */
-  async deleteObservations(deletions: { entityName: string; observations: string[] }[]): Promise<void> {
+  async deleteObservations(
+    deletions: { entityName: string; observations: string[] }[]
+  ): Promise<void> {
     if (!deletions || deletions.length === 0) {
       return;
     }
-    
+
     const graph = await this.loadGraph();
-    
+
     // Process each deletion request
-    deletions.forEach(deletion => {
-      const entity = graph.entities.find(e => e.name === deletion.entityName);
+    deletions.forEach((deletion) => {
+      const entity = graph.entities.find((e) => e.name === deletion.entityName);
       if (entity) {
         // Filter out the observations that should be deleted
         entity.observations = entity.observations.filter(
-          obs => !deletion.observations.includes(obs)
+          (obs) => !deletion.observations.includes(obs)
         );
       }
     });
-    
+
     // Save the updated graph
     await this.saveGraph(graph);
   }
@@ -307,13 +309,18 @@ export class FileStorageProvider implements StorageProvider {
    */
   async deleteRelations(relations: Relation[]): Promise<void> {
     await this.loadGraph();
-    
+
     for (const relation of relations) {
-      this.graph.relations = this.graph.relations.filter(r => 
-        !(r.from === relation.from && r.to === relation.to && r.relationType === relation.relationType)
+      this.graph.relations = this.graph.relations.filter(
+        (r) =>
+          !(
+            r.from === relation.from &&
+            r.to === relation.to &&
+            r.relationType === relation.relationType
+          )
       );
     }
-    
+
     await this.saveGraph(this.graph);
   }
 
@@ -326,13 +333,11 @@ export class FileStorageProvider implements StorageProvider {
    */
   async getRelation(from: string, to: string, relationType: string): Promise<Relation | null> {
     const graph = await this.loadGraph();
-    
-    const relation = graph.relations.find(r => 
-      r.from === from && 
-      r.to === to && 
-      r.relationType === relationType
+
+    const relation = graph.relations.find(
+      (r) => r.from === from && r.to === to && r.relationType === relationType
     );
-    
+
     return relation || null;
   }
 
@@ -344,24 +349,25 @@ export class FileStorageProvider implements StorageProvider {
    */
   async updateRelation(relation: Relation): Promise<void> {
     const graph = await this.loadGraph();
-    
+
     // Find the index of the relation to update
-    const index = graph.relations.findIndex(r => 
-      r.from === relation.from && 
-      r.to === relation.to && 
-      r.relationType === relation.relationType
+    const index = graph.relations.findIndex(
+      (r) =>
+        r.from === relation.from && r.to === relation.to && r.relationType === relation.relationType
     );
-    
+
     if (index === -1) {
-      throw new Error(`Relation from ${relation.from} to ${relation.to} of type ${relation.relationType} not found`);
+      throw new Error(
+        `Relation from ${relation.from} to ${relation.to} of type ${relation.relationType} not found`
+      );
     }
-    
+
     // Update the relation with new properties, preserving any existing properties not specified
     graph.relations[index] = {
-      ...graph.relations[index],  // Keep existing properties
-      ...relation                 // Overwrite with new properties
+      ...graph.relations[index], // Keep existing properties
+      ...relation, // Overwrite with new properties
     };
-    
+
     // Save the updated graph
     await this.saveGraph(graph);
   }
@@ -374,14 +380,14 @@ export class FileStorageProvider implements StorageProvider {
    */
   async createEntities(entities: any[]): Promise<any[]> {
     await this.loadGraph();
-    
+
     const timestamp = Date.now();
     const createdEntities = [];
-    
+
     for (const entity of entities) {
       // Check if entity already exists
-      const exists = this.graph.entities.some(e => e.name === entity.name);
-      
+      const exists = this.graph.entities.some((e) => e.name === entity.name);
+
       if (!exists) {
         // Add temporal metadata to match SqliteStorageProvider behavior
         const createdEntity = {
@@ -391,9 +397,9 @@ export class FileStorageProvider implements StorageProvider {
           validFrom: timestamp,
           validTo: null,
           version: 1,
-          changedBy: null
+          changedBy: null,
         };
-        
+
         this.graph.entities.push(createdEntity);
         createdEntities.push(createdEntity);
       } else {
@@ -401,10 +407,10 @@ export class FileStorageProvider implements StorageProvider {
         createdEntities.push(entity);
       }
     }
-    
+
     // Save the updated graph
     await this.saveGraph(this.graph);
-    
+
     return createdEntities;
   }
 
@@ -416,8 +422,8 @@ export class FileStorageProvider implements StorageProvider {
    */
   async getEntity(entityName: string): Promise<any | null> {
     await this.loadGraph();
-    
-    const entity = this.graph.entities.find(e => e.name === entityName);
+
+    const entity = this.graph.entities.find((e) => e.name === entityName);
     return entity || null;
   }
 }

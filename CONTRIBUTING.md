@@ -40,7 +40,7 @@ Note: We require all code to have appropriate test coverage. Writing tests that 
 - Keep commits focused and related to a single change
 - Use descriptive commit messages that explain the "why" not just the "what"
 - Reference issue numbers in your commit messages when applicable
-- Reference your PR from  an issue comment and the issue from your PR; also feel free to open a draft PR if you want feedback before working on something
+- Reference your PR from an issue comment and the issue from your PR; also feel free to open a draft PR if you want feedback before working on something
 
 ## Pull Request Process
 

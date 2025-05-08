@@ -8,8 +8,8 @@ vi.mock('../../neo4j/Neo4jConnectionManager', () => {
   return {
     Neo4jConnectionManager: vi.fn().mockImplementation(() => ({
       executeQuery: mockExecuteQuery,
-      close: vi.fn().mockResolvedValue(undefined)
-    }))
+      close: vi.fn().mockResolvedValue(undefined),
+    })),
   };
 });
 
@@ -31,7 +31,7 @@ describe('Neo4jSchemaManager', () => {
 
   it('should create a unique constraint on entities', async () => {
     await schemaManager.createEntityConstraints();
-    
+
     expect(connectionManager.executeQuery).toHaveBeenCalledWith(
       expect.stringContaining('CREATE CONSTRAINT entity_name IF NOT EXISTS'),
       {}
@@ -44,7 +44,7 @@ describe('Neo4jSchemaManager', () => {
 
   it('should create a vector index for entity embeddings', async () => {
     await schemaManager.createVectorIndex('entity_embeddings', 'Entity', 'embedding', 1536);
-    
+
     expect(connectionManager.executeQuery).toHaveBeenCalledWith(
       expect.stringContaining('CREATE VECTOR INDEX entity_embeddings IF NOT EXISTS'),
       {}
@@ -57,11 +57,11 @@ describe('Neo4jSchemaManager', () => {
 
   it('should check if a vector index exists', async () => {
     (connectionManager.executeQuery as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
-      records: [{ get: () => 'ONLINE' }]
+      records: [{ get: () => 'ONLINE' }],
     });
-    
+
     const exists = await schemaManager.vectorIndexExists('entity_embeddings');
-    
+
     expect(connectionManager.executeQuery).toHaveBeenCalledWith(
       'SHOW VECTOR INDEXES WHERE name = $indexName',
       { indexName: 'entity_embeddings' }
@@ -71,7 +71,7 @@ describe('Neo4jSchemaManager', () => {
 
   it('should initialize the schema', async () => {
     await schemaManager.initializeSchema();
-    
+
     expect(connectionManager.executeQuery).toHaveBeenCalledTimes(3);
   });
 });

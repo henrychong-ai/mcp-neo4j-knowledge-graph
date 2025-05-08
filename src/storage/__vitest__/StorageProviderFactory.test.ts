@@ -54,8 +54,8 @@ describe('StorageProviderFactory', () => {
       const config: StorageProviderConfig = {
         type: 'file',
         options: {
-          memoryFilePath: testJsonPath
-        }
+          memoryFilePath: testJsonPath,
+        },
       };
 
       // Act
@@ -73,8 +73,8 @@ describe('StorageProviderFactory', () => {
         options: {
           neo4jUri: 'bolt://localhost:7687',
           neo4jUsername: 'neo4j',
-          neo4jPassword: 'password'
-        }
+          neo4jPassword: 'password',
+        },
       };
 
       // Act
@@ -89,21 +89,22 @@ describe('StorageProviderFactory', () => {
       const factory = new StorageProviderFactory();
 
       // Act & Assert
-      expect(() => factory.createProvider(undefined as any))
-        .toThrow('Storage provider configuration is required');
-      expect(() => factory.createProvider(null as any))
-        .toThrow('Storage provider configuration is required');
-      expect(() => factory.createProvider({} as any))
-        .toThrow('Storage provider type is required');
+      expect(() => factory.createProvider(undefined as any)).toThrow(
+        'Storage provider configuration is required'
+      );
+      expect(() => factory.createProvider(null as any)).toThrow(
+        'Storage provider configuration is required'
+      );
+      expect(() => factory.createProvider({} as any)).toThrow('Storage provider type is required');
     });
 
     it('should use default Neo4j provider when getDefaultProvider is called', () => {
       // Arrange
       const factory = new StorageProviderFactory();
-      
+
       // Act
       const provider = factory.getDefaultProvider();
-      
+
       // Assert
       expect(provider).toBeInstanceOf(Neo4jStorageProvider);
     });
@@ -116,8 +117,8 @@ describe('StorageProviderFactory', () => {
       const config: StorageProviderConfig = {
         type: 'file',
         options: {
-          memoryFilePath: testJsonPath
-        }
+          memoryFilePath: testJsonPath,
+        },
       };
       const provider = factory.createProvider(config);
 
@@ -131,8 +132,8 @@ describe('StorageProviderFactory', () => {
       const config: StorageProviderConfig = {
         type: 'file',
         options: {
-          memoryFilePath: testJsonPath
-        }
+          memoryFilePath: testJsonPath,
+        },
       };
       const provider = factory.createProvider(config);
 
@@ -149,8 +150,8 @@ describe('StorageProviderFactory', () => {
       const config: StorageProviderConfig = {
         type: 'file',
         options: {
-          memoryFilePath: testJsonPath
-        }
+          memoryFilePath: testJsonPath,
+        },
       };
       const provider = factory.createProvider(config);
       factory.disconnectProvider(provider); // Disconnect once
@@ -168,8 +169,8 @@ describe('StorageProviderFactory', () => {
       const config: StorageProviderConfig = {
         type: 'file',
         options: {
-          memoryFilePath: testJsonPath
-        }
+          memoryFilePath: testJsonPath,
+        },
       };
       const provider = factory.createProvider(config);
 
@@ -190,8 +191,8 @@ describe('StorageProviderFactory', () => {
       const config: StorageProviderConfig = {
         type: 'file',
         options: {
-          memoryFilePath: testJsonPath
-        }
+          memoryFilePath: testJsonPath,
+        },
       };
       const provider = factory.createProvider(config);
       factory.disconnectProvider(provider);
@@ -206,16 +207,16 @@ describe('StorageProviderFactory', () => {
       const fileConfig: StorageProviderConfig = {
         type: 'file',
         options: {
-          memoryFilePath: testJsonPath
-        }
+          memoryFilePath: testJsonPath,
+        },
       };
       const neo4jConfig: StorageProviderConfig = {
         type: 'neo4j',
         options: {
           neo4jUri: 'bolt://localhost:7687',
           neo4jUsername: 'neo4j',
-          neo4jPassword: 'password'
-        }
+          neo4jPassword: 'password',
+        },
       };
       const fileProvider = factory.createProvider(fileConfig);
       const neo4jProvider = factory.createProvider(neo4jConfig);
@@ -234,4 +235,4 @@ describe('StorageProviderFactory', () => {
       expect(factory.isProviderConnected(neo4jProvider)).toBe(false);
     });
   });
-}); 
+});

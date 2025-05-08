@@ -6,10 +6,12 @@
  */
 export async function handleDeleteEntities(args: any, knowledgeGraphManager: any) {
   await knowledgeGraphManager.deleteEntities(args.entityNames);
-  return { 
-    content: [{ 
-      type: 'text', 
-      text: "Entities deleted successfully" 
-    }] 
+  return {
+    content: [
+      {
+        type: 'text',
+        text: 'Entities deleted successfully',
+      },
+    ],
   };
-} 
+}
