@@ -5,9 +5,54 @@ import type { Relation } from './types/relation.js';
 import type { EntityEmbedding } from './types/entity-embedding.js';
 import type { EmbeddingJobManager } from './embeddings/EmbeddingJobManager.js';
 import type { VectorStore } from './types/vector-store.js';
-import type { VectorStoreFactoryOptions } from './storage/VectorStoreFactory.js';
-import { VectorStoreFactory } from './storage/VectorStoreFactory.js';
+import {
+  VectorStoreFactory,
+  type VectorStoreFactoryOptions,
+} from './storage/VectorStoreFactory.js';
 import { logger } from './utils/logger.js';
+
+// Extended storage provider interfaces for optional methods
+interface StorageProviderWithSearchVectors extends StorageProvider {
+  searchVectors(
+    embedding: number[],
+    limit: number,
+    threshold: number
+  ): Promise<Array<{ name: string; score: number }>>;
+}
+
+interface StorageProviderWithSemanticSearch extends StorageProvider {
+  semanticSearch(query: string, options: Record<string, unknown>): Promise<KnowledgeGraph>;
+}
+
+// This interface doesn't extend StorageProvider because the return types are incompatible
+interface StorageProviderWithUpdateRelation {
+  updateRelation(relation: Relation): Promise<Relation>;
+}
+
+// Type guard functions
+function hasSearchVectors(provider: StorageProvider): provider is StorageProviderWithSearchVectors {
+  return (
+    'searchVectors' in provider &&
+    typeof (provider as StorageProviderWithSearchVectors).searchVectors === 'function'
+  );
+}
+
+function hasSemanticSearch(
+  provider: StorageProvider
+): provider is StorageProviderWithSemanticSearch {
+  return (
+    'semanticSearch' in provider &&
+    typeof (provider as StorageProviderWithSemanticSearch).semanticSearch === 'function'
+  );
+}
+
+// Check if a provider has an updateRelation method that returns a Relation
+function hasUpdateRelation(provider: StorageProvider): boolean {
+  return (
+    'updateRelation' in provider &&
+    typeof (provider as unknown as StorageProviderWithUpdateRelation).updateRelation === 'function'
+  );
+}
 
 // We are storing our memory using entities, relations, and observations in a graph structure
 export interface Entity {
@@ -27,7 +72,7 @@ export interface KnowledgeGraph {
   relations: Relation[];
   total?: number;
   timeTaken?: number;
-  diagnostics?: Record<string, any>;
+  diagnostics?: Record<string, unknown>;
 }
 
 // Re-export search types
@@ -43,7 +88,7 @@ export interface SearchResult {
       text: string;
     }>;
   }>;
-  explanation?: any;
+  explanation?: unknown;
 }
 
 export interface SearchResponse {
@@ -131,8 +176,11 @@ export class KnowledgeGraphManager {
     if (!this.vectorStore) {
       // If vectorStore is not yet initialized but we have options from the storage provider,
       // try to initialize it
-      if (this.storageProvider && (this.storageProvider as any).vectorStoreOptions) {
-        await this.initializeVectorStore((this.storageProvider as any).vectorStoreOptions);
+      if (this.storageProvider && 'vectorStoreOptions' in this.storageProvider) {
+        await this.initializeVectorStore(
+          (this.storageProvider as unknown as { vectorStoreOptions: VectorStoreFactoryOptions })
+            .vectorStoreOptions
+        );
 
         // If still undefined after initialization attempt, throw error
         if (!this.vectorStore) {
@@ -211,7 +259,7 @@ export class KnowledgeGraphManager {
       // Check if file exists before reading
       try {
         await this.fsModule.access(this.memoryFilePath);
-      } catch (_) {
+      } catch {
         // If file doesn't exist, create empty graph
         return { entities: [], relations: [] };
       }
@@ -227,13 +275,13 @@ export class KnowledgeGraphManager {
 
         // If it's a test object with a type field
         if (parsedItem.type === 'entity') {
-          const { type, ...entity } = parsedItem;
+          const { type: _, ...entity } = parsedItem;
           return {
             entities: [entity as Entity],
             relations: [],
           };
         } else if (parsedItem.type === 'relation') {
-          const { type, ...relation } = parsedItem;
+          const { type: _, ...relation } = parsedItem;
           return {
             entities: [],
             relations: [relation as Relation],
@@ -261,10 +309,10 @@ export class KnowledgeGraphManager {
         try {
           const item = JSON.parse(line);
           if (item.type === 'entity') {
-            const { type, ...entity } = item; // Remove the type property
+            const { type: _, ...entity } = item; // Remove the type property
             entities.push(entity as Entity);
           } else if (item.type === 'relation') {
-            const { type, ...relation } = item; // Remove the type property
+            const { type: _, ...relation } = item; // Remove the type property
             relations.push(relation as Relation);
           }
         } catch (e) {
@@ -307,12 +355,16 @@ export class KnowledgeGraphManager {
 
       // Add entities
       for (const entity of graph.entities) {
-        lines.push(JSON.stringify({ entityType: entity.entityType, ...entity }));
+        // Create a copy without entityType to avoid duplication
+        const { entityType, ...entityWithoutType } = entity;
+        lines.push(JSON.stringify({ entityType, ...entityWithoutType }));
       }
 
       // Add relations
       for (const relation of graph.relations) {
-        lines.push(JSON.stringify({ relationType: relation.relationType, ...relation }));
+        // Create a copy without relationType to avoid duplication
+        const { relationType, ...relationWithoutType } = relation;
+        lines.push(JSON.stringify({ relationType, ...relationWithoutType }));
       }
 
       // Write to file
@@ -819,8 +871,8 @@ export class KnowledgeGraphManager {
     }
 
     // If we have a vector search method in the storage provider, use it
-    if (this.storageProvider && typeof (this.storageProvider as any).searchVectors === 'function') {
-      return (this.storageProvider as any).searchVectors(
+    if (this.storageProvider && hasSearchVectors(this.storageProvider)) {
+      return this.storageProvider.searchVectors(
         embedding,
         options.limit || 10,
         options.threshold || 0.7
@@ -869,19 +921,14 @@ export class KnowledgeGraphManager {
     // Check if semantic search is requested
     if (options.semanticSearch || options.hybridSearch) {
       // Check if we have a storage provider with semanticSearch method
-      const hasSemanticSearch =
-        this.storageProvider &&
-        'semanticSearch' in this.storageProvider &&
-        typeof (this.storageProvider as any).semanticSearch === 'function';
-
-      if (this.storageProvider && hasSemanticSearch) {
+      if (this.storageProvider && hasSemanticSearch(this.storageProvider)) {
         try {
           // Generate query vector if we have an embedding service
           if (this.embeddingJobManager) {
             const embeddingService = this.embeddingJobManager['embeddingService'];
             if (embeddingService) {
               const queryVector = await embeddingService.generateEmbedding(query);
-              return (this.storageProvider as any).semanticSearch(query, {
+              return this.storageProvider.semanticSearch(query, {
                 ...options,
                 queryVector,
               });
@@ -973,7 +1020,11 @@ export class KnowledgeGraphManager {
     });
 
     // Sort by score descending
-    scoredEntities.sort((a, b) => (b as any).score - (a as any).score);
+    scoredEntities.sort((a, b) => {
+      const scoreA = 'score' in a ? (a as Entity & { score: number }).score : 0;
+      const scoreB = 'score' in b ? (b as Entity & { score: number }).score : 0;
+      return scoreB - scoreA;
+    });
 
     return {
       entities: scoredEntities,
@@ -1011,11 +1062,10 @@ export class KnowledgeGraphManager {
    * @returns The updated relation
    */
   async updateRelation(relation: Relation): Promise<Relation> {
-    if (
-      this.storageProvider &&
-      typeof (this.storageProvider as any).updateRelation === 'function'
-    ) {
-      return (this.storageProvider as any).updateRelation(relation);
+    if (this.storageProvider && hasUpdateRelation(this.storageProvider)) {
+      // Cast to the extended interface to access the method
+      const provider = this.storageProvider as unknown as StorageProviderWithUpdateRelation;
+      return provider.updateRelation(relation);
     }
 
     // Fallback implementation
@@ -1052,7 +1102,12 @@ export class KnowledgeGraphManager {
   async updateEntity(entityName: string, updates: Partial<Entity>): Promise<Entity> {
     if (
       this.storageProvider &&
-      typeof (this.storageProvider as { updateEntity?: Function }).updateEntity === 'function'
+      'updateEntity' in this.storageProvider &&
+      typeof (
+        this.storageProvider as {
+          updateEntity?: (name: string, updates: Partial<Entity>) => Promise<Entity>;
+        }
+      ).updateEntity === 'function'
     ) {
       const result = await (
         this.storageProvider as {

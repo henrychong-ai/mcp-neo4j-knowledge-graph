@@ -4,8 +4,8 @@ import type { Relation } from '../../types/relation.js';
 import type { EntityEmbedding, SemanticSearchOptions } from '../../types/entity-embedding.js';
 import { v4 as uuidv4 } from 'uuid';
 import { Neo4jConnectionManager } from './Neo4jConnectionManager.js';
-import type { Neo4jConfig } from './Neo4jConfig.js';
 import { DEFAULT_NEO4J_CONFIG } from './Neo4jConfig.js';
+import type { Neo4jConfig } from './Neo4jConfig.js';
 import { Neo4jSchemaManager } from './Neo4jSchemaManager.js';
 import { logger } from '../../utils/logger.js';
 import neo4j from 'neo4j-driver';
@@ -63,50 +63,25 @@ interface ExtendedEntity extends Entity {
 
 /**
  * Extended Relation interface with additional properties needed for Neo4j
+ * Note: This doesn't extend Relation to avoid type conflicts with strength/confidence
  */
-interface ExtendedRelation extends Relation {
+interface ExtendedRelation {
   id?: string;
+  from: string;
+  to: string;
+  relationType: string;
   version?: number;
   createdAt?: number;
   updatedAt?: number;
   validFrom?: number;
   validTo?: number | null;
   changedBy?: string | null;
+  strength?: number | null | undefined;
+  confidence?: number | null | undefined;
+  metadata?: Record<string, unknown> | null;
 }
 
-/**
- * Interface for Neo4j node properties representing an entity
- */
-interface EntityNode {
-  id: string;
-  name: string;
-  entityType: string;
-  observations: string; // JSON string of observations array
-  version: number;
-  createdAt: number;
-  updatedAt: number;
-  validFrom: number;
-  validTo: number | null;
-  changedBy: string | null;
-  embedding?: number[]; // Vector embedding
-}
-
-/**
- * Interface for Neo4j relationship properties representing a relation
- */
-interface RelationProperties {
-  id: string;
-  relationType: string;
-  strength: number | null;
-  confidence: number | null;
-  metadata: string | null; // JSON string of metadata object
-  version: number;
-  createdAt: number;
-  updatedAt: number;
-  validFrom: number;
-  validTo: number | null;
-  changedBy: string | null;
-}
+// These interfaces are used for documentation purposes to understand the Neo4j data model
 
 /**
  * Extended SemanticSearchOptions with additional properties needed for Neo4j
@@ -119,7 +94,7 @@ interface Neo4jSemanticSearchOptions extends SemanticSearchOptions {
  * Knowledge graph with optional diagnostics
  */
 interface KnowledgeGraphWithDiagnostics extends KnowledgeGraph {
-  diagnostics?: Record<string, any>;
+  diagnostics?: Record<string, unknown>;
 }
 
 /**
@@ -212,9 +187,9 @@ export class Neo4jStorageProvider implements StorageProvider {
         logger.error('Failed to initialize Neo4j vector store', vectorError);
         // Continue even if vector store initialization fails
       }
-    } catch (error) {
-      logger.error('Failed to initialize Neo4j schema', error);
-      throw error;
+    } catch (schemaError) {
+      logger.error('Failed to initialize Neo4j schema', schemaError);
+      throw schemaError;
     }
   }
 
@@ -235,20 +210,21 @@ export class Neo4jStorageProvider implements StorageProvider {
    * @param node Neo4j node properties
    * @returns Entity object
    */
-  private nodeToEntity(node: Record<string, any>): ExtendedEntity {
-    const observations = node.observations ? JSON.parse(node.observations) : [];
+  private nodeToEntity(node: Record<string, unknown>): ExtendedEntity {
+    const observations =
+      typeof node.observations === 'string' ? JSON.parse(node.observations as string) : [];
 
     return {
-      name: node.name,
-      entityType: node.entityType,
+      name: node.name as string,
+      entityType: node.entityType as string,
       observations,
-      id: node.id,
-      version: node.version,
-      createdAt: node.createdAt,
-      updatedAt: node.updatedAt,
-      validFrom: node.validFrom,
-      validTo: node.validTo,
-      changedBy: node.changedBy,
+      id: node.id as string | undefined,
+      version: node.version as number | undefined,
+      createdAt: node.createdAt as number | undefined,
+      updatedAt: node.updatedAt as number | undefined,
+      validFrom: node.validFrom as number | undefined,
+      validTo: node.validTo as number | null | undefined,
+      changedBy: node.changedBy as string | null | undefined,
     };
   }
 
@@ -259,27 +235,49 @@ export class Neo4jStorageProvider implements StorageProvider {
    * @param toNode To node name
    * @returns Relation object
    */
+  /**
+   * Parse a Neo4j relationship into a relation object
+   * @param rel Relationship properties
+   * @param fromNode From node name
+   * @param toNode To node name
+   * @returns Relation object
+   */
   private relationshipToRelation(
-    rel: Record<string, any>,
+    rel: Record<string, unknown>,
     fromNode: string,
     toNode: string
-  ): ExtendedRelation {
-    const metadata = rel.metadata ? JSON.parse(rel.metadata) : null;
+  ): Relation {
+    // Extract timestamps from the Neo4j relation for metadata
+    const now = Date.now();
+    const createdAt = (rel.createdAt as number) || now;
+    const updatedAt = (rel.updatedAt as number) || now;
 
+    // Create metadata with required fields
+    const metadata = {
+      createdAt,
+      updatedAt,
+    };
+
+    // Try to merge any additional metadata from the relation
+    if (typeof rel.metadata === 'string' && rel.metadata) {
+      try {
+        const parsedMetadata = JSON.parse(rel.metadata as string);
+        Object.assign(metadata, parsedMetadata);
+      } catch (e) {
+        logger.warn(`Failed to parse metadata for relation from ${fromNode} to ${toNode}`);
+      }
+    }
+
+    // Create a standard Relation object with proper type handling
     return {
-      id: rel.id,
       from: fromNode,
       to: toNode,
-      relationType: rel.relationType,
-      strength: rel.strength,
-      confidence: rel.confidence,
+      relationType: rel.relationType as string,
+      // Convert null to undefined for compatibility with Relation interface
+      strength: (rel.strength as number | null) === null ? undefined : (rel.strength as number),
+      confidence:
+        (rel.confidence as number | null) === null ? undefined : (rel.confidence as number),
       metadata,
-      version: rel.version,
-      createdAt: rel.createdAt,
-      updatedAt: rel.updatedAt,
-      validFrom: rel.validFrom,
-      validTo: rel.validTo,
-      changedBy: rel.changedBy,
     };
   }
 
@@ -466,7 +464,7 @@ export class Neo4jStorageProvider implements StorageProvider {
 
       // Prepare search parameters
       const rawLimit = options.limit || 10;
-      const parameters: Record<string, any> = {
+      const parameters: Record<string, unknown> = {
         query: `(?i).*${query}.*`, // Case-insensitive regex pattern
         limit: neo4j.int(Math.floor(rawLimit)),
       };
@@ -1799,8 +1797,8 @@ export class Neo4jStorageProvider implements StorageProvider {
         const result = await session.run(
           `
           CALL db.index.vector.queryNodes(
-            'entity_embeddings', 
-            $limit, 
+            'entity_embeddings',
+            $limit,
             $embedding
           )
           YIELD node, score
@@ -2004,8 +2002,8 @@ export class Neo4jStorageProvider implements StorageProvider {
             const vectorResult = await session.run(
               `
               CALL db.index.vector.queryNodes(
-                'entity_embeddings', 
-                $limit, 
+                'entity_embeddings',
+                $limit,
                 $embedding
               )
               YIELD node, score
@@ -2234,28 +2232,16 @@ export class Neo4jStorageProvider implements StorageProvider {
   }
 
   /**
-   * Helper function to get entity text for embedding
-   */
-  private getEntityTextForEmbedding(entity: Entity): string {
-    // Combine entity name, type, and observations into a single text
-    const name = entity.name || '';
-    const type = entity.entityType || '';
-    const observations = Array.isArray(entity.observations) ? entity.observations.join('\n') : '';
-
-    return `${name} - ${type}\n${observations}`;
-  }
-
-  /**
    * Direct diagnostic method to check Neo4j vector embeddings
    * Bypasses all abstractions to query the database directly
    */
-  async diagnoseVectorSearch(): Promise<any> {
+  async diagnoseVectorSearch(): Promise<Record<string, unknown>> {
     try {
       // First, make sure vector store is initialized
       if (!this.vectorStore['initialized']) {
         try {
           await this.vectorStore.initialize();
-        } catch (err) {
+        } catch (_err) {
           // Continue even if initialization fails
         }
       }

@@ -9,9 +9,7 @@
 
 import { Neo4jConnectionManager } from '../storage/neo4j/Neo4jConnectionManager.js';
 import { Neo4jSchemaManager } from '../storage/neo4j/Neo4jSchemaManager.js';
-import type { Neo4jConfig } from '../storage/neo4j/Neo4jConfig.js';
-import { DEFAULT_NEO4J_CONFIG } from '../storage/neo4j/Neo4jConfig.js';
-import { fileURLToPath } from 'url';
+import { DEFAULT_NEO4J_CONFIG, type Neo4jConfig } from '../storage/neo4j/Neo4jConfig.js';
 
 // Factory types for dependency injection in testing
 export type ConnectionManagerFactory = (config: Neo4jConfig) => Neo4jConnectionManager;
@@ -215,7 +213,7 @@ export function printHelp(): void {
   console.log(`
 Neo4j CLI Utility
 
-Usage: 
+Usage:
   neo4j-cli test [options]    - Test Neo4j connection
   neo4j-cli init [options]    - Initialize Neo4j schema
   neo4j-cli help              - Show this help message

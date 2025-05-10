@@ -4,10 +4,10 @@ import { logger } from '../utils/logger.js';
 
 /**
  * Determines the storage type based on the environment variable
- * @param envType Storage type from environment variable
+ * @param _envType Storage type from environment variable (unused)
  * @returns 'neo4j' storage type
  */
-export function determineStorageType(envType: string | undefined): 'neo4j' {
+export function determineStorageType(_envType: string | undefined): 'neo4j' {
   // Always return neo4j regardless of input
   return 'neo4j';
 }
@@ -70,7 +70,7 @@ export function createStorageConfig(storageType: string | undefined): StorageCon
  * Initializes the storage provider based on environment variables
  * @returns Configured storage provider
  */
-export function initializeStorageProvider() {
+export function initializeStorageProvider(): ReturnType<StorageProviderFactory['createProvider']> {
   const factory = new StorageProviderFactory();
   const config = createStorageConfig(process.env.MEMORY_STORAGE_TYPE);
 
