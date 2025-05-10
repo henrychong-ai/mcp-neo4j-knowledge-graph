@@ -44,6 +44,23 @@ export interface TemporalRelation extends Relation {
   changedBy?: string;
 }
 
+// Add static methods to the TemporalRelation interface for JavaScript tests
+// This allows tests to access validation methods directly from the interface
+// eslint-disable-next-line @typescript-eslint/no-namespace
+export namespace TemporalRelation {
+  export function isTemporalRelation(obj: unknown): boolean {
+    return TemporalRelationValidator.isTemporalRelation(obj);
+  }
+
+  export function hasValidTimeRange(obj: unknown): boolean {
+    return TemporalRelationValidator.hasValidTimeRange(obj);
+  }
+
+  export function isCurrentlyValid(obj: unknown, now = Date.now()): boolean {
+    return TemporalRelationValidator.isCurrentlyValid(obj, now);
+  }
+}
+
 /**
  * TemporalRelationValidator class with validation methods
  */

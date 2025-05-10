@@ -27,8 +27,8 @@ describe('TemporalEntity Interface', () => {
     expect(entity.updatedAt).toBe(now);
     expect(entity.version).toBe(1);
 
-    // Verify the TemporalEntity interface exists and can be imported
-    expect(typeof TemporalEntity).toBe('function');
+    // Verify the TemporalEntity namespace exists and can be imported
+    expect(typeof TemporalEntity).toBe('object'); // The interface should have validator functions as a namespace
     expect(TemporalEntity.isTemporalEntity(entity)).toBe(true);
   });
 

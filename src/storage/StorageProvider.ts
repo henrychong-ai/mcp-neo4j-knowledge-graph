@@ -184,6 +184,16 @@ export interface StorageProvider {
   getEntity(entityName: string): Promise<any | null>;
 }
 
+// Add static methods to the StorageProvider interface for JavaScript tests
+// This allows tests to access validation methods directly from the interface
+// eslint-disable-next-line @typescript-eslint/no-namespace
+export namespace StorageProvider {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  export function isStorageProvider(obj: any): boolean {
+    return StorageProviderValidator.isStorageProvider(obj);
+  }
+}
+
 /**
  * Validator class for StorageProvider interface
  * This exists to ensure there's a concrete export for JavaScript tests

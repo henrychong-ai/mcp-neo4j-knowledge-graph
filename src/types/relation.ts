@@ -61,6 +61,31 @@ export interface Relation {
   metadata?: RelationMetadata;
 }
 
+// Add static methods to the Relation interface for JavaScript tests
+// This allows tests to access validation methods directly from the interface
+// eslint-disable-next-line @typescript-eslint/no-namespace
+export namespace Relation {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  export function isRelation(obj: any): boolean {
+    return RelationValidator.isRelation(obj);
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  export function hasStrength(obj: any): boolean {
+    return RelationValidator.hasStrength(obj);
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  export function hasConfidence(obj: any): boolean {
+    return RelationValidator.hasConfidence(obj);
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  export function hasValidMetadata(obj: any): boolean {
+    return RelationValidator.hasValidMetadata(obj);
+  }
+}
+
 // Concrete class for JavaScript tests
 export class RelationValidator {
   /**

@@ -32,8 +32,8 @@ describe('TemporalRelation Interface', () => {
     expect(relation.updatedAt).toBe(now);
     expect(relation.version).toBe(1);
 
-    // Verify the TemporalRelation interface exists and can be imported
-    expect(typeof TemporalRelation).toBe('function');
+    // Verify the TemporalRelation namespace exists and can be imported
+    expect(typeof TemporalRelation).toBe('object'); // The interface should have validator functions as a namespace
     expect(TemporalRelation.isTemporalRelation(relation)).toBe(true);
   });
 

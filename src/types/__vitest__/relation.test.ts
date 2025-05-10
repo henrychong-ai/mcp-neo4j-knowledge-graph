@@ -20,8 +20,8 @@ describe('Relation Interface', () => {
     expect(relation.to).toBe('entityB');
     expect(relation.relationType).toBe('knows');
 
-    // Verify the Relation interface exists and can be imported
-    expect(typeof Relation).toBe('function'); // The interface should have a validator function
+    // Verify the Relation namespace exists and can be imported
+    expect(typeof Relation).toBe('object'); // The interface should have validator functions as a namespace
   });
 
   it('should define optional strength property', () => {

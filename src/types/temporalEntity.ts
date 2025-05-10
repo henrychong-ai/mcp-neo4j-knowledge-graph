@@ -44,6 +44,21 @@ export interface TemporalEntity extends Entity {
   changedBy?: string;
 }
 
+// Add static methods to the TemporalEntity interface for JavaScript tests
+// This allows tests to access validation methods directly from the interface
+// eslint-disable-next-line @typescript-eslint/no-namespace
+export namespace TemporalEntity {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  export function isTemporalEntity(obj: any): boolean {
+    return TemporalEntityValidator.isTemporalEntity(obj);
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  export function hasValidTimeRange(obj: any): boolean {
+    return TemporalEntityValidator.hasValidTimeRange(obj);
+  }
+}
+
 /**
  * TemporalEntityValidator class with validation methods
  */
