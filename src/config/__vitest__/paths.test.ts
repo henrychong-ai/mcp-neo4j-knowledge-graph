@@ -14,8 +14,8 @@ vi.mock('fs', async () => ({
   mkdirSync: mockMkdirSync,
   default: {
     existsSync: mockExistsSync,
-    mkdirSync: mockMkdirSync
-  }
+    mkdirSync: mockMkdirSync,
+  },
 }));
 
 describe('paths configuration module', () => {
@@ -25,13 +25,13 @@ describe('paths configuration module', () => {
   beforeEach(async () => {
     // Save original process.env
     originalProcessEnv = { ...process.env };
-    
+
     // Reset all mocks before each test
     vi.resetAllMocks();
-    
+
     // Reset modules to ensure fresh imports
     vi.resetModules();
-    
+
     // Now import the module under test (AFTER mocking)
     pathsModule = await import('../paths');
   });
@@ -47,10 +47,10 @@ describe('paths configuration module', () => {
       process.env.MEMORY_FILE_PATH = undefined;
       mockExistsSync.mockReturnValue(true);
       const expectedPath = path.join(process.cwd(), 'data');
-      
+
       // Act
       const result = pathsModule.getDataDirectoryPath();
-      
+
       // Assert
       expect(result).toBe(expectedPath);
     });
@@ -60,10 +60,10 @@ describe('paths configuration module', () => {
       process.env.MEMORY_FILE_PATH = undefined;
       mockExistsSync.mockReturnValue(false);
       const expectedPath = path.join(process.cwd(), 'data');
-      
+
       // Act
       const result = pathsModule.getDataDirectoryPath();
-      
+
       // Assert
       expect(mockExistsSync).toHaveBeenCalledWith(expectedPath);
       expect(mockMkdirSync).toHaveBeenCalledWith(expectedPath, { recursive: true });
@@ -74,55 +74,55 @@ describe('paths configuration module', () => {
       // Arrange
       process.env.MEMORY_FILE_PATH = undefined;
       mockExistsSync.mockReturnValue(true);
-      
+
       // Act
       pathsModule.getDataDirectoryPath();
-      
+
       // Assert
       expect(mockExistsSync).toHaveBeenCalled();
       expect(mockMkdirSync).not.toHaveBeenCalled();
     });
-    
+
     it('should use the directory from absolute MEMORY_FILE_PATH', () => {
       // Arrange
       const absolutePath = '/custom/path/memory.sqlite';
       process.env.MEMORY_FILE_PATH = absolutePath;
       mockExistsSync.mockReturnValue(true);
       const expectedPath = path.dirname(absolutePath); // '/custom/path'
-      
+
       // Act
       const result = pathsModule.getDataDirectoryPath();
-      
+
       // Assert
       expect(result).toBe(expectedPath);
       expect(mockExistsSync).toHaveBeenCalledWith(expectedPath);
     });
-    
+
     it('should create the directory from absolute MEMORY_FILE_PATH if it does not exist', () => {
       // Arrange
       const absolutePath = '/custom/path/memory.sqlite';
       process.env.MEMORY_FILE_PATH = absolutePath;
       mockExistsSync.mockReturnValue(false);
       const expectedPath = path.dirname(absolutePath); // '/custom/path'
-      
+
       // Act
       const result = pathsModule.getDataDirectoryPath();
-      
+
       // Assert
       expect(result).toBe(expectedPath);
       expect(mockExistsSync).toHaveBeenCalledWith(expectedPath);
       expect(mockMkdirSync).toHaveBeenCalledWith(expectedPath, { recursive: true });
     });
-    
+
     it('should ignore relative paths in MEMORY_FILE_PATH and use default data directory', () => {
       // Arrange
       process.env.MEMORY_FILE_PATH = 'relative/path/memory.sqlite';
       mockExistsSync.mockReturnValue(true);
       const expectedPath = path.join(process.cwd(), 'data');
-      
+
       // Act
       const result = pathsModule.getDataDirectoryPath();
-      
+
       // Assert
       expect(result).toBe(expectedPath);
     });
@@ -133,10 +133,10 @@ describe('paths configuration module', () => {
       // Arrange
       const dataDir = '/test/data';
       const expectedPath = path.join(dataDir, 'memory.sqlite');
-      
+
       // Act
       const result = pathsModule.resolveMemoryFilePath(undefined, dataDir);
-      
+
       // Assert
       expect(result).toBe(expectedPath);
     });
@@ -145,10 +145,10 @@ describe('paths configuration module', () => {
       // Arrange
       const dataDir = '/test/data';
       const envPath = '/absolute/path/to/memory.sqlite';
-      
+
       // Act
       const result = pathsModule.resolveMemoryFilePath(envPath, dataDir);
-      
+
       // Assert
       expect(result).toBe(envPath);
     });
@@ -158,12 +158,12 @@ describe('paths configuration module', () => {
       const dataDir = '/test/data';
       const envPath = 'relative/path/to/memory.sqlite';
       const expectedPath = path.join(dataDir, envPath);
-      
+
       // Act
       const result = pathsModule.resolveMemoryFilePath(envPath, dataDir);
-      
+
       // Assert
       expect(result).toBe(expectedPath);
     });
   });
-}); 
+});

@@ -1,43 +1,62 @@
 // eslint.config.js
-import eslint from '@eslint/js';
-import tseslint from '@typescript-eslint/eslint-plugin';
-import tsParser from '@typescript-eslint/parser';
-import eslintPrettier from 'eslint-config-prettier';
+import tseslint from 'typescript-eslint';
+import prettier from 'eslint-plugin-prettier';
+import eslintConfigPrettier from 'eslint-config-prettier';
 
 export default [
-  eslint.configs.recommended,
+  // Base configuration for all files
   {
-    files: ['**/*.ts'],
-    languageOptions: {
-      parser: tsParser,
-      parserOptions: {
-        ecmaVersion: 'latest',
-        sourceType: 'module',
-      },
-      globals: {
-        // Node.js global variables
-        process: 'readonly',
-        __dirname: 'readonly',
-        __filename: 'readonly',
-      },
-    },
+    ignores: ['node_modules/**', 'dist/**', '**/*.test.ts', '**/__vitest__/**', '**/tests/**'],
+  },
+  // Apply TypeScript recommended configuration
+  ...tseslint.configs.recommended,
+  // Add Prettier plugin
+  {
     plugins: {
-      '@typescript-eslint': tseslint,
+      prettier,
     },
     rules: {
-      // Original rules from .eslintrc.json
+      // Prettier rules
+      'prettier/prettier': 'error',
+
+      // Basic code quality rules
+      semi: 'error',
+      'prefer-const': 'error',
+      'no-var': 'error',
+      // 'no-console': ['warn', { allow: ['warn', 'error'] }],
+      'no-duplicate-imports': 'error',
+
+      // TypeScript-specific rules
+      '@typescript-eslint/no-unused-vars': ['error', {
+        argsIgnorePattern: '^_',
+        varsIgnorePattern: '^_',
+        destructuredArrayIgnorePattern: '^_'
+      }],
       '@typescript-eslint/no-explicit-any': 'warn',
-      '@typescript-eslint/explicit-function-return-type': 'off',
-      '@typescript-eslint/explicit-module-boundary-types': 'off',
-      'no-console': 'warn',
-      
-      // Rules from @typescript-eslint/recommended
-      ...tseslint.configs.recommended.rules,
+      '@typescript-eslint/explicit-function-return-type': [
+        'warn',
+        {
+          allowExpressions: true,
+          allowTypedFunctionExpressions: true,
+        },
+      ],
+      '@typescript-eslint/consistent-type-imports': 'error',
+      '@typescript-eslint/naming-convention': [
+        'error',
+        // Enforce PascalCase for classes, interfaces, etc.
+        {
+          selector: 'typeLike',
+          format: ['PascalCase'],
+        },
+        // Enforce camelCase for variables, functions, etc.
+        {
+          selector: 'variable',
+          format: ['camelCase', 'UPPER_CASE'],
+          leadingUnderscore: 'allow',
+        },
+      ],
     },
   },
-  // Apply prettier config
-  eslintPrettier,
-  {
-    ignores: ['dist/**', 'node_modules/**', 'coverage/**']
-  }
-]; 
+  // Apply Prettier's rules last to override other formatting rules
+  eslintConfigPrettier,
+];

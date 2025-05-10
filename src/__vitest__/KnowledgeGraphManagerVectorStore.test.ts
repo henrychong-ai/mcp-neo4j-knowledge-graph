@@ -10,8 +10,8 @@ const createVectorStoreMock = () => ({
   removeVector: vi.fn().mockResolvedValue(undefined),
   search: vi.fn().mockResolvedValue([
     { id: 'Entity1', similarity: 0.95, metadata: { entityType: 'Person' } },
-    { id: 'Entity2', similarity: 0.85, metadata: { entityType: 'Place' } }
-  ])
+    { id: 'Entity2', similarity: 0.85, metadata: { entityType: 'Place' } },
+  ]),
 });
 
 // Mock VectorStoreFactory
@@ -20,8 +20,8 @@ vi.mock('../storage/VectorStoreFactory.js', () => {
     VectorStoreFactory: {
       createVectorStore: vi.fn().mockImplementation(() => {
         return Promise.resolve(vectorStoreMock);
-      })
-    }
+      }),
+    },
   };
 });
 
@@ -33,10 +33,12 @@ const createMockStorageProvider = () => ({
       entityType: 'Test',
       observations: ['Test observation'],
       embedding: {
-        vector: Array(1536).fill(0).map((_, i) => i / 1536),
+        vector: Array(1536)
+          .fill(0)
+          .map((_, i) => i / 1536),
         model: 'test-model',
-        lastUpdated: Date.now()
-      }
+        lastUpdated: Date.now(),
+      },
     });
   }),
   openNodes: vi.fn().mockResolvedValue({
@@ -44,15 +46,15 @@ const createMockStorageProvider = () => ({
       {
         name: 'Entity1',
         entityType: 'Person',
-        observations: ['Person observation']
+        observations: ['Person observation'],
       },
       {
         name: 'Entity2',
         entityType: 'Place',
-        observations: ['Place observation']
-      }
+        observations: ['Place observation'],
+      },
     ],
-    relations: []
+    relations: [],
   }),
   loadGraph: vi.fn().mockResolvedValue({ entities: [], relations: [] }),
   saveGraph: vi.fn().mockResolvedValue(undefined),
@@ -64,24 +66,30 @@ const createMockStorageProvider = () => ({
   deleteRelations: vi.fn().mockResolvedValue(undefined),
   searchNodes: vi.fn().mockResolvedValue({ entities: [], relations: [] }),
   addObservations: vi.fn().mockImplementation((observations) => {
-    return Promise.resolve(observations.map(obs => ({
-      entityName: obs.entityName,
-      addedObservations: obs.contents
-    })));
-  })
+    return Promise.resolve(
+      observations.map((obs) => ({
+        entityName: obs.entityName,
+        addedObservations: obs.contents,
+      }))
+    );
+  }),
 });
 
 // Mock embedding service
 const createMockEmbeddingService = () => ({
-  generateEmbedding: vi.fn().mockResolvedValue(Array(1536).fill(0).map((_, i) => i / 1536)),
-  getModelInfo: vi.fn().mockReturnValue({ dimensions: 1536, name: 'test-model' })
+  generateEmbedding: vi.fn().mockResolvedValue(
+    Array(1536)
+      .fill(0)
+      .map((_, i) => i / 1536)
+  ),
+  getModelInfo: vi.fn().mockReturnValue({ dimensions: 1536, name: 'test-model' }),
 });
 
 // Mock embedding job manager
 const createMockEmbeddingJobManager = (embeddingService: any) => ({
   scheduleEntityEmbedding: vi.fn().mockResolvedValue('job-id'),
   processJobs: vi.fn().mockResolvedValue({ processed: 1, successful: 1, failed: 0 }),
-  embeddingService: embeddingService
+  embeddingService: embeddingService,
 });
 
 // Global instance of the mock vector store
@@ -98,21 +106,21 @@ describe('KnowledgeGraphManager with VectorStore', () => {
 
   beforeEach(async () => {
     vi.clearAllMocks();
-    
+
     // Create fresh mocks for each test
     vectorStoreMock = createVectorStoreMock();
     mockStorageProvider = createMockStorageProvider();
     mockEmbeddingService = createMockEmbeddingService();
     mockEmbeddingJobManager = createMockEmbeddingJobManager(mockEmbeddingService);
-    
+
     // Create manager with options
     manager = new KnowledgeGraphManager({
       storageProvider: mockStorageProvider,
       embeddingJobManager: mockEmbeddingJobManager,
       vectorStoreOptions: {
         type: 'chroma',
-        collectionName: 'test_collection'
-      }
+        collectionName: 'test_collection',
+      },
     });
   });
 
@@ -121,31 +129,33 @@ describe('KnowledgeGraphManager with VectorStore', () => {
     expect(VectorStoreFactory.createVectorStore).toHaveBeenCalledWith({
       type: 'chroma',
       collectionName: 'test_collection',
-      initializeImmediately: true
+      initializeImmediately: true,
     });
   });
 
   it('should use vector store for semantic search', async () => {
     // Setup mock embedding
-    const mockEmbedding = Array(1536).fill(0).map((_, i) => i / 1536);
+    const mockEmbedding = Array(1536)
+      .fill(0)
+      .map((_, i) => i / 1536);
     mockEmbeddingService.generateEmbedding.mockResolvedValue(mockEmbedding);
-    
+
     // Perform search
     const results = await manager.findSimilarEntities('test query', { limit: 5, threshold: 0.8 });
-    
+
     // Verify embedding was generated
     expect(mockEmbeddingService.generateEmbedding).toHaveBeenCalledWith('test query');
-    
+
     // Verify vector store search was used
     expect(vectorStoreMock.search).toHaveBeenCalledWith(mockEmbedding, {
       limit: 5,
-      minSimilarity: 0.8
+      minSimilarity: 0.8,
     });
-    
+
     // Verify results are properly formatted
     expect(results).toEqual([
       { name: 'Entity1', score: 0.95 },
-      { name: 'Entity2', score: 0.85 }
+      { name: 'Entity2', score: 0.85 },
     ]);
   });
 
@@ -156,58 +166,58 @@ describe('KnowledgeGraphManager with VectorStore', () => {
       entityType: 'Test',
       observations: ['Test observation'],
       embedding: {
-        vector: Array(1536).fill(0).map((_, i) => i / 1536),
+        vector: Array(1536)
+          .fill(0)
+          .map((_, i) => i / 1536),
         model: 'test-model',
-        lastUpdated: Date.now()
-      }
+        lastUpdated: Date.now(),
+      },
     };
-    
+
     // Trigger entity creation
     await manager.createEntities([entity]);
-    
+
     // Verify embedding was added to vector store
-    expect(vectorStoreMock.addVector).toHaveBeenCalledWith(
-      'TestEntity',
-      entity.embedding.vector,
-      { entityType: 'Test', name: 'TestEntity' }
-    );
+    expect(vectorStoreMock.addVector).toHaveBeenCalledWith('TestEntity', entity.embedding.vector, {
+      entityType: 'Test',
+      name: 'TestEntity',
+    });
   });
 
   it('should update vector store when entity embedding changes', async () => {
     // Setup
     const entityName = 'TestEntity';
     const embedding: EntityEmbedding = {
-      vector: Array(1536).fill(0).map((_, i) => i / 1536),
+      vector: Array(1536)
+        .fill(0)
+        .map((_, i) => i / 1536),
       model: 'test-model',
-      lastUpdated: Date.now()
+      lastUpdated: Date.now(),
     };
-    
+
     // Call the update method
     await (manager as any).updateEntityEmbedding(entityName, embedding);
-    
+
     // Verify vector store was updated
     expect(vectorStoreMock.addVector).toHaveBeenCalledWith(
       entityName,
       embedding.vector,
       expect.objectContaining({ name: entityName })
     );
-    
+
     // Verify storage provider was also updated
-    expect(mockStorageProvider.updateEntityEmbedding).toHaveBeenCalledWith(
-      entityName,
-      embedding
-    );
+    expect(mockStorageProvider.updateEntityEmbedding).toHaveBeenCalledWith(entityName, embedding);
   });
 
   it('should remove vectors from store when entities are deleted', async () => {
     // Call delete method
     await manager.deleteEntities(['Entity1', 'Entity2']);
-    
+
     // Verify vectors were removed
     expect(vectorStoreMock.removeVector).toHaveBeenCalledWith('Entity1');
     expect(vectorStoreMock.removeVector).toHaveBeenCalledWith('Entity2');
-    
+
     // Verify storage provider was also called
     expect(mockStorageProvider.deleteEntities).toHaveBeenCalledWith(['Entity1', 'Entity2']);
   });
-}); 
+});

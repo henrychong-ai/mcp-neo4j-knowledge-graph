@@ -25,7 +25,11 @@ vi.mock('../../storage/StorageProviderFactory');
 vi.mock('../../storage/VectorStoreFactory.js');
 
 // Now import the module under test after all mocks are set up
-import { initializeStorageProvider, createStorageConfig, determineStorageType } from '../storage.js';
+import {
+  initializeStorageProvider,
+  createStorageConfig,
+  determineStorageType,
+} from '../storage.js';
 import { StorageProviderFactory } from '../../storage/StorageProviderFactory.js';
 import { VectorStoreFactory } from '../../storage/VectorStoreFactory.js';
 
@@ -42,10 +46,12 @@ describe('storage configuration module', () => {
     // Reset all mocks
     vi.resetAllMocks();
     vi.resetModules();
-    
+
     // Set up default mock implementations
-    vi.mocked(StorageProviderFactory.prototype.createProvider).mockReturnValue({ mockedProvider: true } as any);
-    
+    vi.mocked(StorageProviderFactory.prototype.createProvider).mockReturnValue({
+      mockedProvider: true,
+    } as any);
+
     // Import the module under test (after mocking)
     storageModule = await import('../storage');
   });
@@ -86,8 +92,8 @@ describe('storage configuration module', () => {
           neo4jDatabase: 'neo4j',
           neo4jVectorIndexName: 'entity_embeddings',
           neo4jVectorDimensions: 1536,
-          neo4jSimilarityFunction: 'cosine'
-        }
+          neo4jSimilarityFunction: 'cosine',
+        },
       });
     });
 
@@ -114,8 +120,8 @@ describe('storage configuration module', () => {
           neo4jDatabase: 'custom_db',
           neo4jVectorIndexName: 'custom_index',
           neo4jVectorDimensions: 768,
-          neo4jSimilarityFunction: 'euclidean'
-        }
+          neo4jSimilarityFunction: 'euclidean',
+        },
       });
     });
 
@@ -133,8 +139,8 @@ describe('storage configuration module', () => {
           neo4jDatabase: 'neo4j',
           neo4jVectorIndexName: 'entity_embeddings',
           neo4jVectorDimensions: 1536,
-          neo4jSimilarityFunction: 'cosine'
-        }
+          neo4jSimilarityFunction: 'cosine',
+        },
       });
     });
   });
@@ -149,12 +155,14 @@ describe('storage configuration module', () => {
       const result = storageModule.initializeStorageProvider();
 
       // Assert
-      expect(vi.mocked(StorageProviderFactory.prototype.createProvider)).toHaveBeenCalledWith(expect.objectContaining({
-        type: 'neo4j',
-        options: expect.objectContaining({
-          neo4jUri: 'bolt://test-neo4j:7687'
+      expect(vi.mocked(StorageProviderFactory.prototype.createProvider)).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'neo4j',
+          options: expect.objectContaining({
+            neo4jUri: 'bolt://test-neo4j:7687',
+          }),
         })
-      }));
+      );
       expect(result).toEqual({ mockedProvider: true });
     });
 
@@ -163,19 +171,21 @@ describe('storage configuration module', () => {
       const result = storageModule.initializeStorageProvider();
 
       // Assert
-      expect(vi.mocked(StorageProviderFactory.prototype.createProvider)).toHaveBeenCalledWith(expect.objectContaining({
-        type: 'neo4j',
-        options: expect.objectContaining({
-          neo4jUri: 'bolt://localhost:7687',
-          neo4jUsername: 'neo4j',
-          neo4jPassword: 'memento_password',
-          neo4jDatabase: 'neo4j',
-          neo4jVectorIndexName: 'entity_embeddings',
-          neo4jVectorDimensions: 1536,
-          neo4jSimilarityFunction: 'cosine'
+      expect(vi.mocked(StorageProviderFactory.prototype.createProvider)).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'neo4j',
+          options: expect.objectContaining({
+            neo4jUri: 'bolt://localhost:7687',
+            neo4jUsername: 'neo4j',
+            neo4jPassword: 'memento_password',
+            neo4jDatabase: 'neo4j',
+            neo4jVectorIndexName: 'entity_embeddings',
+            neo4jVectorDimensions: 1536,
+            neo4jSimilarityFunction: 'cosine',
+          }),
         })
-      }));
+      );
       expect(result).toEqual({ mockedProvider: true });
     });
   });
-}); 
+});

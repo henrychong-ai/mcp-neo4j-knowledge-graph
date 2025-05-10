@@ -5,6 +5,24 @@ All notable changes to Memento MCP will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.9] - 2025-05-08
+
+### Changed
+
+- Updated dependencies to latest versions:
+  - @modelcontextprotocol/sdk from 1.8.0 to 1.11.0
+  - axios from 1.8.4 to 1.9.0
+  - dotenv from 16.4.7 to 16.5.0
+  - eslint from 9.23.0 to 9.26.0
+  - eslint-config-prettier from 10.1.1 to 10.1.3
+  - glob from 11.0.1 to 11.0.2
+  - openai from 4.91.1 to 4.97.0
+  - tsx from 4.19.3 to 4.19.4
+  - typescript from 5.8.2 to 5.8.3
+  - vitest and @vitest/coverage-v8 from 3.1.1 to 3.1.3
+  - zod from 3.24.2 to 3.24.4
+  - @typescript-eslint/eslint-plugin and @typescript-eslint/parser from 8.29.0 to 8.32.0
+
 ## [0.3.8] - 2025-04-01
 
 ### Added

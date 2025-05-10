@@ -2,38 +2,45 @@
 
 /**
  * Neo4j CLI Utility
- * 
+ *
  * This script provides command-line utilities for managing Neo4j
  * operations for the Memento MCP project.
  */
 
 import { Neo4jConnectionManager } from '../storage/neo4j/Neo4jConnectionManager.js';
 import { Neo4jSchemaManager } from '../storage/neo4j/Neo4jSchemaManager.js';
-import { Neo4jConfig, DEFAULT_NEO4J_CONFIG } from '../storage/neo4j/Neo4jConfig.js';
-import { fileURLToPath } from 'url';
+import { DEFAULT_NEO4J_CONFIG, type Neo4jConfig } from '../storage/neo4j/Neo4jConfig.js';
 
 // Factory types for dependency injection in testing
 export type ConnectionManagerFactory = (config: Neo4jConfig) => Neo4jConnectionManager;
-export type SchemaManagerFactory = (connectionManager: Neo4jConnectionManager, debug: boolean) => Neo4jSchemaManager;
+export type SchemaManagerFactory = (
+  connectionManager: Neo4jConnectionManager,
+  debug: boolean
+) => Neo4jSchemaManager;
 
 // Default factories that use the actual implementations
-const defaultConnectionManagerFactory: ConnectionManagerFactory = (config) => new Neo4jConnectionManager(config);
-const defaultSchemaManagerFactory: SchemaManagerFactory = (connectionManager, debug) => new Neo4jSchemaManager(connectionManager, undefined, debug);
+const defaultConnectionManagerFactory: ConnectionManagerFactory = (config) =>
+  new Neo4jConnectionManager(config);
+const defaultSchemaManagerFactory: SchemaManagerFactory = (connectionManager, debug) =>
+  new Neo4jSchemaManager(connectionManager, undefined, debug);
 
 /**
  * Parse command line arguments into a Neo4j configuration object
- * 
+ *
  * @param argv Command line arguments array
  * @returns Object containing configuration and options
  */
-export function parseArgs(argv: string[]): { config: Neo4jConfig; options: { debug: boolean; recreate: boolean } } {
+export function parseArgs(argv: string[]): {
+  config: Neo4jConfig;
+  options: { debug: boolean; recreate: boolean };
+} {
   const config = { ...DEFAULT_NEO4J_CONFIG };
   // Always enable debug by default - it provides useful information
   const options = { debug: true, recreate: false };
-  
+
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
-    
+
     if (arg === '--uri' && i + 1 < argv.length) {
       config.uri = argv[++i];
     } else if (arg === '--username' && i + 1 < argv.length) {
@@ -58,13 +65,13 @@ export function parseArgs(argv: string[]): { config: Neo4jConfig; options: { deb
       options.recreate = true;
     }
   }
-  
+
   return { config, options };
 }
 
 /**
  * Test the connection to Neo4j
- * 
+ *
  * @param config Neo4j configuration
  * @param debug Enable debug mode
  * @param connectionManagerFactory Factory for creating connection managers (for testing)
@@ -79,26 +86,26 @@ export async function testConnection(
   console.log(`  URI: ${config.uri}`);
   console.log(`  Username: ${config.username}`);
   console.log(`  Database: ${config.database}`);
-  
+
   const connectionManager = connectionManagerFactory(config);
-  
+
   try {
     if (debug) {
       console.log('Debug: Opening Neo4j session');
     }
     const session = await connectionManager.getSession();
-    
+
     if (debug) {
       console.log('Debug: Running test query: RETURN 1 as value');
     }
     const result = await session.run('RETURN 1 as value');
-    
+
     if (debug) {
       console.log(`Debug: Query result: ${JSON.stringify(result.records)}`);
     }
-    
+
     await session.close();
-    
+
     const value = result.records[0].get('value').toNumber();
     console.log('✓ Neo4j connection successful');
     return value === 1;
@@ -124,7 +131,7 @@ export async function testConnection(
 
 /**
  * Initialize Neo4j schema
- * 
+ *
  * @param config Neo4j configuration
  * @param debug Enable debug mode
  * @param recreate Force recreation of constraints and indexes
@@ -140,27 +147,27 @@ export async function initializeSchema(
 ): Promise<void> {
   const connectionManager = connectionManagerFactory(config);
   const schemaManager = schemaManagerFactory(connectionManager, debug);
-  
+
   try {
     console.log('Initializing Neo4j schema...');
     if (recreate) {
       console.log('Using recreate mode: will drop and recreate constraints and indexes');
     }
-    
+
     // Display current constraints and indexes
     if (debug) {
       console.log('Listing current constraints and indexes...');
       const constraints = await schemaManager.listConstraints();
       console.log(`Found ${constraints.length} constraints`);
-      
+
       const indexes = await schemaManager.listIndexes();
       console.log(`Found ${indexes.length} indexes`);
     }
-    
+
     // Create entity constraints
     console.log('Creating entity constraints...');
     await schemaManager.createEntityConstraints(recreate);
-    
+
     // Create vector index for entity embeddings
     console.log(`Creating vector index "${config.vectorIndexName}"...`);
     await schemaManager.createVectorIndex(
@@ -171,21 +178,21 @@ export async function initializeSchema(
       config.similarityFunction,
       recreate
     );
-    
+
     // Verify the schema was created
     if (debug) {
       console.log('Verifying schema was created...');
       const constraints = await schemaManager.listConstraints();
       console.log(`Found ${constraints.length} constraints after initialization`);
-      
+
       const indexes = await schemaManager.listIndexes();
       console.log(`Found ${indexes.length} indexes after initialization`);
-      
+
       // Check if our vector index exists
       const vectorIndexExists = await schemaManager.vectorIndexExists(config.vectorIndexName);
       console.log(`Vector index "${config.vectorIndexName}" exists: ${vectorIndexExists}`);
     }
-    
+
     console.log('✓ Neo4j schema initialization complete');
   } catch (error) {
     console.error('✗ Neo4j schema initialization failed:');
@@ -206,7 +213,7 @@ export function printHelp(): void {
   console.log(`
 Neo4j CLI Utility
 
-Usage: 
+Usage:
   neo4j-cli test [options]    - Test Neo4j connection
   neo4j-cli init [options]    - Initialize Neo4j schema
   neo4j-cli help              - Show this help message
@@ -230,30 +237,30 @@ Options:
 export async function main(): Promise<void> {
   console.log('Neo4j CLI Utility');
   console.log('=================');
-  
+
   const command = process.argv[2];
   const args = process.argv.slice(3);
   console.log(`Command: ${command || 'none'}`);
   console.log(`Arguments: ${args.join(' ')}`);
-  
+
   const { config, options } = parseArgs(args);
   console.log('Configuration:');
   console.log(JSON.stringify(config, null, 2));
-  
+
   // Only mention debug mode if explicitly disabled
   if (!options.debug) {
     console.log('Debug mode: disabled');
   }
-  
+
   if (options.recreate) {
     console.log('Recreate mode: enabled');
   }
-  
+
   switch (command) {
     case 'test':
       await testConnection(config, options.debug);
       break;
-    
+
     case 'init':
       const connected = await testConnection(config, options.debug);
       if (connected) {
@@ -263,7 +270,7 @@ export async function main(): Promise<void> {
         process.exit(1);
       }
       break;
-    
+
     case 'help':
     default:
       printHelp();
@@ -277,11 +284,11 @@ export async function main(): Promise<void> {
 
 // Check if this file is being run directly
 // This works in both ESM and CommonJS environments
-const isMainModule = () => {
+const isMainModule = (): boolean => {
   try {
     // In ESM, import.meta.url is available
     return import.meta.url === `file://${process.argv[1]}`;
-  } catch (e) {
+  } catch {
     // Fallback to CommonJS approach
     return typeof require !== 'undefined' && require.main === module;
   }
@@ -291,7 +298,7 @@ const isMainModule = () => {
 if (isMainModule()) {
   main()
     .then(() => process.exit(0))
-    .catch(error => {
+    .catch((error) => {
       console.error('Fatal error:');
       console.error(error);
       process.exit(1);

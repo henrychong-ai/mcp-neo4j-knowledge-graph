@@ -20,7 +20,7 @@ describe('KnowledgeGraphManager with StorageProvider', () => {
       addObservations: vi.fn(),
       deleteEntities: vi.fn(),
       deleteObservations: vi.fn(),
-      deleteRelations: vi.fn()
+      deleteRelations: vi.fn(),
     };
 
     const manager = new KnowledgeGraphManager({ storageProvider: mockProvider as StorageProvider });
@@ -30,9 +30,9 @@ describe('KnowledgeGraphManager with StorageProvider', () => {
   it('should use StorageProvider loadGraph when reading graph', async () => {
     const mockGraph = {
       entities: [{ name: 'test', entityType: 'test', observations: [] }],
-      relations: []
+      relations: [],
     };
-    
+
     const mockProvider: Partial<StorageProvider> = {
       loadGraph: vi.fn().mockResolvedValue(mockGraph),
       saveGraph: vi.fn(),
@@ -43,12 +43,12 @@ describe('KnowledgeGraphManager with StorageProvider', () => {
       addObservations: vi.fn(),
       deleteEntities: vi.fn(),
       deleteObservations: vi.fn(),
-      deleteRelations: vi.fn()
+      deleteRelations: vi.fn(),
     };
 
     const manager = new KnowledgeGraphManager({ storageProvider: mockProvider as StorageProvider });
     const result = await manager.readGraph();
-    
+
     expect(mockProvider.loadGraph).toHaveBeenCalled();
     expect(result).toEqual(mockGraph);
   });
@@ -56,9 +56,9 @@ describe('KnowledgeGraphManager with StorageProvider', () => {
   it('should use StorageProvider saveGraph with updated graph when saving', async () => {
     const initialGraph = {
       entities: [{ name: 'test', entityType: 'test', observations: [] }],
-      relations: []
+      relations: [],
     };
-    
+
     const mockProvider: Partial<StorageProvider> = {
       loadGraph: vi.fn().mockResolvedValue(initialGraph),
       saveGraph: vi.fn().mockResolvedValue(undefined),
@@ -69,22 +69,22 @@ describe('KnowledgeGraphManager with StorageProvider', () => {
       addObservations: vi.fn(),
       deleteEntities: vi.fn(),
       deleteObservations: vi.fn(),
-      deleteRelations: vi.fn()
+      deleteRelations: vi.fn(),
     };
 
     const manager = new KnowledgeGraphManager({ storageProvider: mockProvider as StorageProvider });
     const newEntity: Entity = { name: 'newEntity', entityType: 'test', observations: [] };
     await manager.createEntities([newEntity]);
-    
+
     expect(mockProvider.createEntities).toHaveBeenCalledWith([newEntity]);
   });
 
   it('should use StorageProvider searchNodes when searching', async () => {
     const mockSearchResult = {
       entities: [{ name: 'test', entityType: 'test', observations: [] }],
-      relations: []
+      relations: [],
     };
-    
+
     const mockProvider: Partial<StorageProvider> = {
       loadGraph: vi.fn(),
       saveGraph: vi.fn(),
@@ -95,13 +95,13 @@ describe('KnowledgeGraphManager with StorageProvider', () => {
       addObservations: vi.fn(),
       deleteEntities: vi.fn(),
       deleteObservations: vi.fn(),
-      deleteRelations: vi.fn()
+      deleteRelations: vi.fn(),
     };
 
     const manager = new KnowledgeGraphManager({ storageProvider: mockProvider as StorageProvider });
     const query = 'test';
     const result = await manager.searchNodes(query);
-    
+
     expect(mockProvider.searchNodes).toHaveBeenCalledWith(query);
     expect(result).toEqual(mockSearchResult);
   });
@@ -109,9 +109,9 @@ describe('KnowledgeGraphManager with StorageProvider', () => {
   it('should use StorageProvider openNodes when opening nodes', async () => {
     const mockOpenResult = {
       entities: [{ name: 'test', entityType: 'test', observations: [] }],
-      relations: []
+      relations: [],
     };
-    
+
     const mockProvider: Partial<StorageProvider> = {
       loadGraph: vi.fn(),
       saveGraph: vi.fn(),
@@ -122,13 +122,13 @@ describe('KnowledgeGraphManager with StorageProvider', () => {
       addObservations: vi.fn(),
       deleteEntities: vi.fn(),
       deleteObservations: vi.fn(),
-      deleteRelations: vi.fn()
+      deleteRelations: vi.fn(),
     };
 
     const manager = new KnowledgeGraphManager({ storageProvider: mockProvider as StorageProvider });
     const nodeNames = ['test'];
     const result = await manager.openNodes(nodeNames);
-    
+
     expect(mockProvider.openNodes).toHaveBeenCalledWith(nodeNames);
     expect(result).toEqual(mockOpenResult);
   });
@@ -137,9 +137,9 @@ describe('KnowledgeGraphManager with StorageProvider', () => {
     const initialGraph = {
       entities: [
         { name: 'entity1', entityType: 'test', observations: [] },
-        { name: 'entity2', entityType: 'test', observations: [] }
+        { name: 'entity2', entityType: 'test', observations: [] },
       ],
-      relations: []
+      relations: [],
     };
 
     const mockProvider: Partial<StorageProvider> = {
@@ -152,29 +152,33 @@ describe('KnowledgeGraphManager with StorageProvider', () => {
       addObservations: vi.fn(),
       deleteEntities: vi.fn(),
       deleteObservations: vi.fn(),
-      deleteRelations: vi.fn()
+      deleteRelations: vi.fn(),
     };
 
     const manager = new KnowledgeGraphManager({ storageProvider: mockProvider as StorageProvider });
     const newRelation: Relation = { from: 'entity1', to: 'entity2', relationType: 'test' };
     await manager.createRelations([newRelation]);
-    
+
     expect(mockProvider.createRelations).toHaveBeenCalledWith([newRelation]);
     expect(mockProvider.loadGraph).not.toHaveBeenCalled();
     expect(mockProvider.saveGraph).not.toHaveBeenCalled();
   });
 
   it('should use StorageProvider when adding observations', async () => {
-    const observations: EntityObservation[] = [{ 
-      entityName: 'entity1', 
-      contents: ['new observation'] 
-    }];
-    
-    const expectedResult = [{ 
-      entityName: 'entity1', 
-      addedObservations: ['new observation'] 
-    }];
-    
+    const observations: EntityObservation[] = [
+      {
+        entityName: 'entity1',
+        contents: ['new observation'],
+      },
+    ];
+
+    const expectedResult = [
+      {
+        entityName: 'entity1',
+        addedObservations: ['new observation'],
+      },
+    ];
+
     const mockProvider: Partial<StorageProvider> = {
       loadGraph: vi.fn(),
       saveGraph: vi.fn(),
@@ -185,12 +189,12 @@ describe('KnowledgeGraphManager with StorageProvider', () => {
       addObservations: vi.fn().mockResolvedValue(expectedResult),
       deleteEntities: vi.fn(),
       deleteObservations: vi.fn(),
-      deleteRelations: vi.fn()
+      deleteRelations: vi.fn(),
     };
 
     const manager = new KnowledgeGraphManager({ storageProvider: mockProvider as StorageProvider });
     const result = await manager.addObservations(observations);
-    
+
     expect(mockProvider.addObservations).toHaveBeenCalledWith(observations);
     expect(result).toEqual(expectedResult);
     expect(mockProvider.loadGraph).not.toHaveBeenCalled();
@@ -201,9 +205,9 @@ describe('KnowledgeGraphManager with StorageProvider', () => {
     const initialGraph = {
       entities: [
         { name: 'entity1', entityType: 'test', observations: [] },
-        { name: 'entity2', entityType: 'test', observations: [] }
+        { name: 'entity2', entityType: 'test', observations: [] },
       ],
-      relations: []
+      relations: [],
     };
 
     const mockProvider: Partial<StorageProvider> = {
@@ -216,17 +220,17 @@ describe('KnowledgeGraphManager with StorageProvider', () => {
       addObservations: vi.fn(),
       deleteEntities: vi.fn(),
       deleteObservations: vi.fn(),
-      deleteRelations: vi.fn()
+      deleteRelations: vi.fn(),
     };
 
     const manager = new KnowledgeGraphManager({ storageProvider: mockProvider as StorageProvider });
     const newRelation: Relation = { from: 'entity1', to: 'entity2', relationType: 'test' };
-    
+
     const result = await manager.createRelations([newRelation]);
-    
+
     expect(mockProvider.createRelations).toHaveBeenCalledWith([newRelation]);
     expect(result).toEqual([newRelation]);
     expect(mockProvider.loadGraph).not.toHaveBeenCalled();
     expect(mockProvider.saveGraph).not.toHaveBeenCalled();
   });
-}); 
+});

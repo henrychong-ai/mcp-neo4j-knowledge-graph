@@ -1,5 +1,5 @@
-import neo4j, { Driver, Session } from 'neo4j-driver';
-import { Neo4jConfig, DEFAULT_NEO4J_CONFIG } from './Neo4jConfig.js';
+import neo4j, { type Driver, type Session, type QueryResult } from 'neo4j-driver';
+import { DEFAULT_NEO4J_CONFIG, type Neo4jConfig } from './Neo4jConfig.js';
 
 /**
  * Options for configuring a Neo4j connection
@@ -18,7 +18,7 @@ export interface Neo4jConnectionOptions {
 export class Neo4jConnectionManager {
   private driver: Driver;
   private readonly config: Neo4jConfig;
-  
+
   /**
    * Creates a new Neo4j connection manager
    * @param config Connection configuration
@@ -28,39 +28,39 @@ export class Neo4jConnectionManager {
     if (config && 'uri' in config) {
       this.config = {
         ...DEFAULT_NEO4J_CONFIG,
-        ...config
+        ...config,
       };
     } else {
       this.config = {
         ...DEFAULT_NEO4J_CONFIG,
-        ...config
+        ...config,
       };
     }
-    
+
     this.driver = neo4j.driver(
       this.config.uri,
       neo4j.auth.basic(this.config.username, this.config.password),
-      { }
+      {}
     );
   }
-  
+
   /**
    * Gets a Neo4j session for executing queries
    * @returns A Neo4j session
    */
   async getSession(): Promise<Session> {
     return this.driver.session({
-      database: this.config.database
+      database: this.config.database,
     });
   }
-  
+
   /**
    * Executes a Cypher query
    * @param query The Cypher query
    * @param parameters Query parameters
    * @returns Query result
    */
-  async executeQuery(query: string, parameters: Record<string, any>): Promise<neo4j.QueryResult> {
+  async executeQuery(query: string, parameters: Record<string, unknown>): Promise<QueryResult> {
     const session = await this.getSession();
     try {
       return await session.run(query, parameters);
@@ -68,7 +68,7 @@ export class Neo4jConnectionManager {
       await session.close();
     }
   }
-  
+
   /**
    * Closes the Neo4j driver connection
    */
