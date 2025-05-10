@@ -99,6 +99,7 @@ export class SearchResultCache<T> {
    * @param obj The object to measure
    * @returns Approximate size in bytes
    */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private estimateSize(obj: any): number {
     if (obj === null || obj === undefined) {
       return 0;
@@ -124,7 +125,7 @@ export class SearchResultCache<T> {
     try {
       const json = JSON.stringify(obj);
       return json ? json.length * 2 + 100 : 100; // UTF-16 characters + overhead
-    } catch (error) {
+    } catch {
       // If stringification fails, use a reasonable default
       return 1024; // 1KB default
     }
@@ -136,7 +137,7 @@ export class SearchResultCache<T> {
    * @param params Optional parameters that affect the query
    * @returns A cache key string
    */
-  private generateKey(query: string, params?: Record<string, any>): string {
+  private generateKey(query: string, params?: Record<string, unknown>): string {
     if (!params) {
       return query;
     }
@@ -197,7 +198,7 @@ export class SearchResultCache<T> {
    * @param data The data to cache
    * @param ttl Optional time-to-live in milliseconds
    */
-  set(query: string, data: T, params?: Record<string, any>, ttl?: number): void {
+  set(query: string, data: T, params?: Record<string, unknown>, ttl?: number): void {
     // Clean expired entries
     this.removeExpired();
 
@@ -240,7 +241,7 @@ export class SearchResultCache<T> {
    * @param params Optional parameters that affect the results
    * @returns The cached data or undefined if not found or expired
    */
-  get(query: string, params?: Record<string, any>): T | undefined {
+  get(query: string, params?: Record<string, unknown>): T | undefined {
     const startTime = this.enableStats ? performance.now() : 0;
 
     // Generate cache key
@@ -348,7 +349,7 @@ export class SearchResultCache<T> {
    * @param params Optional parameters that affect the results
    * @returns True if the key exists and is not expired
    */
-  has(query: string, params?: Record<string, any>): boolean {
+  has(query: string, params?: Record<string, unknown>): boolean {
     const key = this.generateKey(query, params);
     const entry = this.cache.get(key);
 

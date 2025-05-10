@@ -66,6 +66,7 @@ export class RelationValidator {
   /**
    * Validates if an object conforms to the Relation interface
    */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   static isRelation(obj: any): boolean {
     return (
       obj &&
@@ -81,6 +82,7 @@ export class RelationValidator {
   /**
    * Checks if a relation has a strength value
    */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   static hasStrength(obj: any): boolean {
     return (
       this.isRelation(obj) &&
@@ -93,6 +95,7 @@ export class RelationValidator {
   /**
    * Checks if a relation has a confidence value
    */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   static hasConfidence(obj: any): boolean {
     return (
       this.isRelation(obj) &&
@@ -105,6 +108,7 @@ export class RelationValidator {
   /**
    * Checks if a relation has valid metadata
    */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   static hasValidMetadata(obj: any): boolean {
     if (!this.isRelation(obj) || !obj.metadata) {
       return false;

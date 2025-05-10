@@ -1,6 +1,5 @@
 import axios from 'axios';
-import type { EmbeddingModelInfo } from './EmbeddingService.js';
-import { EmbeddingService } from './EmbeddingService.js';
+import { EmbeddingService, type EmbeddingModelInfo } from './EmbeddingService.js';
 import { logger } from '../utils/logger.js';
 
 /**
@@ -28,10 +27,9 @@ export interface OpenAIEmbeddingConfig {
   version?: string;
 }
 
-/**
- * API key error message
- */
-const API_KEY_ERROR = 'OpenAI API key is required. Set OPENAI_API_KEY environment variable.';
+// API key error message is defined but not used directly
+// It's kept for documentation purposes
+// const _API_KEY_ERROR = 'OpenAI API key is required. Set OPENAI_API_KEY environment variable.';
 
 /**
  * OpenAI API response structure
@@ -153,7 +151,14 @@ export class OpenAIEmbeddingService extends EmbeddingService {
       return embedding;
     } catch (error: unknown) {
       // Handle axios errors specifically
-      const axiosError = error as any;
+      const axiosError = error as {
+        isAxiosError?: boolean;
+        response?: {
+          status?: number;
+          data?: unknown;
+        };
+        message?: string;
+      };
       if (axiosError.isAxiosError) {
         const statusCode = axiosError.response?.status;
         const responseData = axiosError.response?.data;

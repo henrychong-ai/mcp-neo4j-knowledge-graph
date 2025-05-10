@@ -67,6 +67,7 @@ export class FileStorageProvider implements StorageProvider {
       const content = await this._fs.promises.readFile(this.filePath, 'utf-8');
       this.graph = JSON.parse(content);
       return this.graph;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       if (error.code === 'ENOENT') {
         // File doesn't exist, return empty graph
@@ -378,6 +379,7 @@ export class FileStorageProvider implements StorageProvider {
    * @returns Promise resolving to the array of created entities with timestamps
    * @deprecated FileStorageProvider is deprecated. Use SqliteStorageProvider instead.
    */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async createEntities(entities: any[]): Promise<any[]> {
     await this.loadGraph();
 
@@ -420,6 +422,7 @@ export class FileStorageProvider implements StorageProvider {
    * @returns Promise resolving to the entity or null if not found
    * @deprecated FileStorageProvider is deprecated. Use SqliteStorageProvider instead.
    */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async getEntity(entityName: string): Promise<any | null> {
     await this.loadGraph();
 

@@ -2,7 +2,6 @@ import { v4 as uuidv4 } from 'uuid';
 import { LRUCache } from 'lru-cache';
 import type { StorageProvider } from '../storage/StorageProvider.js';
 import type { EmbeddingService } from './EmbeddingService.js';
-import { EmbeddingModelInfo } from './EmbeddingService.js';
 import type { Entity } from '../KnowledgeGraphManager.js';
 import type { EntityEmbedding } from '../types/entity-embedding.js';
 import crypto from 'crypto';
@@ -97,6 +96,7 @@ interface EmbeddingStorageProvider extends StorageProvider {
   /**
    * Access to the underlying database
    */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   db: any; // Using any to avoid the Database namespace issue
 
   /**
@@ -296,8 +296,8 @@ export class EmbeddingJobManager {
 
     // Get pending jobs, ordered by priority (highest first)
     const stmt = this.storageProvider.db.prepare(`
-      SELECT * FROM embedding_jobs 
-      WHERE status = 'pending' 
+      SELECT * FROM embedding_jobs
+      WHERE status = 'pending'
       ORDER BY priority DESC, created_at ASC
       LIMIT ?
     `);
@@ -432,7 +432,7 @@ export class EmbeddingJobManager {
    * @returns Queue statistics
    */
   async getQueueStatus(): Promise<QueueStatus> {
-    const getCountForStatus = (status?: string) => {
+    const getCountForStatus = (status?: string): number => {
       let sql = 'SELECT COUNT(*) as count FROM embedding_jobs';
       const params: string[] = [];
 
@@ -529,7 +529,7 @@ export class EmbeddingJobManager {
     status: JobStatus,
     attempts?: number,
     error?: string
-  ): any {
+  ): Record<string, unknown> {
     let sql = `
       UPDATE embedding_jobs
       SET status = ?
@@ -733,7 +733,7 @@ export class EmbeddingJobManager {
       if (typeof entity.observations === 'string') {
         try {
           observationsArray = JSON.parse(entity.observations);
-        } catch (error) {
+        } catch {
           // If parsing fails, treat it as a single observation
           observationsArray = [entity.observations];
         }

@@ -51,6 +51,7 @@ export class TemporalEntityValidator {
   /**
    * Validates if an object conforms to the TemporalEntity interface
    */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   static isTemporalEntity(obj: any): boolean {
     // First ensure it's a valid Entity
     if (
@@ -90,6 +91,7 @@ export class TemporalEntityValidator {
   /**
    * Checks if an entity has a valid temporal range
    */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   static hasValidTimeRange(obj: any): boolean {
     if (!this.isTemporalEntity(obj)) {
       return false;

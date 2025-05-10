@@ -9,7 +9,12 @@ import * as toolHandlers from './toolHandlers/index.js';
  * @returns A response object with the result content
  * @throws Error if the tool is unknown or arguments are missing
  */
-export async function handleCallToolRequest(request: any, knowledgeGraphManager: any) {
+
+export async function handleCallToolRequest(
+  request: { params?: { name?: string; arguments?: Record<string, unknown> } },
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  knowledgeGraphManager: any
+): Promise<{ content: Array<{ type: string; text: string }> }> {
   if (!request) {
     throw new Error('Invalid request: request is null or undefined');
   }
@@ -99,9 +104,10 @@ export async function handleCallToolRequest(request: any, knowledgeGraphManager:
         try {
           const history = await knowledgeGraphManager.getEntityHistory(args.entityName);
           return { content: [{ type: 'text', text: JSON.stringify(history, null, 2) }] };
-        } catch (error: any) {
+        } catch (error: Error | unknown) {
+          const errorMessage = error instanceof Error ? error.message : String(error);
           return {
-            content: [{ type: 'text', text: `Error retrieving entity history: ${error.message}` }],
+            content: [{ type: 'text', text: `Error retrieving entity history: ${errorMessage}` }],
           };
         }
 
@@ -113,11 +119,10 @@ export async function handleCallToolRequest(request: any, knowledgeGraphManager:
             args.relationType
           );
           return { content: [{ type: 'text', text: JSON.stringify(history, null, 2) }] };
-        } catch (error: any) {
+        } catch (error: Error | unknown) {
+          const errorMessage = error instanceof Error ? error.message : String(error);
           return {
-            content: [
-              { type: 'text', text: `Error retrieving relation history: ${error.message}` },
-            ],
+            content: [{ type: 'text', text: `Error retrieving relation history: ${errorMessage}` }],
           };
         }
 
@@ -125,9 +130,10 @@ export async function handleCallToolRequest(request: any, knowledgeGraphManager:
         try {
           const graph = await knowledgeGraphManager.getGraphAtTime(args.timestamp);
           return { content: [{ type: 'text', text: JSON.stringify(graph, null, 2) }] };
-        } catch (error: any) {
+        } catch (error: Error | unknown) {
+          const errorMessage = error instanceof Error ? error.message : String(error);
           return {
-            content: [{ type: 'text', text: `Error retrieving graph at time: ${error.message}` }],
+            content: [{ type: 'text', text: `Error retrieving graph at time: ${errorMessage}` }],
           };
         }
 
@@ -140,11 +146,11 @@ export async function handleCallToolRequest(request: any, knowledgeGraphManager:
           } = {};
 
           if (args.reference_time) {
-            options.referenceTime = args.reference_time;
+            options.referenceTime = Number(args.reference_time);
           }
 
           if (args.decay_factor) {
-            options.decayFactor = args.decay_factor;
+            options.decayFactor = Number(args.decay_factor);
           }
 
           // Pass options to getDecayedGraph if any are provided
@@ -154,9 +160,10 @@ export async function handleCallToolRequest(request: any, knowledgeGraphManager:
               : await knowledgeGraphManager.getDecayedGraph();
 
           return { content: [{ type: 'text', text: JSON.stringify(graph, null, 2) }] };
-        } catch (error: any) {
+        } catch (error: Error | unknown) {
+          const errorMessage = error instanceof Error ? error.message : String(error);
           return {
-            content: [{ type: 'text', text: `Error retrieving decayed graph: ${error.message}` }],
+            content: [{ type: 'text', text: `Error retrieving decayed graph: ${errorMessage}` }],
           };
         }
 
@@ -173,7 +180,7 @@ export async function handleCallToolRequest(request: any, knowledgeGraphManager:
         try {
           // First determine if the input looks like a UUID
           const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-          const isUUID = uuidPattern.test(args.entity_name);
+          const isUUID = uuidPattern.test(String(args.entity_name));
 
           if (isUUID) {
             process.stderr.write(`[DEBUG] Input appears to be a UUID: ${args.entity_name}\n`);
@@ -192,18 +199,29 @@ export async function handleCallToolRequest(request: any, knowledgeGraphManager:
 
             // Try different methods to find the entity
             // 1. Direct match by name
-            entity = allEntities.entities.find((e: any) => e.name === args.entity_name);
+            entity = allEntities.entities.find(
+              (e: { name: string }) => e.name === args.entity_name
+            );
 
             // 2. If not found and input is UUID, try matching by ID
             if (!entity && isUUID) {
-              entity = allEntities.entities.find((e: any) => e.id === args.entity_name);
+              entity = allEntities.entities.find(
+                (e: Record<string, unknown>) =>
+                  // The id property might not be in the Entity interface, but could exist at runtime
+                  'id' in e && e.id === args.entity_name
+              );
               process.stderr.write(`[DEBUG] Searching by ID match for UUID: ${args.entity_name}\n`);
             }
 
             // Log found entities to help debugging
             if (!entity) {
               process.stderr.write(
-                `[DEBUG] Entity not found in list. Available entities: ${JSON.stringify(allEntities.entities.map((e: any) => ({ name: e.name, id: e.id })))}\n`
+                `[DEBUG] Entity not found in list. Available entities: ${JSON.stringify(
+                  allEntities.entities.map((e: { name: string; id?: string }) => ({
+                    name: e.name,
+                    id: e.id,
+                  }))
+                )}\n`
               );
             }
           } else {
@@ -215,12 +233,14 @@ export async function handleCallToolRequest(request: any, knowledgeGraphManager:
             process.stderr.write(
               `[DEBUG] Entity not found in list, trying explicit lookup by name...\n`
             );
-            const openedEntities = await knowledgeGraphManager.openNodes([args.entity_name]);
+            const openedEntities = await knowledgeGraphManager.openNodes([
+              String(args.entity_name),
+            ]);
 
             if (openedEntities && openedEntities.entities && openedEntities.entities.length > 0) {
               entity = openedEntities.entities[0];
               process.stderr.write(
-                `[DEBUG] Found entity by name: ${entity.name} (ID: ${entity.id || 'none'})\n`
+                `[DEBUG] Found entity by name: ${entity.name} (ID: ${(entity as Record<string, unknown>).id || 'none'})\n`
               );
             }
           }
@@ -239,7 +259,7 @@ export async function handleCallToolRequest(request: any, knowledgeGraphManager:
               entity = await knowledgeGraphManager.storageProvider.getEntityById(args.entity_name);
               if (entity) {
                 process.stderr.write(
-                  `[DEBUG] Found entity by direct ID lookup: ${entity.name} (ID: ${entity.id || 'none'})\n`
+                  `[DEBUG] Found entity by direct ID lookup: ${entity.name} (ID: ${(entity as Record<string, unknown>).id || 'none'})\n`
                 );
               }
             } catch (err) {
@@ -256,7 +276,7 @@ export async function handleCallToolRequest(request: any, knowledgeGraphManager:
           }
 
           process.stderr.write(
-            `[DEBUG] Successfully found entity: ${entity.name} (ID: ${entity.id || 'none'})\n`
+            `[DEBUG] Successfully found entity: ${entity.name} (ID: ${(entity as Record<string, unknown>).id || 'none'})\n`
           );
 
           // Check if embedding service and job manager are available
@@ -295,10 +315,11 @@ export async function handleCallToolRequest(request: any, knowledgeGraphManager:
           process.stderr.write(`[DEBUG] Storing embedding for entity: ${entity.name}\n`);
           await knowledgeGraphManager.storageProvider.storeEntityVector(entity.name, embedding);
 
-          if (entity.id) {
-            process.stderr.write(`[DEBUG] Also storing embedding with entity ID: ${entity.id}\n`);
+          const entityId = (entity as Record<string, unknown>).id;
+          if (entityId && typeof entityId === 'string') {
+            process.stderr.write(`[DEBUG] Also storing embedding with entity ID: ${entityId}\n`);
             try {
-              await knowledgeGraphManager.storageProvider.storeEntityVector(entity.id, embedding);
+              await knowledgeGraphManager.storageProvider.storeEntityVector(entityId, embedding);
             } catch (idStoreError) {
               process.stderr.write(
                 `[WARN] Failed to store embedding by ID, but name storage succeeded: ${idStoreError}\n`
@@ -316,7 +337,7 @@ export async function handleCallToolRequest(request: any, knowledgeGraphManager:
                   {
                     success: true,
                     entity: entity.name,
-                    entity_id: entity.id,
+                    entity_id: (entity as Record<string, unknown>).id,
                     vector_length: vector.length,
                     model: embeddingService.getModelInfo().name,
                   },
@@ -326,6 +347,7 @@ export async function handleCallToolRequest(request: any, knowledgeGraphManager:
               },
             ],
           };
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (error: any) {
           process.stderr.write(`[ERROR] Failed to force generate embedding: ${error.message}\n`);
           if (error.stack) {
@@ -349,19 +371,20 @@ export async function handleCallToolRequest(request: any, knowledgeGraphManager:
           };
 
           // Call the search method with semantic search options
-          const results = await knowledgeGraphManager.search(args.query, searchOptions);
+          const results = await knowledgeGraphManager.search(String(args.query), searchOptions);
 
           return { content: [{ type: 'text', text: JSON.stringify(results, null, 2) }] };
-        } catch (error: any) {
+        } catch (error: Error | unknown) {
+          const errorMessage = error instanceof Error ? error.message : String(error);
           return {
-            content: [{ type: 'text', text: `Error performing semantic search: ${error.message}` }],
+            content: [{ type: 'text', text: `Error performing semantic search: ${errorMessage}` }],
           };
         }
 
       case 'get_entity_embedding':
         try {
           // Check if entity exists
-          const entity = await knowledgeGraphManager.openNodes([args.entity_name]);
+          const entity = await knowledgeGraphManager.openNodes([String(args.entity_name)]);
           if (!entity.entities || entity.entities.length === 0) {
             return { content: [{ type: 'text', text: `Entity not found: ${args.entity_name}` }] };
           }
@@ -369,11 +392,21 @@ export async function handleCallToolRequest(request: any, knowledgeGraphManager:
           // Access the embedding using appropriate interface
           if (
             knowledgeGraphManager.storageProvider &&
-            typeof (knowledgeGraphManager.storageProvider as any).getEntityEmbedding === 'function'
+            typeof (knowledgeGraphManager.storageProvider as Record<string, unknown>)
+              .getEntityEmbedding === 'function'
           ) {
+            type EntityEmbedding = {
+              vector: number[];
+              model?: string;
+              lastUpdated?: number;
+            };
+
             const embedding = await (
-              knowledgeGraphManager.storageProvider as any
-            ).getEntityEmbedding(args.entity_name);
+              knowledgeGraphManager.storageProvider as Record<
+                string,
+                (entityName: string) => Promise<EntityEmbedding | null>
+              >
+            ).getEntityEmbedding(String(args.entity_name));
 
             if (!embedding) {
               return {
@@ -411,11 +444,10 @@ export async function handleCallToolRequest(request: any, knowledgeGraphManager:
               ],
             };
           }
-        } catch (error: any) {
+        } catch (error: Error | unknown) {
+          const errorMessage = error instanceof Error ? error.message : String(error);
           return {
-            content: [
-              { type: 'text', text: `Error retrieving entity embedding: ${error.message}` },
-            ],
+            content: [{ type: 'text', text: `Error retrieving entity embedding: ${errorMessage}` }],
           };
         }
 
@@ -467,8 +499,9 @@ export async function handleCallToolRequest(request: any, knowledgeGraphManager:
                   neo4jInfo.vectorStoreStatus = 'not initialized';
                 }
               }
-            } catch (error: any) {
-              neo4jInfo.connectionStatus = `error: ${error.message}`;
+            } catch (error: Error | unknown) {
+              const errorMessage = error instanceof Error ? error.message : String(error);
+              neo4jInfo.connectionStatus = `error: ${errorMessage}`;
             }
           }
 
@@ -489,11 +522,16 @@ export async function handleCallToolRequest(request: any, knowledgeGraphManager:
             knowledgeGraphManager.embeddingJobManager.embeddingService
           ) {
             try {
-              embeddingServiceInfo =
-                knowledgeGraphManager.embeddingJobManager.embeddingService.getModelInfo();
-            } catch (error: any) {
+              embeddingServiceInfo = (
+                knowledgeGraphManager.embeddingJobManager as Record<
+                  string,
+                  Record<string, () => unknown>
+                >
+              ).embeddingService.getModelInfo();
+            } catch (error: Error | unknown) {
+              const errorMessage = error instanceof Error ? error.message : String(error);
               process.stderr.write(
-                `[ERROR] Error getting embedding service info: ${error.message}\n`
+                `[ERROR] Error getting embedding service info: ${errorMessage}\n`
               );
             }
           }
@@ -502,10 +540,13 @@ export async function handleCallToolRequest(request: any, knowledgeGraphManager:
           let embeddingProviderInfo = null;
           if (storageProvider && storageProvider.embeddingService) {
             try {
-              embeddingProviderInfo = storageProvider.embeddingService.getProviderInfo();
-            } catch (error: any) {
+              embeddingProviderInfo = (
+                storageProvider as Record<string, Record<string, () => unknown>>
+              ).embeddingService.getProviderInfo();
+            } catch (error: Error | unknown) {
+              const errorMessage = error instanceof Error ? error.message : String(error);
               process.stderr.write(
-                `[ERROR] Error getting embedding provider info: ${error.message}\n`
+                `[ERROR] Error getting embedding provider info: ${errorMessage}\n`
               );
             }
           }
@@ -514,9 +555,12 @@ export async function handleCallToolRequest(request: any, knowledgeGraphManager:
           let pendingJobs = 0;
           if (hasEmbeddingJobManager && knowledgeGraphManager.embeddingJobManager.getPendingJobs) {
             try {
-              pendingJobs = knowledgeGraphManager.embeddingJobManager.getPendingJobs().length;
-            } catch (e) {
-              process.stderr.write(`[ERROR] Error getting pending jobs: ${e}\n`);
+              pendingJobs = (
+                knowledgeGraphManager.embeddingJobManager as Record<string, () => Array<unknown>>
+              ).getPendingJobs().length;
+            } catch (error: Error | unknown) {
+              const errorMessage = error instanceof Error ? error.message : String(error);
+              process.stderr.write(`[ERROR] Error getting pending jobs: ${errorMessage}\n`);
             }
           }
 
@@ -547,16 +591,18 @@ export async function handleCallToolRequest(request: any, knowledgeGraphManager:
               },
             ],
           };
-        } catch (error: any) {
-          process.stderr.write(`[ERROR] Error in debug_embedding_config: ${error.message}\n`);
+        } catch (error: Error | unknown) {
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          const errorStack = error instanceof Error ? error.stack : undefined;
+          process.stderr.write(`[ERROR] Error in debug_embedding_config: ${errorMessage}\n`);
           return {
             content: [
               {
                 type: 'text',
                 text: JSON.stringify(
                   {
-                    error: error.message,
-                    stack: error.stack,
+                    error: errorMessage,
+                    stack: errorStack,
                   },
                   null,
                   2
@@ -568,14 +614,18 @@ export async function handleCallToolRequest(request: any, knowledgeGraphManager:
 
       case 'diagnose_vector_search':
         if (
-          typeof (knowledgeGraphManager.storageProvider as any).diagnoseVectorSearch === 'function'
+          knowledgeGraphManager.storageProvider &&
+          typeof (knowledgeGraphManager.storageProvider as Record<string, unknown>)
+            .diagnoseVectorSearch === 'function'
         ) {
           return {
             content: [
               {
                 type: 'text',
                 text: JSON.stringify(
-                  await (knowledgeGraphManager.storageProvider as any).diagnoseVectorSearch()
+                  await (
+                    knowledgeGraphManager.storageProvider as Record<string, () => Promise<unknown>>
+                  ).diagnoseVectorSearch()
                 ),
               },
             ],
@@ -588,7 +638,9 @@ export async function handleCallToolRequest(request: any, knowledgeGraphManager:
                 text: JSON.stringify(
                   {
                     error: 'Diagnostic method not available',
-                    storageType: knowledgeGraphManager.storageProvider.constructor.name,
+                    storageType: knowledgeGraphManager.storageProvider
+                      ? knowledgeGraphManager.storageProvider.constructor.name
+                      : 'unknown',
                   },
                   null,
                   2
@@ -601,7 +653,7 @@ export async function handleCallToolRequest(request: any, knowledgeGraphManager:
       default:
         throw new Error(`Unknown tool: ${name}`);
     }
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     throw error;
   }
 }

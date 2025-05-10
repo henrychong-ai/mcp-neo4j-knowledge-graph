@@ -4,8 +4,7 @@ import type { Relation } from '../../types/relation.js';
 import type { EntityEmbedding, SemanticSearchOptions } from '../../types/entity-embedding.js';
 import { v4 as uuidv4 } from 'uuid';
 import { Neo4jConnectionManager } from './Neo4jConnectionManager.js';
-import { DEFAULT_NEO4J_CONFIG } from './Neo4jConfig.js';
-import type { Neo4jConfig } from './Neo4jConfig.js';
+import { DEFAULT_NEO4J_CONFIG, type Neo4jConfig } from './Neo4jConfig.js';
 import { Neo4jSchemaManager } from './Neo4jSchemaManager.js';
 import { logger } from '../../utils/logger.js';
 import neo4j from 'neo4j-driver';
@@ -263,7 +262,7 @@ export class Neo4jStorageProvider implements StorageProvider {
       try {
         const parsedMetadata = JSON.parse(rel.metadata as string);
         Object.assign(metadata, parsedMetadata);
-      } catch (e) {
+      } catch {
         logger.warn(`Failed to parse metadata for relation from ${fromNode} to ${toNode}`);
       }
     }
@@ -614,6 +613,7 @@ export class Neo4jStorageProvider implements StorageProvider {
    * Create new entities in the knowledge graph
    * @param entities Array of entities to create
    */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async createEntities(entities: any[]): Promise<any[]> {
     try {
       if (!entities || entities.length === 0) {
@@ -621,6 +621,7 @@ export class Neo4jStorageProvider implements StorageProvider {
       }
 
       const session = await this.connectionManager.getSession();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const createdEntities: any[] = [];
 
       try {
@@ -1281,6 +1282,7 @@ export class Neo4jStorageProvider implements StorageProvider {
    * Get an entity by name
    * @param entityName Name of the entity to retrieve
    */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async getEntity(entityName: string): Promise<any | null> {
     try {
       // Query for entity by name
@@ -1460,6 +1462,7 @@ export class Neo4jStorageProvider implements StorageProvider {
    * Get the history of all versions of an entity
    * @param entityName The name of the entity to retrieve history for
    */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async getEntityHistory(entityName: string): Promise<any[]> {
     try {
       // Query for entity history
@@ -1494,6 +1497,7 @@ export class Neo4jStorageProvider implements StorageProvider {
    * @param to Target entity name
    * @param relationType Type of the relation
    */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async getRelationHistory(from: string, to: string, relationType: string): Promise<any[]> {
     try {
       // Query for relation history
@@ -1786,6 +1790,7 @@ export class Neo4jStorageProvider implements StorageProvider {
    * @param queryVector The vector to compare against
    * @param limit Maximum number of results to return
    */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async findSimilarEntities(queryVector: number[], limit: number = 10): Promise<any[]> {
     try {
       // Direct vector search implementation using the approach proven to work in our test script
@@ -1857,6 +1862,7 @@ export class Neo4jStorageProvider implements StorageProvider {
   ): Promise<KnowledgeGraphWithDiagnostics> {
     try {
       // Create diagnostics object for debugging
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const diagnostics: Record<string, any> = {
         query,
         startTime: Date.now(),
@@ -2241,13 +2247,15 @@ export class Neo4jStorageProvider implements StorageProvider {
       if (!this.vectorStore['initialized']) {
         try {
           await this.vectorStore.initialize();
-        } catch (_err) {
+        } catch {
           // Continue even if initialization fails
         }
       }
 
       // Check if we can access the diagnostic method
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       if (typeof (this.vectorStore as any).diagnosticGetEntityEmbeddings === 'function') {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         return await (this.vectorStore as any).diagnosticGetEntityEmbeddings();
       } else {
         return {

@@ -83,7 +83,7 @@ export class EmbeddingService implements IEmbeddingService {
    * @param text - Text to embed
    * @returns Embedding vector
    */
-  async generateEmbedding(text: string): Promise<number[]> {
+  async generateEmbedding(_text: string): Promise<number[]> {
     throw new Error('Method not implemented');
   }
 
@@ -93,7 +93,7 @@ export class EmbeddingService implements IEmbeddingService {
    * @param texts - Array of texts to embed
    * @returns Array of embedding vectors
    */
-  async generateEmbeddings(texts: string[]): Promise<number[][]> {
+  async generateEmbeddings(_texts: string[]): Promise<number[][]> {
     throw new Error('Method not implemented');
   }
 

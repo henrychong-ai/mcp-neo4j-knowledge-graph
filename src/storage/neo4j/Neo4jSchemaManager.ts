@@ -1,6 +1,5 @@
 import type { Neo4jConnectionManager } from './Neo4jConnectionManager.js';
-import type { Neo4jConfig } from './Neo4jConfig.js';
-import { DEFAULT_NEO4J_CONFIG } from './Neo4jConfig.js';
+import { DEFAULT_NEO4J_CONFIG, type Neo4jConfig } from './Neo4jConfig.js';
 import { logger } from '../../utils/logger.js';
 
 /**
@@ -44,7 +43,7 @@ export class Neo4jSchemaManager {
    * Lists all constraints in the database
    * @returns Array of constraint information
    */
-  async listConstraints(): Promise<any[]> {
+  async listConstraints(): Promise<Record<string, unknown>[]> {
     this.log('Listing existing constraints...');
     const result = await this.connectionManager.executeQuery('SHOW CONSTRAINTS', {});
     const constraints = result.records.map((record) => record.toObject());
@@ -56,7 +55,7 @@ export class Neo4jSchemaManager {
    * Lists all indexes in the database
    * @returns Array of index information
    */
-  async listIndexes(): Promise<any[]> {
+  async listIndexes(): Promise<Record<string, unknown>[]> {
     this.log('Listing existing indexes...');
     const result = await this.connectionManager.executeQuery('SHOW INDEXES', {});
     const indexes = result.records.map((record) => record.toObject());

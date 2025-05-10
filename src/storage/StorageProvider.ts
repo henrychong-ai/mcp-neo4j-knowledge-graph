@@ -59,6 +59,7 @@ export interface StorageProvider {
    * @param entities Array of entities to create
    * @returns Promise resolving to array of newly created entities with temporal metadata
    */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   createEntities(entities: any[]): Promise<any[]>;
 
   /**
@@ -119,6 +120,7 @@ export interface StorageProvider {
    * @param entityName The name of the entity to retrieve history for
    * @returns Promise resolving to an array of entity versions in chronological order
    */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   getEntityHistory?(entityName: string): Promise<any[]>;
 
   /**
@@ -128,6 +130,7 @@ export interface StorageProvider {
    * @param relationType Type of the relation
    * @returns Promise resolving to an array of relation versions in chronological order
    */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   getRelationHistory?(from: string, to: string, relationType: string): Promise<any[]>;
 
   /**
@@ -158,6 +161,7 @@ export interface StorageProvider {
    * @param limit Maximum number of results to return
    * @returns Promise resolving to array of entities with similarity scores
    */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   findSimilarEntities?(queryVector: number[], limit?: number): Promise<any[]>;
 
   /**
@@ -176,6 +180,7 @@ export interface StorageProvider {
    * @param entityName Name of the entity to retrieve
    * @returns Promise resolving to the entity or null if not found
    */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   getEntity(entityName: string): Promise<any | null>;
 }
 
@@ -186,6 +191,7 @@ export interface StorageProvider {
 export class StorageProviderValidator {
   // No implementation - this is just to ensure the symbol exists in the compiled JS
   // JavaScript tests will use this as a type reference
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   static isStorageProvider(obj: any): boolean {
     const hasRequiredMethods =
       obj &&

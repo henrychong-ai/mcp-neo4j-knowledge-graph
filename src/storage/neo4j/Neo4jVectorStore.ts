@@ -85,6 +85,7 @@ export class Neo4jVectorStore implements VectorStore {
   async addVector(
     id: string | number,
     vector: number[],
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     metadata?: Record<string, any>
   ): Promise<void> {
     this.ensureInitialized();
@@ -180,6 +181,7 @@ export class Neo4jVectorStore implements VectorStore {
     queryVector: number[],
     options: {
       limit?: number;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       filter?: Record<string, any>;
       hybridSearch?: boolean;
       minSimilarity?: number;
@@ -226,8 +228,8 @@ export class Neo4jVectorStore implements VectorStore {
         const result = await session.run(
           `
           CALL db.index.vector.queryNodes(
-            $indexName, 
-            $limit, 
+            $indexName,
+            $limit,
             $embedding
           )
           YIELD node, score
@@ -378,9 +380,12 @@ export class Neo4jVectorStore implements VectorStore {
    */
   async diagnosticGetEntityEmbeddings(): Promise<{
     count: number;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     samples: any[];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     indexInfo: any;
     embeddingType: string;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     vectorQueryTest: any;
   }> {
     try {
@@ -389,8 +394,8 @@ export class Neo4jVectorStore implements VectorStore {
       try {
         // Direct query to count entities with embeddings
         const countQuery = `
-          MATCH (e:Entity) 
-          WHERE e.embedding IS NOT NULL 
+          MATCH (e:Entity)
+          WHERE e.embedding IS NOT NULL
           RETURN count(e) as count
         `;
         const countResult = await session.run(countQuery);
@@ -398,8 +403,8 @@ export class Neo4jVectorStore implements VectorStore {
 
         // Get a sample of entities with embeddings
         const sampleQuery = `
-          MATCH (e:Entity) 
-          WHERE e.embedding IS NOT NULL 
+          MATCH (e:Entity)
+          WHERE e.embedding IS NOT NULL
           RETURN e.name, e.entityType, size(e.embedding) as embeddingSize
           LIMIT 3
         `;

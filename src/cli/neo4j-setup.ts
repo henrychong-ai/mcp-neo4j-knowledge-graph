@@ -284,11 +284,11 @@ export async function main(): Promise<void> {
 
 // Check if this file is being run directly
 // This works in both ESM and CommonJS environments
-const isMainModule = () => {
+const isMainModule = (): boolean => {
   try {
     // In ESM, import.meta.url is available
     return import.meta.url === `file://${process.argv[1]}`;
-  } catch (e) {
+  } catch {
     // Fallback to CommonJS approach
     return typeof require !== 'undefined' && require.main === module;
   }

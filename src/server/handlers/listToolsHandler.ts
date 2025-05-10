@@ -2,7 +2,7 @@
  * Handles the ListTools request.
  * Returns a list of all available tools with their schemas.
  */
-export async function handleListToolsRequest() {
+export async function handleListToolsRequest(): Promise<{ tools: Array<Record<string, unknown>> }> {
   // Define the base tools without the temporal-specific ones
   const baseTools = [
     {

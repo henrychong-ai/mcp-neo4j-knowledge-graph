@@ -11,7 +11,7 @@ export interface EmbeddingServiceConfig {
   model?: string;
   dimensions?: number;
   apiKey?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 /**

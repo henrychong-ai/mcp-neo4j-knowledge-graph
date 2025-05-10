@@ -9,6 +9,7 @@ import { handleCallToolRequest } from './handlers/callToolHandler.js';
  * @param knowledgeGraphManager The KnowledgeGraphManager instance to use for request handling
  * @returns The configured server instance
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function setupServer(knowledgeGraphManager: any): Server {
   // Create server instance
   const server = new Server(
@@ -29,11 +30,11 @@ export function setupServer(knowledgeGraphManager: any): Server {
   );
 
   // Register request handlers
-  server.setRequestHandler(ListToolsRequestSchema, async (request) => {
+  server.setRequestHandler(ListToolsRequestSchema, async (_request) => {
     try {
       const result = await handleListToolsRequest();
       return result;
-    } catch (error: any) {
+    } catch (error: unknown) {
       throw error;
     }
   });
@@ -42,7 +43,7 @@ export function setupServer(knowledgeGraphManager: any): Server {
     try {
       const result = await handleCallToolRequest(request, knowledgeGraphManager);
       return result;
-    } catch (error: any) {
+    } catch (error: unknown) {
       throw error;
     }
   });

@@ -1,7 +1,5 @@
-import type { Driver, Session } from 'neo4j-driver';
-import neo4j from 'neo4j-driver';
-import type { Neo4jConfig } from './Neo4jConfig.js';
-import { DEFAULT_NEO4J_CONFIG } from './Neo4jConfig.js';
+import neo4j, { type Driver, type Session, type QueryResult } from 'neo4j-driver';
+import { DEFAULT_NEO4J_CONFIG, type Neo4jConfig } from './Neo4jConfig.js';
 
 /**
  * Options for configuring a Neo4j connection
@@ -62,7 +60,7 @@ export class Neo4jConnectionManager {
    * @param parameters Query parameters
    * @returns Query result
    */
-  async executeQuery(query: string, parameters: Record<string, any>): Promise<neo4j.QueryResult> {
+  async executeQuery(query: string, parameters: Record<string, unknown>): Promise<QueryResult> {
     const session = await this.getSession();
     try {
       return await session.run(query, parameters);

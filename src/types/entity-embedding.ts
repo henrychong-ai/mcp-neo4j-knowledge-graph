@@ -35,6 +35,7 @@ export interface SearchFilter {
   /**
    * Filter value
    */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   value: any;
 }
 
@@ -139,6 +140,7 @@ export interface SearchResult {
   /**
    * The matching entity
    */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   entity: any;
 
   /**
@@ -154,6 +156,7 @@ export interface SearchResult {
   /**
    * Explanation of the scoring (if requested)
    */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   explanation?: any;
 }
 

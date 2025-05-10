@@ -78,6 +78,7 @@ try {
       return result.entities[0] || null;
     },
     // Make sure storeEntityVector is available
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     storeEntityVector: async (name: string, embedding: any) => {
       logger.debug(`Neo4j adapter: storeEntityVector called for ${name}`, {
         embeddingType: typeof embedding,
@@ -92,9 +93,11 @@ try {
         lastUpdated: embedding.lastUpdated || Date.now(),
       };
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       if (typeof (storageProvider as any).updateEntityEmbedding === 'function') {
         try {
           logger.debug(`Neo4j adapter: Using updateEntityEmbedding for ${name}`);
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           return await (storageProvider as any).updateEntityEmbedding(name, formattedEmbedding);
         } catch (error) {
           logger.error(`Neo4j adapter: Error in storeEntityVector for ${name}`, error);
@@ -110,6 +113,7 @@ try {
 
   // Create the embedding job manager with adapted storage provider
   embeddingJobManager = new EmbeddingJobManager(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     adaptedStorageProvider as any,
     embeddingService,
     rateLimiterOptions,
@@ -145,11 +149,13 @@ const knowledgeGraphManager = new KnowledgeGraphManager({
   storageProvider,
   embeddingJobManager,
   // Pass vector store options from storage provider if available
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   vectorStoreOptions: (storageProvider as any).vectorStoreOptions,
 });
 
 // Ensure the storeEntityVector method is available on KnowledgeGraphManager's storageProvider
 // Cast to any to bypass type checking for internal properties
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const knowledgeGraphManagerAny = knowledgeGraphManager as any;
 
 if (
@@ -159,6 +165,7 @@ if (
   // Add the storeEntityVector method to the storage provider
   knowledgeGraphManagerAny.storageProvider.storeEntityVector = async (
     name: string,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     embedding: any
   ) => {
     logger.debug(`Neo4j knowledgeGraphManager adapter: storeEntityVector called for ${name}`, {
@@ -233,7 +240,7 @@ if (knowledgeGraphManager && typeof knowledgeGraphManager.createEntities === 'fu
 const server = setupServer(knowledgeGraphManager);
 
 // Export main function for testing
-export async function main() {
+export async function main(): Promise<void> {
   const transport = new StdioServerTransport();
   await server.connect(transport);
 }
