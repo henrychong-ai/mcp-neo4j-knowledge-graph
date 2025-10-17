@@ -891,7 +891,9 @@ export class Neo4jStorageProvider implements StorageProvider {
 
             // Get entity properties
             const currentNode = getResult.records[0].get('e').properties;
-            const currentObservations = JSON.parse(currentNode.observations || '[]');
+            const currentObservations = Array.isArray(currentNode.observations)
+              ? currentNode.observations
+              : JSON.parse(currentNode.observations || '[]');
             const outgoingRels = getResult.records[0].get('outgoing');
             const incomingRels = getResult.records[0].get('incoming');
 
@@ -1158,7 +1160,9 @@ export class Neo4jStorageProvider implements StorageProvider {
 
             // Get entity properties
             const currentNode = getResult.records[0].get('e').properties;
-            const currentObservations = JSON.parse(currentNode.observations || '[]');
+            const currentObservations = Array.isArray(currentNode.observations)
+              ? currentNode.observations
+              : JSON.parse(currentNode.observations || '[]');
 
             // Step 2: Remove the observations
             const updatedObservations = currentObservations.filter(
