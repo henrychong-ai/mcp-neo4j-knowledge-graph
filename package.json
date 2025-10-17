@@ -1,6 +1,6 @@
 {
   "name": "@henrychong-ai/mcp-neo4j-knowledge-graph",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Neo4j-based knowledge graph MCP server (fork of @gannonh/memento-mcp with bug fixes)",
   "license": "MIT",
   "author": "Gannon Hall (original), Henry Chong (fork maintainer)",
