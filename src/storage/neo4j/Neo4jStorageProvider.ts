@@ -899,7 +899,7 @@ export class Neo4jStorageProvider implements StorageProvider {
 
             // Step 2: Create a new version of the entity with updated observations
             const now = Date.now();
-            const newVersion = (currentNode.version || 0) + 1;
+            const newVersion = (currentNode.version ? Number(currentNode.version) : 0) + 1; // Convert BigInt to Number
             const newEntityId = uuidv4();
 
             // Filter out duplicates
@@ -1208,7 +1208,7 @@ export class Neo4jStorageProvider implements StorageProvider {
 
             // Step 3: Create a new version of the entity with updated observations
             const now = Date.now();
-            const newVersion = (currentNode.version || 0) + 1;
+            const newVersion = (currentNode.version ? Number(currentNode.version) : 0) + 1; // Convert BigInt to Number
             const newEntityId = uuidv4();
 
             // Step 4: Mark the old entity as invalid
@@ -1429,7 +1429,7 @@ export class Neo4jStorageProvider implements StorageProvider {
 
           // Step 2: Update the relation with temporal versioning
           const now = Date.now();
-          const newVersion = (currentRel.version || 0) + 1;
+          const newVersion = (currentRel.version ? Number(currentRel.version) : 0) + 1; // Convert BigInt to Number
           const newRelationId = uuidv4();
 
           // Step 3: Mark the old relation as invalid
