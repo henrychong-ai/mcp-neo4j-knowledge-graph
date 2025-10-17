@@ -982,7 +982,7 @@ export class Neo4jStorageProvider implements StorageProvider {
               entityType: currentNode.entityType,
               observations: JSON.stringify(allObservations),
               version: newVersion,
-              createdAt: currentNode.createdAt,
+              createdAt: Number(currentNode.createdAt), // Convert BigInt to Number
               now,
               changedBy: null,
             };
@@ -1023,7 +1023,7 @@ export class Neo4jStorageProvider implements StorageProvider {
                 confidence: relProps.confidence !== undefined ? relProps.confidence : 0.95,
                 metadata: relProps.metadata || null,
                 version: relProps.version || 1,
-                createdAt: relProps.createdAt || Date.now(),
+                createdAt: relProps.createdAt ? Number(relProps.createdAt) : Date.now(), // Convert BigInt to Number
                 now,
                 changedBy: null,
               });
@@ -1062,7 +1062,7 @@ export class Neo4jStorageProvider implements StorageProvider {
                 confidence: relProps.confidence !== undefined ? relProps.confidence : 0.95,
                 metadata: relProps.metadata || null,
                 version: relProps.version || 1,
-                createdAt: relProps.createdAt || Date.now(),
+                createdAt: relProps.createdAt ? Number(relProps.createdAt) : Date.now(), // Convert BigInt to Number
                 now,
                 changedBy: null,
               });
