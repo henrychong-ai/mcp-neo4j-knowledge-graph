@@ -919,6 +919,27 @@ export class Neo4jStorageProvider implements StorageProvider {
             // Combine observations
             const allObservations = [...currentObservations, ...newObservations];
 
+            // Check if this entity has temporal versioning fields (id, version, etc.)
+            if (!currentNode.id) {
+              // Legacy entity without temporal versioning - use simple update
+              const updateQuery = `
+                MATCH (e:Entity {name: $name})
+                SET e.observations = $observations
+                RETURN e
+              `;
+
+              await txc.run(updateQuery, {
+                name: obs.entityName,
+                observations: allObservations,
+              });
+
+              results.push({
+                entityName: obs.entityName,
+                addedObservations: newObservations,
+              });
+              continue;
+            }
+
             // Step 3: Mark the old entity and its relationships as invalid
             const invalidateQuery = `
               MATCH (e:Entity {id: $id})
@@ -1168,6 +1189,22 @@ export class Neo4jStorageProvider implements StorageProvider {
             const updatedObservations = currentObservations.filter(
               (obs: string) => !deletion.observations.includes(obs)
             );
+
+            // Check if this entity has temporal versioning fields (id, version, etc.)
+            if (!currentNode.id) {
+              // Legacy entity without temporal versioning - use simple update
+              const updateQuery = `
+                MATCH (e:Entity {name: $name})
+                SET e.observations = $observations
+                RETURN e
+              `;
+
+              await txc.run(updateQuery, {
+                name: deletion.entityName,
+                observations: updatedObservations,
+              });
+              continue;
+            }
 
             // Step 3: Create a new version of the entity with updated observations
             const now = Date.now();
