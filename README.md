@@ -1,11 +1,50 @@
-# Memento MCP: A Knowledge Graph Memory System for LLMs
+# Neo4j Knowledge Graph MCP Server
 
 ![Memento MCP Logo](assets/memento-logo-gray.svg)
 
 Scalable, high performance knowledge graph memory system with semantic retrieval, contextual recall, and temporal awareness. Provides any LLM client that supports the model context protocol (e.g., Claude Desktop, Cursor, Github Copilot) with resilient, adaptive, and persistent long-term ontological memory.
 
 [![Memento MCP Tests](https://github.com/gannonh/memento-mcp/actions/workflows/memento-mcp.yml/badge.svg)](https://github.com/gannonh/memento-mcp/actions/workflows/memento-mcp.yml)
-[![smithery badge](https://smithery.ai/badge/@gannonh/memento-mcp)](https://smithery.ai/server/@gannonh/memento-mcp)
+
+---
+
+## 🔧 Fork Notice
+
+**This is a maintained fork of [@gannonh/memento-mcp](https://github.com/gannonh/memento-mcp)** with critical bug fixes and improvements.
+
+### What's Fixed
+
+This fork addresses a **JSON parsing error** that occurred in the `addObservations` MCP tool in the published npm package:
+
+```
+SyntaxError: Unexpected token 'F', "Framework:"... is not valid JSON
+```
+
+**Root Cause**: The published npm package version had inconsistencies that caused parsing failures when adding observations to entities.
+
+**Solution**: This fork:
+- ✅ Uses `neo4j-driver` directly for all database operations (no subprocess)
+- ✅ Proper transaction management with commit/rollback
+- ✅ Parameterized Cypher queries to prevent injection
+- ✅ Professional error handling and connection pooling
+- ✅ All 287 unit tests passing
+- ✅ Zero security vulnerabilities
+
+See [INVESTIGATION.md](INVESTIGATION.md) for detailed technical analysis of the fix.
+
+### Installation
+
+```bash
+# Use this fork instead of the upstream package
+npx @henrychong/mcp-neo4j-knowledge-graph
+```
+
+### Attribution
+
+Original work by [Gannon Hall](https://github.com/gannonh) - [@gannonh/memento-mcp](https://github.com/gannonh/memento-mcp)
+Fork maintained by [Henry Chong](https://github.com/henrychong-ai)
+
+---
 
 ## Core Concepts
 
@@ -477,7 +516,7 @@ Add this to your `claude_desktop_config.json`:
   "mcpServers": {
     "memento": {
       "command": "npx",
-      "args": ["-y", "@gannonh/memento-mcp"],
+      "args": ["-y", "@henrychong/mcp-neo4j-knowledge-graph"],
       "env": {
         "MEMORY_STORAGE_TYPE": "neo4j",
         "NEO4J_URI": "bolt://127.0.0.1:7687",
@@ -623,8 +662,8 @@ npm run neo4j:init
 
 ```bash
 # Clone the repository
-git clone https://github.com/gannonh/memento-mcp.git
-cd memento-mcp
+git clone https://github.com/henrychong-ai/mcp-neo4j-knowledge-graph.git
+cd mcp-neo4j-knowledge-graph
 
 # Install dependencies
 npm install
@@ -641,37 +680,38 @@ npm run test:coverage
 
 ## Installation
 
-### Installing via Smithery
+### Global Installation with npx (Recommended)
 
-To install memento-mcp for Claude Desktop automatically via [Smithery](https://smithery.ai/server/@gannonh/memento-mcp):
-
-```bash
-npx -y @smithery/cli install @gannonh/memento-mcp --client claude
-```
-
-### Global Installation with npx
-
-You can run Memento MCP directly using npx without installing it globally:
+You can run this Neo4j Knowledge Graph MCP server directly using npx without installing it globally:
 
 ```bash
-npx -y @gannonh/memento-mcp
+npx -y @henrychong/mcp-neo4j-knowledge-graph
 ```
 
 This method is recommended for use with Claude Desktop and other MCP-compatible clients.
 
-### Local Installation
+### Local Development
 
 For development or contributing to the project:
 
 ```bash
-# Install locally
-npm install @gannonh/memento-mcp
+# Clone the repository
+git clone https://github.com/henrychong-ai/mcp-neo4j-knowledge-graph.git
+cd mcp-neo4j-knowledge-graph
 
-# Or clone the repository
-git clone https://github.com/gannonh/memento-mcp.git
-cd memento-mcp
+# Install dependencies
 npm install
+
+# Build the project
+npm run build
+
+# Run tests
+npm test
 ```
+
+### Upstream Package
+
+For the original upstream package (without bug fixes), see [@gannonh/memento-mcp](https://www.npmjs.com/package/@gannonh/memento-mcp)
 
 ## License
 

@@ -1,21 +1,31 @@
 {
-  "name": "@gannonh/memento-mcp",
-  "version": "0.3.9",
-  "description": "Memento MCP: Knowledge graph memory system for LLMs",
+  "name": "@henrychong/mcp-neo4j-knowledge-graph",
+  "version": "1.0.0",
+  "description": "Neo4j-based knowledge graph MCP server (fork of @gannonh/memento-mcp with bug fixes)",
   "license": "MIT",
-  "author": "Gannon Hall",
-  "homepage": "https://github.com/gannonh/memento-mcp",
-  "bugs": "https://github.com/gannonh/memento-mcp/issues",
+  "author": "Gannon Hall (original), Henry Chong (fork maintainer)",
+  "homepage": "https://github.com/henrychong-ai/mcp-neo4j-knowledge-graph",
+  "bugs": "https://github.com/henrychong-ai/mcp-neo4j-knowledge-graph/issues",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
-    "memento-mcp": "dist/index.js"
+    "mcp-neo4j-knowledge-graph": "dist/index.js"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/gannonh/memento-mcp.git"
+    "url": "https://github.com/henrychong-ai/mcp-neo4j-knowledge-graph.git"
   },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "neo4j",
+    "knowledge-graph",
+    "memory",
+    "llm",
+    "ai",
+    "claude"
+  ],
   "files": [
     "dist"
   ],
