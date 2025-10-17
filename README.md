@@ -36,7 +36,7 @@ See [INVESTIGATION.md](INVESTIGATION.md) for detailed technical analysis of the 
 
 ```bash
 # Use this fork instead of the upstream package
-npx @henrychong/mcp-neo4j-knowledge-graph
+npx @henrychong-ai/mcp-neo4j-knowledge-graph
 ```
 
 ### Attribution
@@ -516,7 +516,7 @@ Add this to your `claude_desktop_config.json`:
   "mcpServers": {
     "memento": {
       "command": "npx",
-      "args": ["-y", "@henrychong/mcp-neo4j-knowledge-graph"],
+      "args": ["-y", "@henrychong-ai/mcp-neo4j-knowledge-graph"],
       "env": {
         "MEMORY_STORAGE_TYPE": "neo4j",
         "NEO4J_URI": "bolt://127.0.0.1:7687",
@@ -685,7 +685,7 @@ npm run test:coverage
 You can run this Neo4j Knowledge Graph MCP server directly using npx without installing it globally:
 
 ```bash
-npx -y @henrychong/mcp-neo4j-knowledge-graph
+npx -y @henrychong-ai/mcp-neo4j-knowledge-graph
 ```
 
 This method is recommended for use with Claude Desktop and other MCP-compatible clients.
