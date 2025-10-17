@@ -1688,8 +1688,11 @@ export class Neo4jStorageProvider implements StorageProvider {
         // Apply decay if confidence is present
         if (relation.confidence !== null && relation.confidence !== undefined) {
           const extendedRelation = relation as ExtendedRelation;
-          const ageDiff =
-            startTime - (extendedRelation.validFrom || extendedRelation.createdAt || startTime);
+          // Convert BigInt timestamps to Number before arithmetic
+          const validFrom = extendedRelation.validFrom ? Number(extendedRelation.validFrom) : null;
+          const createdAt = extendedRelation.createdAt ? Number(extendedRelation.createdAt) : null;
+          const ageTimestamp = validFrom || createdAt || startTime;
+          const ageDiff = startTime - ageTimestamp;
           let decayedConfidence = relation.confidence * Math.exp(decayFactor * ageDiff);
 
           // Don't let confidence decay below minimum
