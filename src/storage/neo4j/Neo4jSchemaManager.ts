@@ -104,6 +104,45 @@ export class Neo4jSchemaManager {
 
     const constraintName = 'entity_name';
 
+    // Check for conflicting constraints on Entity nodes with 'name' property
+    const allConstraints = await this.listConstraints();
+    const entityConstraints = allConstraints.filter((c) => {
+      // Neo4j returns either 'labelsOrTypes' or 'entityType' depending on version
+      const label = c.labelsOrTypes || c.entityType;
+      const properties = c.properties;
+
+      return (
+        (label === 'Entity' || (Array.isArray(label) && label.includes('Entity'))) &&
+        Array.isArray(properties) &&
+        properties.includes('name')
+      );
+    });
+
+    // Warn about conflicting constraints
+    let hasConflicts = false;
+    for (const constraint of entityConstraints) {
+      if (constraint.name !== constraintName) {
+        hasConflicts = true;
+        this.log(`⚠️  WARNING: Found conflicting Entity constraint: ${constraint.name}`);
+        this.log(`   Properties: ${JSON.stringify(constraint.properties)}`);
+
+        if (recreate) {
+          this.log(`   Dropping conflicting constraint: ${constraint.name}`);
+          await this.dropConstraintIfExists(constraint.name as string);
+        } else {
+          this.log(
+            `   Run with recreate=true to automatically remove conflicting constraints`
+          );
+        }
+      }
+    }
+
+    if (hasConflicts && !recreate) {
+      this.log(
+        '⚠️  Conflicting constraints detected. Use npm run neo4j:init with recreate=true to fix automatically.'
+      );
+    }
+
     if (recreate) {
       await this.dropConstraintIfExists(constraintName);
     }

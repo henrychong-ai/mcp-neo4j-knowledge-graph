@@ -72,6 +72,8 @@ describe('Neo4jSchemaManager', () => {
   it('should initialize the schema', async () => {
     await schemaManager.initializeSchema();
 
-    expect(connectionManager.executeQuery).toHaveBeenCalledTimes(3);
+    // v1.1.3: Added constraint conflict detection (+1 call for listConstraints)
+    // Calls: listConstraints (conflict check), CREATE CONSTRAINT, listConstraints (verify), CREATE VECTOR INDEX
+    expect(connectionManager.executeQuery).toHaveBeenCalledTimes(4);
   });
 });
