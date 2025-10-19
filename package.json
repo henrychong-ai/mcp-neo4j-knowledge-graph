@@ -46,7 +46,9 @@
     "format": "prettier --write \"**/*.{ts,json,md}\"",
     "fix": "npm run lint:fix && npm run format",
     "neo4j:init": "tsx src/cli/neo4j-setup.ts init",
-    "neo4j:test": "tsx src/cli/neo4j-setup.ts test"
+    "neo4j:test": "tsx src/cli/neo4j-setup.ts test",
+    "embeddings:generate": "tsx src/cli/generate-embeddings.ts",
+    "embeddings:test": "tsx src/cli/generate-embeddings.ts -- --limit 5"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.11.0",

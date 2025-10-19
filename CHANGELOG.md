@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.3] - 2025-10-20
+
+### Added
+
+- **Schema Constraint Detection**: Automatic detection of conflicting Neo4j constraints during schema initialization
+  - Detects old single-field `Entity.name` constraints that block temporal versioning
+  - Provides clear warnings about constraint conflicts with actionable guidance
+  - Auto-cleanup with `recreate=true` flag automatically removes conflicting constraints
+  - Prevents schema issues that previously caused "Node already exists" errors
+
+### Changed
+
+- **Neo4jSchemaManager**: Enhanced `createEntityConstraints()` method with defensive programming
+  - Added constraint conflict detection using existing `listConstraints()` method
+  - Warns users about conflicting constraints before attempting schema operations
+  - Leverages existing `dropConstraintIfExists()` method for safe cleanup
+  - Improved user experience with clear, actionable error messages
+
+### Technical Details
+
+- **File Modified**: `src/storage/neo4j/Neo4jSchemaManager.ts`
+- **Method Enhanced**: `createEntityConstraints()` (lines 102-164)
+- **Detection Logic**: Filters Entity label constraints containing 'name' property
+- **Compatibility**: Handles both 'labelsOrTypes' and 'entityType' field names across Neo4j versions
+- **Impact**: Proactively prevents temporal versioning failures from schema misconfigurations
+
 ## [1.1.2] - 2025-10-20
 
 ### Changed
