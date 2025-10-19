@@ -37,6 +37,11 @@ vi.mock('neo4j-driver', () => {
     return new Integer(value);
   };
 
+  // Mock isInt function
+  const mockIsInt = (value: unknown): value is Integer => {
+    return value instanceof Integer;
+  };
+
   return {
     default: {
       auth: {
@@ -48,6 +53,7 @@ vi.mock('neo4j-driver', () => {
         Integer,
       },
     },
+    isInt: mockIsInt,
   };
 });
 

@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.1] - 2025-10-20
+
+### Fixed
+
+- **Critical MCP Response Bug**: Fixed empty observations array returned via MCP tools for migrated entities
+  - Root cause: `nodeToEntity()` didn't handle array-type observations from Neo4j
+  - Data existed in database but MCP server returned empty arrays to clients
+  - Added array type handling alongside existing string (JSON) parsing
+  - Affected 637 migrated entities (changedBy='migration_script_20251017')
+
+- **Neo4j Integer Conversion Bug**: Fixed Neo4j Integer objects appearing as `{low, high}` in MCP responses
+  - Added `convertNeo4jInt()` helper method for safe Integer-to-number conversion
+  - Fixed `nodeToEntity()`: version, createdAt, updatedAt, validFrom, validTo fields
+  - Fixed `relationshipToRelation()`: createdAt, updatedAt, strength, confidence fields
+  - MCP clients now receive proper JavaScript numbers instead of driver Integer objects
+
+### Changed
+
+- Enhanced `nodeToEntity()` method with comprehensive type handling for observations
+- Improved `relationshipToRelation()` method with explicit Neo4j Integer conversion
+- All temporal and numeric fields now properly converted before returning to MCP clients
+
+### Technical Details
+
+- **Files Modified**: `src/storage/neo4j/Neo4jStorageProvider.ts`
+- **Methods Updated**: `nodeToEntity()`, `relationshipToRelation()`, added `convertNeo4jInt()`
+- **Impact**: All entity and relation retrieval operations now return correct data types
+- **Testing**: Fix validated by Codex code review (gpt-5-codex high reasoning)
+
 ## [1.1.0] - 2025-10-19
 
 ### Changed
