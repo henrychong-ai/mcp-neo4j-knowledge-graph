@@ -109,7 +109,7 @@ Possible actual causes:
 ### For Testing
 1. **Test the MCP server locally** to verify if the error reproduces:
    ```bash
-   cd /Users/henrychong/repos/repos-hc/mcp-neo4j-knowledge-graph
+   cd /path/to/mcp-neo4j-knowledge-graph
    npm install
    npm run build
    npm test

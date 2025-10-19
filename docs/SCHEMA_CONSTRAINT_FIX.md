@@ -59,7 +59,7 @@ Expected:
 
 1. **Create fix script**:
 ```bash
-cd /Users/henrychong/repos/repos-hc/mcp-neo4j-knowledge-graph
+cd /path/to/mcp-neo4j-knowledge-graph
 cat << 'EOF' > fix_constraints.cypher
 // Drop old constraint if exists
 DROP CONSTRAINT entity_name IF EXISTS;
