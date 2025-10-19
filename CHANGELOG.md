@@ -1,9 +1,53 @@
 # Changelog
 
-All notable changes to Memento MCP will be documented in this file.
+All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [1.1.0] - 2025-10-19
+
+### Changed
+
+- **Project Identity Transformation**: Transitioned from fork narrative to independent maintained project
+  - Updated all documentation to reflect maintenance by Henry Chong
+  - Removed "fork" language while preserving proper attribution
+  - Professional standalone project identity established
+
+### Breaking Changes
+
+- **MCP Server Metadata**: Server name changed from 'memento-mcp' to 'mcp-neo4j-knowledge-graph'
+  - MCP server publisher changed from 'gannonh' to 'henrychong-ai'
+  - Users with existing Claude Desktop configs will need to update server name references
+  - This change provides clearer identity and prevents namespace conflicts
+
+### Added
+
+- **Dual Copyright**: Added Henry Chong copyright to LICENSE for enhancements and maintenance
+  - Preserves original Gannon Hall copyright (MIT license requirement)
+  - Contributors field added to package.json with proper attribution
+
+### Removed
+
+- **Branding Cleanup**: Removed Memento MCP branding and legacy references
+  - Deleted memento-logo.svg, memento-logo-themed.svg, memento-logo-gray.svg
+  - Removed fork-specific documentation sections
+  - Updated all package descriptions and metadata
+
+### Documentation
+
+- **README.md**: Complete transformation with professional opening and acknowledgments section
+- **CLAUDE.md**: Reframed project overview from fork to maintained package
+- **CHANGELOG.md**: Updated project references and v1.0.0 entry
+- **package.json**: Updated author, added contributors, refined description
+- **Source Code**: Updated server name, publisher, and mock model names throughout
+
+### Technical Details
+
+- **Files Modified**: 11 source/documentation files updated
+- **Tests**: All 287 unit tests passing
+- **Build**: Clean compilation with no errors
+- **Verification**: Grep validation confirms proper attribution preserved
 
 ## [1.0.6] - 2025-10-19
 
@@ -81,9 +125,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **Initial Fork Publication**: Published as @henrychong-ai/mcp-neo4j-knowledge-graph
+- **Initial Publication**: Published as @henrychong-ai/mcp-neo4j-knowledge-graph under maintenance by Henry Chong
 - Fixed npm scope from @henrychong to @henrychong-ai to match npm username
-- Forked from @gannonh/memento-mcp with bug fixes and active maintenance
+- Built on foundational work by Gannon Hall with bug fixes and active maintenance
 
 ## [0.3.9] - 2025-05-08
 

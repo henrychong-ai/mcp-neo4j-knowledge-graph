@@ -1,6 +1,6 @@
 ## Neo4j Storage Backend
 
-Memento MCP provides a Neo4j storage backend that offers a unified solution for both graph storage and vector search capabilities. This integration leverages Neo4j's native graph database features and vector search functionality to deliver efficient knowledge graph operations.
+This MCP server provides a Neo4j storage backend that offers a unified solution for both graph storage and vector search capabilities. This integration leverages Neo4j's native graph database features and vector search functionality to deliver efficient knowledge graph operations.
 
 ### Why Neo4j?
 
@@ -38,7 +38,7 @@ The Neo4j database will be available at:
 
 ### Neo4j CLI Utilities
 
-Memento MCP provides command-line utilities for managing Neo4j operations:
+This MCP server provides command-line utilities for managing Neo4j operations:
 
 #### Testing Connection
 
@@ -100,9 +100,9 @@ Or directly in the Claude Desktop configuration:
 ```json
 {
   "mcpServers": {
-    "memento": {
+    "neo4j-kg": {
       "command": "/path/to/node",
-      "args": ["/path/to/memento-mcp/dist/index.js"],
+      "args": ["/path/to/mcp-neo4j-knowledge-graph/dist/index.js"],
       "env": {
         "MEMORY_STORAGE_TYPE": "neo4j",
         "NEO4J_URI": "bolt://localhost:7687",
@@ -151,7 +151,7 @@ For vector search functionality, an embedding service is required:
 
 ### Vector Search Implementation
 
-Memento MCP implements vector search using Neo4j's built-in vector index capabilities:
+This MCP server implements vector search using Neo4j's built-in vector index capabilities:
 
 1. **Entity Embeddings**: Each entity in the knowledge graph can have an associated vector embedding generated from its observations using OpenAI's embedding models
 2. **Vector Index**: The system creates and maintains a vector index over entity embeddings for efficient similarity search
