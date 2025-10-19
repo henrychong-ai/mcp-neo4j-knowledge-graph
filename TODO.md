@@ -251,4 +251,4 @@ act push -j publish --secret NPM_TOKEN=...  # Test publish job
 ---
 
 **Last Updated:** 2025-10-19
-**Session Context:** v1.0.6 prepared but not published - OIDC publishing blocked on npm Trusted Publisher configuration
+**Session Context:** v1.0.6 prepared, testing OIDC publish after fixing workflow filename configuration (filename only, no path prefix)
