@@ -1,77 +1,43 @@
 # Neo4j Knowledge Graph MCP Server
 
-![Memento MCP Logo](assets/memento-logo-gray.svg)
+Scalable, high-performance knowledge graph memory system with semantic retrieval, contextual recall, and temporal awareness. Provides any LLM client supporting MCP (e.g., Claude Desktop, Cursor, GitHub Copilot) with resilient, adaptive, and persistent long-term ontological memory.
 
-Scalable, high performance knowledge graph memory system with semantic retrieval, contextual recall, and temporal awareness. Provides any LLM client that supports the model context protocol (e.g., Claude Desktop, Cursor, Github Copilot) with resilient, adaptive, and persistent long-term ontological memory.
+**Maintained by** [Henry Chong](https://github.com/henrychong-ai)
 
-[![Memento MCP Tests](https://github.com/gannonh/memento-mcp/actions/workflows/memento-mcp.yml/badge.svg)](https://github.com/gannonh/memento-mcp/actions/workflows/memento-mcp.yml)
+[![Neo4j Knowledge Graph MCP CI](https://github.com/henrychong-ai/mcp-neo4j-knowledge-graph/actions/workflows/mcp-neo4j-knowledge-graph.yml/badge.svg)](https://github.com/henrychong-ai/mcp-neo4j-knowledge-graph/actions/workflows/mcp-neo4j-knowledge-graph.yml)
 
 ---
 
-## 🔧 Fork Notice
+## Installation
 
-**This is a maintained fork of [@gannonh/memento-mcp](https://github.com/gannonh/memento-mcp)** with critical bug fixes and active maintenance.
+### Global Installation with npx (Recommended)
 
-### What's Fixed
-
-#### v1.0.5 (Latest) - BigInt Conversion Bug
-
-**Problem**: Temporal versioning operations (`add_observations`, `delete_observations`, `update_relation`) failed with:
-```
-TypeError: Cannot mix BigInt and other types, use explicit conversions
-```
-
-**Root Cause**: Neo4j driver returns integer fields as JavaScript BigInt, but code performed arithmetic without conversion.
-
-**Solution**: Applied explicit `Number()` conversion before all version arithmetic operations in 3 critical locations.
-
-**Status**: ✅ Fully resolved, all 287 tests passing
-
-#### v1.0.4 - Partial BigInt Fix
-
-Fixed BigInt conversion for `createdAt` field assignments but missed version arithmetic (completed in v1.0.5).
-
-#### Original Fork Fixes - JSON Parsing & Architecture
-
-The original fork addressed **JSON parsing errors** and architectural issues in the upstream package:
-
-```
-SyntaxError: Unexpected token 'F', "Framework:"... is not valid JSON
-```
-
-**Solutions Implemented**:
-- ✅ Uses `neo4j-driver` directly for all database operations (no subprocess)
-- ✅ Proper transaction management with commit/rollback
-- ✅ Parameterized Cypher queries to prevent injection
-- ✅ Professional error handling and connection pooling
-- ✅ All 287 unit tests passing
-- ✅ Zero security vulnerabilities
-
-#### Known Issue: Schema Constraint Configuration
-
-After v1.0.5, temporal versioning requires a **composite uniqueness constraint** in your Neo4j database:
-
-```cypher
-CREATE CONSTRAINT entity_name
-FOR (e:Entity)
-REQUIRE (e.name, e.validTo) IS UNIQUE;
-```
-
-If you see `Node already exists` errors, your database has an old single-field constraint. See `docs/SCHEMA_CONSTRAINT_FIX.md` for diagnosis and fix instructions.
-
-See [INVESTIGATION.md](INVESTIGATION.md) for detailed technical analysis.
-
-### Installation
+You can run this Neo4j Knowledge Graph MCP server directly using npx:
 
 ```bash
-# Use this fork instead of the upstream package
 npx @henrychong-ai/mcp-neo4j-knowledge-graph
 ```
 
-### Attribution
+This method is recommended for use with Claude Desktop and other MCP-compatible clients.
 
-Original work by [Gannon Hall](https://github.com/gannonh) - [@gannonh/memento-mcp](https://github.com/gannonh/memento-mcp)
-Fork maintained by [Henry Chong](https://github.com/henrychong-ai)
+### Local Development
+
+For development or contributing to the project:
+
+```bash
+# Clone the repository
+git clone https://github.com/henrychong-ai/mcp-neo4j-knowledge-graph.git
+cd mcp-neo4j-knowledge-graph
+
+# Install dependencies
+npm install
+
+# Build the project
+npm run build
+
+# Run tests
+npm test
+```
 
 ---
 
@@ -125,7 +91,7 @@ Example:
 
 ## Storage Backend
 
-Memento MCP uses Neo4j as its storage backend, providing a unified solution for both graph storage and vector search capabilities.
+This MCP server uses Neo4j as its storage backend, providing a unified solution for both graph storage and vector search capabilities.
 
 ### Why Neo4j?
 
@@ -237,7 +203,7 @@ cp -r ./neo4j-data ./neo4j-data-backup-$(date +%Y%m%d)
 
 ### Neo4j CLI Utilities
 
-Memento MCP includes command-line utilities for managing Neo4j operations:
+This MCP server includes command-line utilities for managing Neo4j operations:
 
 #### Testing Connection
 
@@ -253,7 +219,7 @@ npm run neo4j:test -- --uri bolt://127.0.0.1:7687 --username myuser --password m
 
 #### Initializing Schema
 
-For normal operation, Neo4j schema initialization happens automatically when Memento MCP connects to the database. You don't need to run any manual commands for regular usage.
+For normal operation, Neo4j schema initialization happens automatically when the MCP server connects to the database. You don't need to run any manual commands for regular usage.
 
 The following commands are only necessary for development, testing, or advanced customization scenarios:
 
@@ -471,7 +437,7 @@ The following tools are available to LLM client hosts through the Model Context 
 
 ### Environment Variables
 
-Configure Memento MCP with these environment variables:
+Configure the MCP server with these environment variables:
 
 ```bash
 # Neo4j Connection Settings
@@ -543,7 +509,7 @@ Add this to your `claude_desktop_config.json`:
 ```json
 {
   "mcpServers": {
-    "memento": {
+    "neo4j-kg": {
       "command": "npx",
       "args": ["-y", "@henrychong-ai/mcp-neo4j-knowledge-graph"],
       "env": {
@@ -569,9 +535,9 @@ Alternatively, for local development, you can use:
 ```json
 {
   "mcpServers": {
-    "memento": {
+    "neo4j-kg": {
       "command": "/path/to/node",
-      "args": ["/path/to/memento-mcp/dist/index.js"],
+      "args": ["/path/to/mcp-neo4j-knowledge-graph/dist/index.js"],
       "env": {
         "MEMORY_STORAGE_TYPE": "neo4j",
         "NEO4J_URI": "bolt://127.0.0.1:7687",
@@ -597,9 +563,9 @@ Alternatively, for local development, you can use:
 For optimal integration with Claude, add these statements to your system prompt:
 
 ```
-You have access to the Memento MCP knowledge graph memory system, which provides you with persistent memory capabilities.
-Your memory tools are provided by Memento MCP, a sophisticated knowledge graph implementation.
-When asked about past conversations or user information, always check the Memento MCP knowledge graph first.
+You have access to a Neo4j knowledge graph memory system, which provides you with persistent memory capabilities.
+Your memory tools are provided by a sophisticated knowledge graph implementation.
+When asked about past conversations or user information, always check the knowledge graph first.
 You should use semantic_search to find relevant information in your memory when answering questions.
 ```
 
@@ -629,7 +595,7 @@ The power of this approach is that users can interact naturally, while the LLM h
 
 ### Real-World Applications
 
-Memento's adaptive search capabilities provide practical benefits:
+The adaptive search capabilities provide practical benefits:
 
 1. **Query Versatility**: Users don't need to worry about how to phrase questions - the system adapts to different query types automatically
 
@@ -643,9 +609,21 @@ For example, when a user asks "What do you know about machine learning?", the sy
 
 ## Troubleshooting
 
+### Schema Constraint Configuration
+
+Temporal versioning requires a **composite uniqueness constraint** in your Neo4j database:
+
+```cypher
+CREATE CONSTRAINT entity_name
+FOR (e:Entity)
+REQUIRE (e.name, e.validTo) IS UNIQUE;
+```
+
+If you see `Node already exists` errors, your database has an old single-field constraint. See `docs/SCHEMA_CONSTRAINT_FIX.md` for diagnosis and fix instructions.
+
 ### Vector Search Diagnostics
 
-Memento MCP includes built-in diagnostic capabilities to help troubleshoot vector search issues:
+The MCP server includes built-in diagnostic capabilities to help troubleshoot vector search issues:
 
 - **Embedding Verification**: The system checks if entities have valid embeddings and automatically generates them if missing
 - **Vector Index Status**: Verifies that the vector index exists and is in the ONLINE state
@@ -707,41 +685,10 @@ npm test
 npm run test:coverage
 ```
 
-## Installation
-
-### Global Installation with npx (Recommended)
-
-You can run this Neo4j Knowledge Graph MCP server directly using npx without installing it globally:
-
-```bash
-npx -y @henrychong-ai/mcp-neo4j-knowledge-graph
-```
-
-This method is recommended for use with Claude Desktop and other MCP-compatible clients.
-
-### Local Development
-
-For development or contributing to the project:
-
-```bash
-# Clone the repository
-git clone https://github.com/henrychong-ai/mcp-neo4j-knowledge-graph.git
-cd mcp-neo4j-knowledge-graph
-
-# Install dependencies
-npm install
-
-# Build the project
-npm run build
-
-# Run tests
-npm test
-```
-
-### Upstream Package
-
-For the original upstream package (without bug fixes), see [@gannonh/memento-mcp](https://www.npmjs.com/package/@gannonh/memento-mcp)
-
 ## License
 
-MIT
+MIT - see LICENSE file for details
+
+## Acknowledgments
+
+Built on foundational work by [Gannon Hall](https://github.com/gannonh). For the original implementation, see [@gannonh/memento-mcp](https://github.com/gannonh/memento-mcp).

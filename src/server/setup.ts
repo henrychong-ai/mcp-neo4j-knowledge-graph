@@ -14,10 +14,10 @@ export function setupServer(knowledgeGraphManager: any): Server {
   // Create server instance
   const server = new Server(
     {
-      name: 'memento-mcp',
+      name: 'mcp-neo4j-knowledge-graph',
       version: '1.0.0',
-      description: 'Memento MCP: Your persistent knowledge graph memory system',
-      publisher: 'gannonh',
+      description: 'Neo4j Knowledge Graph: Your persistent knowledge graph memory system',
+      publisher: 'henrychong-ai',
     },
     {
       capabilities: {

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**@henrychong-ai/mcp-neo4j-knowledge-graph** is a Model Context Protocol (MCP) server implementing a Neo4j-based knowledge graph with temporal versioning and semantic search capabilities. It's a fork of @gannonh/memento-mcp with bug fixes and active maintenance.
+**@henrychong-ai/mcp-neo4j-knowledge-graph** is a Model Context Protocol (MCP) server implementing a Neo4j-based knowledge graph with temporal versioning and semantic search capabilities. Maintained by Henry Chong, built on foundational work by Gannon Hall.
 
 **Key Features:**
 - Temporal versioning for entities and relations (track historical changes)
@@ -253,18 +253,18 @@ REQUIRE (e.name, e.validTo) IS UNIQUE;
 
 **Status**: ⚠️ Requires manual database update per installation
 
-### Pre-Fork Version Issues
+### Historical Context
 
-**v1.0.3 and earlier**: Original upstream package (`@gannonh/memento-mcp`) had JSON parsing errors and subprocess-based Neo4j operations causing failures.
+**Original Implementation Issues**: Earlier versions of the codebase had JSON parsing errors and subprocess-based Neo4j operations causing failures.
 
-**Fork Improvements** (inherited from initial fork):
+**Key Improvements Made**:
 - ✅ Direct `neo4j-driver` usage (no subprocess)
 - ✅ Proper transaction management
 - ✅ Parameterized queries
 - ✅ Professional error handling
 - ✅ Connection pooling
 
-See `INVESTIGATION.md` for detailed technical analysis of original issues.
+See `INVESTIGATION.md` for detailed technical analysis.
 
 ## Critical Implementation Patterns
 

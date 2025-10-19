@@ -10,10 +10,10 @@ vi.mock('@modelcontextprotocol/sdk/server/index.js', () => {
     Server: vi.fn(function () {
       return {
         _serverInfo: {
-          name: 'memento-mcp',
+          name: 'mcp-neo4j-knowledge-graph',
           version: '1.0.0',
-          description: 'Memento MCP: Your persistent knowledge graph memory system',
-          publisher: 'gannonh',
+          description: 'Neo4j Knowledge Graph: Your persistent knowledge graph memory system',
+          publisher: 'henrychong-ai',
         },
         _options: {
           capabilities: {
@@ -105,10 +105,10 @@ describe('setupServer', () => {
     // Assert server was created with the right parameters
     expect(ServerMock).toHaveBeenCalledWith(
       {
-        name: 'memento-mcp',
+        name: 'mcp-neo4j-knowledge-graph',
         version: '1.0.0',
-        description: 'Memento MCP: Your persistent knowledge graph memory system',
-        publisher: 'gannonh',
+        description: 'Neo4j Knowledge Graph: Your persistent knowledge graph memory system',
+        publisher: 'henrychong-ai',
       },
       {
         capabilities: {
