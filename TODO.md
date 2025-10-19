@@ -2,63 +2,7 @@
 
 ## 🚀 High Priority
 
-### 1. Enable Automated npm Publishing via GitHub Actions
-
-**Current State:**
-- GitHub Actions workflow exists at `.github/workflows/mcp-neo4j-knowledge-graph.yml`
-- Publish job is disabled (line 117: `if: false`)
-- Package name reference is incorrect (references old upstream package)
-
-**Required Actions:**
-
-#### Step 1: Update GitHub Actions Workflow
-Edit `.github/workflows/mcp-neo4j-knowledge-graph.yml`:
-
-```yaml
-# Line 117: Change from
-if: false  # Disabled - using manual npm publish workflow
-
-# To
-if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-```
-
-#### Step 2: Fix Package Name in Version Check
-Edit line 150 in the workflow:
-
-```yaml
-# Change from
-if LATEST_VERSION=$(npm view @gannonh/memento-mcp version 2>/dev/null); then
-
-# To
-if LATEST_VERSION=$(npm view @henrychong-ai/mcp-neo4j-knowledge-graph version 2>/dev/null); then
-```
-
-#### Step 3: Configure GitHub Secrets
-Add `NPM_TOKEN` secret to GitHub repository:
-
-1. Go to https://github.com/henrychong-ai/mcp-neo4j-knowledge-graph/settings/secrets/actions
-2. Click "New repository secret"
-3. Name: `NPM_TOKEN`
-4. Value: [Get from https://www.npmjs.com/settings/YOUR_USERNAME/tokens]
-   - Create token with "Automation" type
-   - Grant "Read and write" permissions
-
-#### Step 4: Test Workflow
-1. Make a version bump: `npm version patch` (or `minor`/`major`)
-2. Update CHANGELOG.md with changes
-3. Commit changes: `git commit -am "Bump version to X.Y.Z"`
-4. Push to main: `git push origin main`
-5. Monitor workflow: https://github.com/henrychong-ai/mcp-neo4j-knowledge-graph/actions
-
-**Expected Behavior:**
-- Pushes to `main` branch trigger workflow
-- Build and tests run
-- If version in `package.json` > published version → auto-publish to npm
-- If version unchanged → skip publish step
-
-**Documentation:**
-- GitHub Actions npm publish: https://docs.github.com/en/actions/publishing-packages/publishing-nodejs-packages
-- npm tokens: https://docs.npmjs.com/creating-and-viewing-access-tokens
+**No high priority tasks remaining - all completed!**
 
 ---
 
@@ -173,7 +117,24 @@ async createVectorIndex(/* params */): Promise<void> {
 
 ---
 
-## ✅ Completed This Session
+## ✅ Completed
+
+### Automated Publishing & OIDC Migration (2025-10-19)
+- ✅ **Enabled automated npm publishing** via GitHub Actions
+  - Fixed package name in version comparison
+  - Added `--access public` flag for scoped package
+  - Added `semver` to devDependencies
+- ✅ **Migrated to OIDC Trusted Publishing**
+  - Configured npm Trusted Publisher
+  - Added `permissions.id-token: write` to workflow
+  - Added `--provenance` flag for cryptographic attestation
+  - Removed NPM_TOKEN dependency (no 90-day rotation needed)
+  - Tested successfully - workflow runs and skips publish correctly
+- ✅ **Benefits achieved:**
+  - Zero token maintenance (ephemeral OIDC tokens)
+  - Enhanced security (no long-lived secrets)
+  - Cryptographic build provenance
+  - Automatic publish on version bumps
 
 ### Schema Constraint Fix (2025-10-17)
 - ✅ Identified conflicting constraints blocking temporal versioning
@@ -185,35 +146,35 @@ async createVectorIndex(/* params */): Promise<void> {
 - ✅ Updated documentation (CLAUDE.md, README.md, CHANGELOG.md)
 - ✅ Created `docs/SCHEMA_CONSTRAINT_FIX.md` guide
 
-### Documentation Updates
+### Documentation Updates (2025-10-17)
 - ✅ `CLAUDE.md`: Added comprehensive version history and BigInt fix patterns
 - ✅ `README.md`: Updated "What's Fixed" section with v1.0.4-1.0.5 details
 - ✅ `CHANGELOG.md`: Added complete version history from v1.0.0 to v1.0.5
 - ✅ `docs/SCHEMA_CONSTRAINT_FIX.md`: Created diagnostic and fix guide
+- ✅ `TODO.md`: Created task tracking and GitHub Actions setup guide
 
 ---
 
 ## 📝 Notes
 
 ### Version Publishing Workflow
-Current manual process:
+**Automated via OIDC (no tokens needed!):**
 ```bash
 # 1. Make changes and update CHANGELOG.md
+
 # 2. Bump version
 npm version patch  # or minor/major
 
-# 3. Build and test
-npm run build
-npm test
+# 3. Commit and push (automated publish triggers)
+git commit -am "Release vX.Y.Z"
+git push origin main --follow-tags
 
-# 4. Publish
-npm publish --access public
-
-# 5. Push to GitHub
-git push && git push --tags
+# GitHub Actions automatically:
+# - Builds and tests (287 tests)
+# - Checks version (current vs published)
+# - Publishes to npm via OIDC with provenance
+# - No token rotation ever needed!
 ```
-
-Once GitHub Actions is enabled, steps 3-4 will be automated on push to `main`.
 
 ### Testing GitHub Actions Locally
 Use `act` to test workflows locally before pushing:
@@ -225,5 +186,5 @@ act push -j publish --secret NPM_TOKEN=...  # Test publish job
 
 ---
 
-**Last Updated:** 2025-10-17
-**Session Context:** Schema constraint fix and KG validation complete
+**Last Updated:** 2025-10-19
+**Session Context:** OIDC Trusted Publishing operational, automated npm publishing enabled
