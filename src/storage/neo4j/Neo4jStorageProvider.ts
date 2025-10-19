@@ -7,7 +7,7 @@ import { Neo4jConnectionManager } from './Neo4jConnectionManager.js';
 import { DEFAULT_NEO4J_CONFIG, type Neo4jConfig } from './Neo4jConfig.js';
 import { Neo4jSchemaManager } from './Neo4jSchemaManager.js';
 import { logger } from '../../utils/logger.js';
-import neo4j from 'neo4j-driver';
+import neo4j, { isInt } from 'neo4j-driver';
 import { Neo4jVectorStore } from './Neo4jVectorStore.js';
 import { EmbeddingServiceFactory } from '../../embeddings/EmbeddingServiceFactory.js';
 import type { EmbeddingService } from '../../embeddings/EmbeddingService.js';
@@ -205,24 +205,43 @@ export class Neo4jStorageProvider implements StorageProvider {
   }
 
   /**
+   * Safely convert Neo4j Integer objects to JavaScript numbers
+   * @param value Value from Neo4j that might be an Integer object
+   * @returns Converted number, or null/undefined if input was null/undefined
+   */
+  private convertNeo4jInt(value: unknown): number | null | undefined {
+    if (value === null) return null;
+    if (value === undefined) return undefined;
+    if (isInt(value)) return (value as neo4j.Integer).toNumber();
+    return Number(value);
+  }
+
+  /**
    * Convert a Neo4j node to an entity object
    * @param node Neo4j node properties
    * @returns Entity object
    */
   private nodeToEntity(node: Record<string, unknown>): ExtendedEntity {
-    const observations =
-      typeof node.observations === 'string' ? JSON.parse(node.observations as string) : [];
+    // Handle observations - Neo4j can return as string (JSON) or array
+    let observations: string[];
+    if (typeof node.observations === 'string') {
+      observations = JSON.parse(node.observations as string);
+    } else if (Array.isArray(node.observations)) {
+      observations = node.observations;
+    } else {
+      observations = [];
+    }
 
     return {
       name: node.name as string,
       entityType: node.entityType as string,
       observations,
       id: node.id as string | undefined,
-      version: node.version as number | undefined,
-      createdAt: node.createdAt as number | undefined,
-      updatedAt: node.updatedAt as number | undefined,
-      validFrom: node.validFrom as number | undefined,
-      validTo: node.validTo as number | null | undefined,
+      version: this.convertNeo4jInt(node.version) as number | undefined,
+      createdAt: this.convertNeo4jInt(node.createdAt) as number | undefined,
+      updatedAt: this.convertNeo4jInt(node.updatedAt) as number | undefined,
+      validFrom: this.convertNeo4jInt(node.validFrom) as number | undefined,
+      validTo: this.convertNeo4jInt(node.validTo) as number | null | undefined,
       changedBy: node.changedBy as string | null | undefined,
     };
   }
@@ -247,9 +266,10 @@ export class Neo4jStorageProvider implements StorageProvider {
     toNode: string
   ): Relation {
     // Extract timestamps from the Neo4j relation for metadata
+    // Convert Neo4j Integer objects to numbers
     const now = Date.now();
-    const createdAt = (rel.createdAt as number) || now;
-    const updatedAt = (rel.updatedAt as number) || now;
+    const createdAt = this.convertNeo4jInt(rel.createdAt) || now;
+    const updatedAt = this.convertNeo4jInt(rel.updatedAt) || now;
 
     // Create metadata with required fields
     const metadata = {
@@ -268,14 +288,17 @@ export class Neo4jStorageProvider implements StorageProvider {
     }
 
     // Create a standard Relation object with proper type handling
+    // Convert Neo4j Integer objects for strength and confidence
+    const strength = this.convertNeo4jInt(rel.strength);
+    const confidence = this.convertNeo4jInt(rel.confidence);
+
     return {
       from: fromNode,
       to: toNode,
       relationType: rel.relationType as string,
       // Convert null to undefined for compatibility with Relation interface
-      strength: (rel.strength as number | null) === null ? undefined : (rel.strength as number),
-      confidence:
-        (rel.confidence as number | null) === null ? undefined : (rel.confidence as number),
+      strength: strength === null ? undefined : (strength as number),
+      confidence: confidence === null ? undefined : (confidence as number),
       metadata,
     };
   }
