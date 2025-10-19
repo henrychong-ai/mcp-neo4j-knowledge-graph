@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.2] - 2025-10-20
+
+### Changed
+
+- **Repository Model**: Reverted to private GitHub repository with public npm package
+  - Removed `--provenance` flag from publish workflow (requires public repos)
+  - Maintained automated OIDC publishing to npm (fully functional with private repos)
+  - GitHub Actions automated publish continues to work seamlessly
+
+### Documentation
+
+- **README.md**: Updated to reflect private repository + public npm package model
+  - Removed git clone instructions from "Local Development" section
+  - Replaced "Building and Development" with "Package Information" section
+  - Added clear explanation that source code is private, npm package is public
+  - Clarified that compiled code, docs, and type definitions available via npm
+  - Updated installation instructions to focus on npm
+
+### Technical Details
+
+- **Repository Status**: Private on GitHub, public on npm
+- **Published Package**: @henrychong-ai/mcp-neo4j-knowledge-graph
+- **Automated Publishing**: Continues via GitHub Actions with OIDC authentication
+- **Users**: Full functionality available via npm, source code remains private
+
 ## [1.1.1] - 2025-10-20
 
 ### Fixed

@@ -20,24 +20,19 @@ npx @henrychong-ai/mcp-neo4j-knowledge-graph
 
 This method is recommended for use with Claude Desktop and other MCP-compatible clients.
 
-### Local Development
+### npm Installation
 
-For development or contributing to the project:
+For local use or development:
 
 ```bash
-# Clone the repository
-git clone https://github.com/henrychong-ai/mcp-neo4j-knowledge-graph.git
-cd mcp-neo4j-knowledge-graph
+# Install the package
+npm install -g @henrychong-ai/mcp-neo4j-knowledge-graph
 
-# Install dependencies
-npm install
-
-# Build the project
-npm run build
-
-# Run tests
-npm test
+# Or use locally in your project
+npm install @henrychong-ai/mcp-neo4j-knowledge-graph
 ```
+
+> **Note**: This package is maintained in a private GitHub repository but published publicly to npm. The compiled code, documentation, and full functionality are available through npm installation.
 
 ---
 
@@ -665,25 +660,17 @@ docker-compose up -d neo4j
 npm run neo4j:init
 ```
 
-## Building and Development
+## Package Information
 
-```bash
-# Clone the repository
-git clone https://github.com/henrychong-ai/mcp-neo4j-knowledge-graph.git
-cd mcp-neo4j-knowledge-graph
+This package is maintained in a private GitHub repository but published publicly to npm:
 
-# Install dependencies
-npm install
+- **npm Package**: [@henrychong-ai/mcp-neo4j-knowledge-graph](https://www.npmjs.com/package/@henrychong-ai/mcp-neo4j-knowledge-graph)
+- **Installation**: `npm install @henrychong-ai/mcp-neo4j-knowledge-graph`
+- **Published Contents**: Compiled JavaScript (dist/), documentation, and type definitions
+- **License**: MIT
+- **Automated Publishing**: GitHub Actions with OIDC authentication
 
-# Build the project
-npm run build
-
-# Run tests
-npm test
-
-# Check test coverage
-npm run test:coverage
-```
+The npm package includes everything needed to use this MCP server - compiled code, documentation, and type definitions. Source TypeScript files and development tooling remain in the private repository.
 
 ## License
 
