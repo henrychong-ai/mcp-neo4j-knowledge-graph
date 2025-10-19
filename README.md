@@ -10,19 +10,36 @@ Scalable, high performance knowledge graph memory system with semantic retrieval
 
 ## 🔧 Fork Notice
 
-**This is a maintained fork of [@gannonh/memento-mcp](https://github.com/gannonh/memento-mcp)** with critical bug fixes and improvements.
+**This is a maintained fork of [@gannonh/memento-mcp](https://github.com/gannonh/memento-mcp)** with critical bug fixes and active maintenance.
 
 ### What's Fixed
 
-This fork addresses a **JSON parsing error** that occurred in the `addObservations` MCP tool in the published npm package:
+#### v1.0.5 (Latest) - BigInt Conversion Bug
+
+**Problem**: Temporal versioning operations (`add_observations`, `delete_observations`, `update_relation`) failed with:
+```
+TypeError: Cannot mix BigInt and other types, use explicit conversions
+```
+
+**Root Cause**: Neo4j driver returns integer fields as JavaScript BigInt, but code performed arithmetic without conversion.
+
+**Solution**: Applied explicit `Number()` conversion before all version arithmetic operations in 3 critical locations.
+
+**Status**: ✅ Fully resolved, all 287 tests passing
+
+#### v1.0.4 - Partial BigInt Fix
+
+Fixed BigInt conversion for `createdAt` field assignments but missed version arithmetic (completed in v1.0.5).
+
+#### Original Fork Fixes - JSON Parsing & Architecture
+
+The original fork addressed **JSON parsing errors** and architectural issues in the upstream package:
 
 ```
 SyntaxError: Unexpected token 'F', "Framework:"... is not valid JSON
 ```
 
-**Root Cause**: The published npm package version had inconsistencies that caused parsing failures when adding observations to entities.
-
-**Solution**: This fork:
+**Solutions Implemented**:
 - ✅ Uses `neo4j-driver` directly for all database operations (no subprocess)
 - ✅ Proper transaction management with commit/rollback
 - ✅ Parameterized Cypher queries to prevent injection
@@ -30,7 +47,19 @@ SyntaxError: Unexpected token 'F', "Framework:"... is not valid JSON
 - ✅ All 287 unit tests passing
 - ✅ Zero security vulnerabilities
 
-See [INVESTIGATION.md](INVESTIGATION.md) for detailed technical analysis of the fix.
+#### Known Issue: Schema Constraint Configuration
+
+After v1.0.5, temporal versioning requires a **composite uniqueness constraint** in your Neo4j database:
+
+```cypher
+CREATE CONSTRAINT entity_name
+FOR (e:Entity)
+REQUIRE (e.name, e.validTo) IS UNIQUE;
+```
+
+If you see `Node already exists` errors, your database has an old single-field constraint. See `docs/SCHEMA_CONSTRAINT_FIX.md` for diagnosis and fix instructions.
+
+See [INVESTIGATION.md](INVESTIGATION.md) for detailed technical analysis.
 
 ### Installation
 

@@ -114,7 +114,7 @@ jobs:
   publish:
     name: Publish to npm
     needs: build
-    if: false  # Disabled - using manual npm publish workflow
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
     
     steps:
@@ -147,7 +147,7 @@ jobs:
         echo "Current version in package.json: $CURRENT_VERSION"
         
         # Get latest version from npm (if it exists)
-        if LATEST_VERSION=$(npm view @gannonh/memento-mcp version 2>/dev/null); then
+        if LATEST_VERSION=$(npm view @henrychong-ai/mcp-neo4j-knowledge-graph version 2>/dev/null); then
           echo "Latest published version: $LATEST_VERSION"
           
           # Compare versions using node
@@ -166,7 +166,7 @@ jobs:
       
     - name: Publish to npm
       if: steps.check_version.outputs.is_higher == 'true'
-      run: npm publish
+      run: npm publish --access public
       env:
         NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         
