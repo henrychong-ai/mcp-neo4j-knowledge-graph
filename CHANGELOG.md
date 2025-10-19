@@ -5,6 +5,62 @@ All notable changes to Memento MCP will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.5] - 2025-10-17
+
+### Fixed
+
+- **Critical BigInt Conversion Bug in Temporal Versioning**: Fixed `Cannot mix BigInt and other types` error in version arithmetic operations
+  - Fixed `Neo4jStorageProvider.ts:902` - addObservations entity version increment
+  - Fixed `Neo4jStorageProvider.ts:1211` - deleteObservations entity version increment
+  - Fixed `Neo4jStorageProvider.ts:1432` - updateRelation relation version increment
+- Applied correct pattern: `(value ? Number(value) : 0) + 1` instead of `(value || 0) + 1`
+- All 287 unit tests passing with temporal versioning fully functional
+
+### Documentation
+
+- Added comprehensive BigInt conversion documentation in CLAUDE.md
+- Created schema constraint fix guide: `docs/SCHEMA_CONSTRAINT_FIX.md`
+- Documented temporal versioning workflow and implementation patterns
+
+## [1.0.4] - 2025-10-17
+
+### Fixed
+
+- **Partial BigInt Conversion Fix**: Applied Number() conversion to createdAt field assignments
+  - Fixed line 985: Entity creation with existing createdAt
+  - Fixed line 1026: Outgoing relation recreation during entity update
+  - Fixed line 1065: Incoming relation recreation during entity update
+
+### Known Issues
+
+- Version arithmetic still had BigInt conversion issues (fixed in v1.0.5)
+
+## [1.0.3] - 2025-10-17
+
+### Changed
+
+- Version bump for npm publication
+
+## [1.0.2] - 2025-10-17
+
+### Added
+
+- Backward compatibility for legacy entities without temporal versioning
+
+## [1.0.1] - 2025-10-17
+
+### Fixed
+
+- JSON parsing bug in addObservations and deleteObservations handlers
+
+## [1.0.0] - 2025-10-17
+
+### Changed
+
+- **Initial Fork Publication**: Published as @henrychong-ai/mcp-neo4j-knowledge-graph
+- Fixed npm scope from @henrychong to @henrychong-ai to match npm username
+- Forked from @gannonh/memento-mcp with bug fixes and active maintenance
+
 ## [0.3.9] - 2025-05-08
 
 ### Changed
