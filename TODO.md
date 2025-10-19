@@ -50,18 +50,29 @@ run: npm publish --access public
 
 **Timeline**: Complete cleanup → Release v1.0.7 → Make repository public
 
-**MIT License Compliance Requirements** ⚖️
+**License Decision** ⚖️
+
+**✅ CONFIRMED: MIT License (Dual Copyright)**
+
+Keeping the original MIT license with dual copyright for your enhancements.
 
 **MUST KEEP** (Legal Requirement):
 - `LICENSE` file with Gannon Hall's copyright notice (line 3)
 - This is **non-negotiable** under MIT license terms
 
-**MUST ADD** (Best Practice):
+**MUST ADD** (Dual Copyright):
 - Add Henry Chong copyright to LICENSE for modifications:
   ```
   Copyright (c) 2025 Gannon Hall
   Copyright (c) 2025 Henry Chong (enhancements and maintenance)
   ```
+
+**Benefits:**
+- ✅ Maximum adoption in npm ecosystem
+- ✅ Clear MIT license compliance
+- ✅ Simple legal framework
+- ✅ MCP ecosystem standard
+- ✅ Fork-friendly for community
 
 **Comprehensive Cleanup Checklist**
 
