@@ -2,75 +2,203 @@
 
 ## 🚀 High Priority
 
-### 1. OIDC npm Publishing Configuration Issue
+### 1. OIDC npm Publishing - Private Repository Limitation
 
-**Status**: ⚠️ **BLOCKED** - Requires npm Trusted Publisher configuration verification
+**Status**: ✅ **RESOLVED** - Issue identified, solution ready to implement
 
-**Problem**:
-GitHub Actions workflow configured for OIDC publishing, but encountering authentication/authorization errors:
-
-**Error History**:
-1. **First attempt** (with `registry-url`):
-   ```
-   npm error 404 Not Found - PUT https://registry.npmjs.org/@henrychong-ai%2fmcp-neo4j-knowledge-graph
-   npm error 404  '@henrychong-ai/mcp-neo4j-knowledge-graph@1.0.6' is not in this registry.
-   ```
-   - Suggests OIDC token was used but npm rejected publish (possible Trusted Publisher config mismatch)
-
-2. **Second attempt** (without `registry-url`):
-   ```
-   npm error code ENEEDAUTH
-   npm error need auth This command requires you to be logged in
-   ```
-   - No authentication mechanism available
-
-**Current Workflow Configuration**:
-- ✅ `permissions.id-token: write` set
-- ✅ `--provenance --access public` flags used
-- ✅ `registry-url` configured in setup-node
-- ❌ Authentication failing (404 or ENEEDAUTH errors)
-
-**Possible Root Causes**:
-1. **npm Trusted Publisher mismatch**: Repository, workflow, or environment name doesn't match configuration
-2. **Scope permissions**: `@henrychong-ai` scope may need additional OIDC configuration
-3. **Package vs Scope settings**: Trusted Publisher might need to be configured at scope level, not package level
-
-**Next Steps - Option A (OIDC - Recommended if we can fix it)**:
-1. Verify npm Trusted Publisher configuration:
-   - Go to https://www.npmjs.com/settings/henrychong-ai/packages/@henrychong-ai/mcp-neo4j-knowledge-graph/access
-   - Check "Publishing access" → "Automation tokens"
-   - Verify GitHub Actions configuration matches:
-     - Repository: `henrychong-ai/mcp-neo4j-knowledge-graph`
-     - Workflow: `.github/workflows/mcp-neo4j-knowledge-graph.yml`
-     - Environment: (leave blank or set to match workflow environment if specified)
-2. If configuration looks correct, try creating Trusted Publisher at **scope level** instead of package level
-3. Test with manual workflow trigger: `gh workflow run mcp-neo4j-knowledge-graph.yml`
-
-**Next Steps - Option B (Granular Access Token - Fallback)**:
-If OIDC debugging takes too long:
-1. Generate granular access token (90-day expiration):
-   - Go to https://www.npmjs.com/settings/henrychong-ai/tokens
-   - "Generate New Token" → "Granular Access Token"
-   - Permissions: "Read and write" for `@henrychong-ai/mcp-neo4j-knowledge-graph`
-   - Expiration: 90 days (maximum allowed)
-2. Add as GitHub secret: `NPM_TOKEN`
-3. Update workflow to use `NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}`
-4. Remove `--provenance` flag (not needed with access tokens)
-5. Set calendar reminder to rotate token every 85 days
-
-**Next Steps - Option C (Manual Publishing - Temporary)**:
-For v1.0.6 specifically:
-```bash
-npm run build
-npm publish --access public
+**Root Cause**:
+The `--provenance` flag requires a **public GitHub repository**. Current error:
+```
+npm error 422 Unprocessable Entity - Error verifying sigstore provenance bundle:
+Unsupported GitHub Actions source repository visibility: "private".
+Only public source repositories are supported when publishing with provenance.
 ```
 
-**Files Modified**:
-- `.github/workflows/mcp-neo4j-knowledge-graph.yml` - Workflow attempts OIDC publishing
-- `package.json` - Version bumped to 1.0.6
-- `CHANGELOG.md` - v1.0.6 entry added
+**Resolution**:
+Repository is intentionally kept **private** until pre-public cleanup is complete (see task #2).
 
-**Decision Needed**: Choose Option A, B, or C to proceed
+**Immediate Fix for v1.0.6**:
+Remove `--provenance` flag from workflow. OIDC publishing will work perfectly without it.
+
+```yaml
+# Change from:
+run: npm publish --provenance --access public
+
+# To:
+run: npm publish --access public
+```
+
+**What We Keep Without Provenance**:
+- ✅ OIDC authentication (no token rotation)
+- ✅ Automated publishing via GitHub Actions
+- ✅ Secure, ephemeral OIDC tokens
+- ✅ Public package access
+
+**What We Lose Without Provenance**:
+- ❌ Cryptographic build attestation
+- ❌ Sigstore verification linking package to source
+
+**Future**: After making repo public (task #2), can re-enable `--provenance` flag.
+
+---
+
+### 2. Pre-Public Repository Cleanup
+
+**Status**: 📋 **PLANNED** - For v1.0.7 release before making repository public
+
+**Goal**: Transition from "fork narrative" to "maintained by Henry Chong" identity while maintaining MIT license compliance.
+
+**Timeline**: Complete cleanup → Release v1.0.7 → Make repository public
+
+**MIT License Compliance Requirements** ⚖️
+
+**MUST KEEP** (Legal Requirement):
+- `LICENSE` file with Gannon Hall's copyright notice (line 3)
+- This is **non-negotiable** under MIT license terms
+
+**MUST ADD** (Best Practice):
+- Add Henry Chong copyright to LICENSE for modifications:
+  ```
+  Copyright (c) 2025 Gannon Hall
+  Copyright (c) 2025 Henry Chong (enhancements and maintenance)
+  ```
+
+**Comprehensive Cleanup Checklist**
+
+**Documentation Files**:
+
+1. **README.md** (HIGH IMPACT)
+   - ❌ Remove: Fork notice section (lines 11-76)
+   - ❌ Remove: GitHub Actions badge pointing to gannonh's repo (line 7)
+   - ❌ Remove: "Memento MCP" branding
+   - ❌ Remove: Comparative language ("this fork instead of upstream")
+   - ✅ Add: Professional opening establishing Henry Chong as maintainer
+   - ✅ Add: Acknowledgments section at bottom crediting Gannon Hall
+   - ✅ Update: All URLs from `gannonh/memento-mcp` to `henrychong-ai/mcp-neo4j-knowledge-graph`
+
+   **Suggested Opening**:
+   ```markdown
+   # Neo4j Knowledge Graph MCP Server
+
+   Scalable, high-performance knowledge graph memory system with semantic retrieval,
+   contextual recall, and temporal awareness. Provides any LLM client supporting MCP
+   with resilient, adaptive, and persistent long-term ontological memory.
+
+   **Maintained by** [Henry Chong](https://github.com/henrychong-ai)
+   **Built on foundational work by** [Gannon Hall](https://github.com/gannonh)
+   ```
+
+2. **CLAUDE.md**
+   - Update: Change "fork of @gannonh/memento-mcp" references
+   - Reframe: Present as maintained package with original attribution
+   - Keep: Technical bug fix documentation (accurate history)
+
+3. **CHANGELOG.md**
+   - Keep: All historical entries (accurate record)
+   - Update: v1.0.0 entry to mention original work without "fork" language
+
+4. **INVESTIGATION.md**
+   - Keep as-is OR move to `docs/` directory (historical documentation)
+
+5. **CONTRIBUTING.md**
+   - Review and update contribution guidelines for new identity
+
+**Package Metadata**:
+
+6. **package.json**
+   - Current: `"author": "Gannon Hall (original), Henry Chong (fork maintainer)"`
+   - Update to: `"author": "Henry Chong <henry@henrychong.ai>"`
+   - Add: `"contributors": ["Gannon Hall <gannon@example.com> (original author)"]`
+   - Update: `"description"` to remove "fork" language
+   - Update: `"homepage"` and repository URLs (already correct)
+
+**Source Code Files**:
+
+7. **src/server/setup.ts** (lines 17, 20)
+   ```typescript
+   // Change from:
+   name: 'memento-mcp',
+   publisher: 'gannonh',
+
+   // To:
+   name: 'mcp-neo4j-knowledge-graph',
+   publisher: 'henrychong-ai',
+   ```
+
+8. **src/server/__vitest__/setup.test.ts** (lines 13, 16, 108, 111)
+   - Update test assertions to match new metadata
+
+9. **src/embeddings/DefaultEmbeddingService.ts** (line 24)
+   ```typescript
+   // Change from:
+   modelName = 'memento-mcp-mock',
+
+   // To:
+   modelName = 'mcp-neo4j-knowledge-graph-mock',
+   ```
+
+10. **src/cli/cli-README.md** (line 105)
+    - Update path reference from `memento-mcp` to actual package name
+
+**Branding Assets**:
+
+11. **assets/** directory
+    - `memento-logo.svg` - Remove or replace
+    - `memento-logo-themed.svg` - Remove or replace
+    - `memento-logo-gray.svg` - Remove or replace (used in README line 3)
+
+    **Options**:
+    - A) Remove all logos, use text-only README header
+    - B) Create custom Neo4j KG branding
+    - C) Use simple Neo4j graph icon
+
+**Testing & Verification**:
+
+12. **Before Publishing v1.0.7**:
+    ```bash
+    # Verify all tests pass
+    npm test
+
+    # Verify build succeeds
+    npm run build
+
+    # Search for remaining references
+    grep -r "gannonh" . --exclude-dir=node_modules --exclude-dir=.git
+    grep -r "memento-mcp" . --exclude-dir=node_modules --exclude-dir=.git
+    grep -r "Gannon Hall" . --exclude-dir=node_modules --exclude-dir=.git
+
+    # Allowed results: LICENSE file only
+    ```
+
+**Post-Cleanup Actions**:
+
+13. **Release v1.0.7**:
+    - Update CHANGELOG.md with cleanup changes
+    - Bump version: `npm version minor`
+    - Test OIDC publish (without provenance, repo still private)
+    - Verify package works correctly
+
+14. **Make Repository Public**:
+    - Review all files one final time
+    - Settings → Change visibility to Public
+    - Add back `--provenance` flag to workflow
+    - Monitor npm package page and GitHub repo
+
+**Files Summary**:
+
+| File | Action | MIT Compliance |
+|------|--------|----------------|
+| LICENSE | Add Henry's copyright | Required: Keep Gannon's |
+| README.md | Remove fork narrative | Optional: Credit in acknowledgments |
+| CLAUDE.md | Reframe identity | Optional |
+| package.json | Update metadata | Optional: Add contributors field |
+| setup.ts | Update server name/publisher | Optional |
+| setup.test.ts | Update test assertions | Optional |
+| DefaultEmbeddingService.ts | Update mock model name | Optional |
+| assets/* | Remove/replace logos | Optional (not copyrighted) |
+
+**Expected Outcome**:
+Professional standalone project identity with proper attribution to original work, full MIT license compliance, and clean public repository suitable for open-source community.
 
 ---
 
@@ -251,4 +379,4 @@ act push -j publish --secret NPM_TOKEN=...  # Test publish job
 ---
 
 **Last Updated:** 2025-10-19
-**Session Context:** v1.0.6 prepared, testing OIDC publish after fixing workflow filename configuration (filename only, no path prefix)
+**Session Context:** v1.0.6 prepared, OIDC private repo limitation identified. Comprehensive pre-public cleanup plan documented for v1.0.7. Repository will remain private until cleanup complete, then make public with full provenance support.
