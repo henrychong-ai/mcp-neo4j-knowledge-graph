@@ -2,7 +2,75 @@
 
 ## 🚀 High Priority
 
-**No high priority tasks remaining - all completed!**
+### 1. OIDC npm Publishing Configuration Issue
+
+**Status**: ⚠️ **BLOCKED** - Requires npm Trusted Publisher configuration verification
+
+**Problem**:
+GitHub Actions workflow configured for OIDC publishing, but encountering authentication/authorization errors:
+
+**Error History**:
+1. **First attempt** (with `registry-url`):
+   ```
+   npm error 404 Not Found - PUT https://registry.npmjs.org/@henrychong-ai%2fmcp-neo4j-knowledge-graph
+   npm error 404  '@henrychong-ai/mcp-neo4j-knowledge-graph@1.0.6' is not in this registry.
+   ```
+   - Suggests OIDC token was used but npm rejected publish (possible Trusted Publisher config mismatch)
+
+2. **Second attempt** (without `registry-url`):
+   ```
+   npm error code ENEEDAUTH
+   npm error need auth This command requires you to be logged in
+   ```
+   - No authentication mechanism available
+
+**Current Workflow Configuration**:
+- ✅ `permissions.id-token: write` set
+- ✅ `--provenance --access public` flags used
+- ✅ `registry-url` configured in setup-node
+- ❌ Authentication failing (404 or ENEEDAUTH errors)
+
+**Possible Root Causes**:
+1. **npm Trusted Publisher mismatch**: Repository, workflow, or environment name doesn't match configuration
+2. **Scope permissions**: `@henrychong-ai` scope may need additional OIDC configuration
+3. **Package vs Scope settings**: Trusted Publisher might need to be configured at scope level, not package level
+
+**Next Steps - Option A (OIDC - Recommended if we can fix it)**:
+1. Verify npm Trusted Publisher configuration:
+   - Go to https://www.npmjs.com/settings/henrychong-ai/packages/@henrychong-ai/mcp-neo4j-knowledge-graph/access
+   - Check "Publishing access" → "Automation tokens"
+   - Verify GitHub Actions configuration matches:
+     - Repository: `henrychong-ai/mcp-neo4j-knowledge-graph`
+     - Workflow: `.github/workflows/mcp-neo4j-knowledge-graph.yml`
+     - Environment: (leave blank or set to match workflow environment if specified)
+2. If configuration looks correct, try creating Trusted Publisher at **scope level** instead of package level
+3. Test with manual workflow trigger: `gh workflow run mcp-neo4j-knowledge-graph.yml`
+
+**Next Steps - Option B (Granular Access Token - Fallback)**:
+If OIDC debugging takes too long:
+1. Generate granular access token (90-day expiration):
+   - Go to https://www.npmjs.com/settings/henrychong-ai/tokens
+   - "Generate New Token" → "Granular Access Token"
+   - Permissions: "Read and write" for `@henrychong-ai/mcp-neo4j-knowledge-graph`
+   - Expiration: 90 days (maximum allowed)
+2. Add as GitHub secret: `NPM_TOKEN`
+3. Update workflow to use `NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}`
+4. Remove `--provenance` flag (not needed with access tokens)
+5. Set calendar reminder to rotate token every 85 days
+
+**Next Steps - Option C (Manual Publishing - Temporary)**:
+For v1.0.6 specifically:
+```bash
+npm run build
+npm publish --access public
+```
+
+**Files Modified**:
+- `.github/workflows/mcp-neo4j-knowledge-graph.yml` - Workflow attempts OIDC publishing
+- `package.json` - Version bumped to 1.0.6
+- `CHANGELOG.md` - v1.0.6 entry added
+
+**Decision Needed**: Choose Option A, B, or C to proceed
 
 ---
 
@@ -119,22 +187,18 @@ async createVectorIndex(/* params */): Promise<void> {
 
 ## ✅ Completed
 
-### Automated Publishing & OIDC Migration (2025-10-19)
-- ✅ **Enabled automated npm publishing** via GitHub Actions
+### Automated Publishing Setup (2025-10-19)
+- ✅ **GitHub Actions workflow configured** for automated npm publishing
   - Fixed package name in version comparison
   - Added `--access public` flag for scoped package
-  - Added `semver` to devDependencies
-- ✅ **Migrated to OIDC Trusted Publishing**
-  - Configured npm Trusted Publisher
+  - Added `semver` to devDependencies for version comparison
+  - Enabled publish job to run on main branch pushes
+- ⚠️ **OIDC Trusted Publishing** (partially complete - blocked)
   - Added `permissions.id-token: write` to workflow
   - Added `--provenance` flag for cryptographic attestation
-  - Removed NPM_TOKEN dependency (no 90-day rotation needed)
-  - Tested successfully - workflow runs and skips publish correctly
-- ✅ **Benefits achieved:**
-  - Zero token maintenance (ephemeral OIDC tokens)
-  - Enhanced security (no long-lived secrets)
-  - Cryptographic build provenance
-  - Automatic publish on version bumps
+  - Removed NPM_TOKEN secret dependency
+  - ❌ **BLOCKED**: Authentication/authorization failing (see High Priority task #1)
+  - **Status**: Workflow runs successfully but publish fails with 404/auth errors
 
 ### Schema Constraint Fix (2025-10-17)
 - ✅ Identified conflicting constraints blocking temporal versioning
@@ -187,4 +251,4 @@ act push -j publish --secret NPM_TOKEN=...  # Test publish job
 ---
 
 **Last Updated:** 2025-10-19
-**Session Context:** OIDC Trusted Publishing operational, automated npm publishing enabled
+**Session Context:** v1.0.6 prepared but not published - OIDC publishing blocked on npm Trusted Publisher configuration
