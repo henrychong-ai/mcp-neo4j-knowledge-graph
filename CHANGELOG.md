@@ -5,6 +5,30 @@ All notable changes to Memento MCP will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.6] - 2025-10-19
+
+### Changed
+
+- **Automated npm Publishing**: Enabled automated publishing via GitHub Actions on push to main branch
+- **OIDC Trusted Publishing**: Migrated from access tokens to OpenID Connect authentication
+  - Eliminated 90-day token rotation requirement
+  - Enhanced security with ephemeral tokens (~1 hour expiration)
+  - Added cryptographic build provenance via `--provenance` flag
+  - Removed NPM_TOKEN secret dependency from GitHub Actions
+- **Workflow Improvements**: Fixed package name references and added semver dependency for version comparison
+
+### Infrastructure
+
+- Added `permissions.id-token: write` to GitHub Actions publish job for OIDC
+- Configured npm Trusted Publisher for GitHub Actions authentication
+- Updated publish command to include `--provenance --access public`
+- Added `semver` to devDependencies for automated version comparison
+
+### Documentation
+
+- Updated TODO.md with completed automation tasks and OIDC migration details
+- Simplified publishing workflow documentation (now fully automated)
+
 ## [1.0.5] - 2025-10-17
 
 ### Fixed
