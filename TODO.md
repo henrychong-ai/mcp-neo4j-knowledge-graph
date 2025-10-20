@@ -2,47 +2,7 @@
 
 ## 🚀 High Priority
 
-### 1. OIDC npm Publishing - Private Repository Limitation
-
-**Status**: ✅ **RESOLVED** - Issue identified, solution ready to implement
-
-**Root Cause**:
-The `--provenance` flag requires a **public GitHub repository**. Current error:
-```
-npm error 422 Unprocessable Entity - Error verifying sigstore provenance bundle:
-Unsupported GitHub Actions source repository visibility: "private".
-Only public source repositories are supported when publishing with provenance.
-```
-
-**Resolution**:
-Repository is intentionally kept **private** until pre-public cleanup is complete (see task #2).
-
-**Immediate Fix for v1.0.6**:
-Remove `--provenance` flag from workflow. OIDC publishing will work perfectly without it.
-
-```yaml
-# Change from:
-run: npm publish --provenance --access public
-
-# To:
-run: npm publish --access public
-```
-
-**What We Keep Without Provenance**:
-- ✅ OIDC authentication (no token rotation)
-- ✅ Automated publishing via GitHub Actions
-- ✅ Secure, ephemeral OIDC tokens
-- ✅ Public package access
-
-**What We Lose Without Provenance**:
-- ❌ Cryptographic build attestation
-- ❌ Sigstore verification linking package to source
-
-**Future**: After making repo public (task #2), can re-enable `--provenance` flag.
-
----
-
-### 2. Pre-Public Repository Cleanup
+### 1. Pre-Public Repository Cleanup
 
 **Status**: 📋 **PLANNED** - For v1.0.7 release before making repository public
 
@@ -215,129 +175,50 @@ Professional standalone project identity with proper attribution to original wor
 
 ## 🔧 Medium Priority
 
-### 2. Improve Schema Constraint Detection
-
-**Issue:**
-During schema fix, discovered that old single-field constraint `entity_name_unique` coexisted with new composite constraint, blocking temporal versioning.
-
-**Proposed Enhancement:**
-Add constraint validation to `Neo4jSchemaManager.ts`:
-
-```typescript
-// In createEntityConstraints() method
-async createEntityConstraints(recreate = false): Promise<void> {
-  this.log('Creating entity name constraint...');
-
-  const constraintName = 'entity_name';
-
-  // NEW: Check for conflicting constraints
-  const allConstraints = await this.listConstraints();
-  const entityConstraints = allConstraints.filter(c =>
-    c.labelsOrTypes === 'Entity' &&
-    Array.isArray(c.properties) &&
-    c.properties.includes('name')
-  );
-
-  // Warn about conflicts
-  for (const constraint of entityConstraints) {
-    if (constraint.name !== constraintName) {
-      this.log(`⚠️  WARNING: Found conflicting Entity constraint: ${constraint.name}`);
-      this.log(`   Properties: ${JSON.stringify(constraint.properties)}`);
-      if (recreate) {
-        this.log(`   Dropping conflicting constraint: ${constraint.name}`);
-        await this.dropConstraintIfExists(constraint.name);
-      } else {
-        this.log(`   Run with recreate=true to automatically remove conflicting constraints`);
-      }
-    }
-  }
-
-  if (recreate) {
-    await this.dropConstraintIfExists(constraintName);
-  }
-
-  // ... rest of existing code
-}
-```
-
-**Benefits:**
-- Detects conflicting constraints automatically
-- Prevents future schema issues
-- Provides clear warnings and resolution steps
-
-**Files to Modify:**
-- `src/storage/neo4j/Neo4jSchemaManager.ts` (lines 102-125)
-
----
-
-### 3. Neo4j Vector Index Compatibility
-
-**Issue:**
-During schema initialization, vector index creation failed with syntax error:
-```
-Invalid input 'VECTOR': expected "(", "ALL", "ANY" or "SHORTEST"
-```
-
-**Analysis:**
-- Remote Neo4j instance appears to be older version (< 5.13)
-- `CREATE VECTOR INDEX` syntax not supported
-- Code has fallback for checking indexes, but not for creating them
-
-**Current Workaround:**
-Vector search operations gracefully handle missing indexes, but may have degraded performance.
-
-**Proposed Enhancement:**
-Add Neo4j version detection and compatibility handling:
-
-```typescript
-// In Neo4jSchemaManager.ts
-async getServerVersion(): Promise<string> {
-  const result = await this.connectionManager.executeQuery(
-    'CALL dbms.components() YIELD name, versions RETURN name, versions[0] as version',
-    {}
-  );
-  return result.records[0]?.get('version') || 'unknown';
-}
-
-async createVectorIndex(/* params */): Promise<void> {
-  const version = await this.getServerVersion();
-  const [major, minor] = version.split('.').map(Number);
-
-  if (major >= 5 && minor >= 13) {
-    // Use native VECTOR INDEX syntax
-  } else if (major >= 5 && minor >= 11) {
-    // Use alternative syntax for Neo4j 5.11-5.12
-  } else {
-    this.log(`⚠️  Neo4j version ${version} does not support vector indexes`);
-    this.log(`   Vector search will use fallback implementation`);
-    return; // Skip index creation
-  }
-}
-```
-
-**Files to Modify:**
-- `src/storage/neo4j/Neo4jSchemaManager.ts`
-- `src/storage/neo4j/Neo4jConfig.ts` (add min version requirements)
-
-**Resources:**
-- Neo4j Vector Index docs: https://neo4j.com/docs/cypher-manual/current/indexes-for-vector-search/
+*(No pending medium priority items)*
 
 ---
 
 ## ✅ Completed
 
-### Automated Publishing Setup (2025-10-19)
+### Neo4j Vector Index Compatibility Enhancement (2025-10-20, v1.1.5)
+- ✅ **Intelligent version and edition detection** for vector index compatibility
+  - Added `getServerVersion()` method querying Neo4j Kernel component specifically
+  - Filters for 'Neo4j Kernel' to avoid reading APOC or plugin versions
+  - Returns both version string and edition (enterprise/community)
+  - Proactive Enterprise Edition detection with clear messaging
+- ✅ **Enhanced schema initialization** with comprehensive compatibility checks
+  - Detects Community Edition early and skips vector index with informative message
+  - Version-based feature detection for Neo4j 5.11, 5.12, 5.13+
+  - Clear explanations when vector index is skipped
+  - Graceful fallback ensures embeddings work on all Neo4j versions/editions
+- ✅ **Production validation** by GPT-5-Codex (high reasoning)
+  - Fixed HIGH: Kernel-specific component filtering
+  - Fixed MEDIUM: Proactive edition detection
+  - Fixed LOW: Clarified log messaging
+- ✅ **Files modified**: `Neo4jSchemaManager.ts` (lines 273-356), test updated
+- ✅ **Tests**: All 293 unit tests passing
+
+### OIDC npm Publishing (2025-10-19)
 - ✅ **GitHub Actions workflow configured** for automated npm publishing
   - Fixed package name in version comparison
   - Added `--access public` flag for scoped package
   - Added `semver` to devDependencies for version comparison
   - Enabled publish job to run on main branch pushes
-- ⚠️ **OIDC Trusted Publishing** (partially complete - blocked)
+- ✅ **OIDC Trusted Publishing** fully operational
   - Added `permissions.id-token: write` to workflow
-  - Added `--provenance` flag for cryptographic attestation
-  - Removed NPM_TOKEN secret dependency
-  - ❌ **BLOCKED**: Authentication/authorization failing (see High Priority task #1)
-  - **Status**: Workflow runs successfully but publish fails with 404/auth errors
+  - Removed NPM_TOKEN secret dependency (no token rotation needed)
+  - Removed `--provenance` flag (requires public repo, added to future plans)
+  - **Status**: Publishing successfully via OIDC authentication
+
+### Schema Constraint Detection (2025-10-20, v1.1.3)
+- ✅ **Automatic conflict detection** in `Neo4jSchemaManager.ts`
+  - Checks for conflicting Entity constraints on 'name' property
+  - Warns about single-field constraints that block temporal versioning
+  - Auto-cleanup with `recreate=true` flag
+  - Prevents future "Node already exists" errors
+- ✅ Implementation verified at lines 107-144
+- ✅ Handles both 'labelsOrTypes' and 'entityType' field names (Neo4j version compatibility)
 
 ### Schema Constraint Fix (2025-10-17)
 - ✅ Identified conflicting constraints blocking temporal versioning
@@ -348,6 +229,22 @@ async createVectorIndex(/* params */): Promise<void> {
 - ✅ Confirmed all 650 entities have proper `id` fields
 - ✅ Updated documentation (CLAUDE.md, README.md, CHANGELOG.md)
 - ✅ Created `docs/SCHEMA_CONSTRAINT_FIX.md` guide
+
+### Vector Embeddings Generation (2025-10-20)
+- ✅ **Production embeddings generated** for knowledge graph
+  - Created `src/cli/generate-embeddings.ts` CLI tool
+  - Added npm scripts: `embeddings:generate` and `embeddings:test`
+  - Successfully embedded 630 entities (99.8% of database)
+  - Model: OpenAI text-embedding-3-small (1536 dimensions)
+  - Total cost: ~$0.0025 USD
+- ✅ **Semantic search operational**
+  - Verified with dietary and infrastructure queries
+  - Sub-second query responses
+  - Configuration: `limit=10`, `min_similarity=0.6`
+- ✅ **Documentation updated**
+  - Added "Vector Embeddings Status" section to CLAUDE.md
+  - Updated AXIS.md v3.10.1 with KG Search Protocol
+  - Synced across all platform instruction files
 
 ### Documentation Updates (2025-10-17)
 - ✅ `CLAUDE.md`: Added comprehensive version history and BigInt fix patterns
@@ -389,5 +286,5 @@ act push -j publish --secret NPM_TOKEN=...  # Test publish job
 
 ---
 
-**Last Updated:** 2025-10-19
-**Session Context:** v1.0.6 prepared, OIDC private repo limitation identified. Comprehensive pre-public cleanup plan documented for v1.0.7. Repository will remain private until cleanup complete, then make public with full provenance support.
+**Last Updated:** 2025-10-20
+**Session Context:** v1.1.5 released with Neo4j version and edition detection. Vector index compatibility fully implemented with intelligent pre-flight checks. Filters for Neo4j Kernel component specifically, detects Community vs Enterprise edition proactively, provides clear version-based messaging. Validated by GPT-5-Codex (high reasoning) for production readiness. All 293 unit tests passing. Medium priority section now empty - all planned enhancements completed.

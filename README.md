@@ -158,13 +158,26 @@ You can modify these paths in your `docker-compose.yml` file to store data in di
 
 ##### Upgrading Neo4j Version
 
-You can change Neo4j editions and versions without losing data:
+For comprehensive Neo4j upgrade procedures, see **[docs/UPGRADE.md](docs/UPGRADE.md)**.
 
+This guide covers:
+- When and why to upgrade (LTS vs Latest)
+- Complete 5-phase upgrade procedure with go/no-go checkpoints
+- Configuration management (deprecated settings)
+- Troubleshooting and rollback procedures
+- Real-world upgrade examples with verified commands
+- 48-hour monitoring schedule
+
+**Quick Reference for Docker Compose:**
+
+```bash
+# Basic upgrade (for development/testing)
 1. Update the Neo4j image version in `docker-compose.yml`
-2. Restart the container with `docker-compose down && docker-compose up -d neo4j`
-3. Reinitialize the schema with `npm run neo4j:init`
+2. Restart: docker-compose down && docker-compose up -d neo4j
+3. Reinitialize schema: npm run neo4j:init
+```
 
-The data will persist through this process as long as the volume mappings remain the same.
+> **Production Warning**: For production deployments with valuable data, always follow the complete procedure in docs/UPGRADE.md, which includes backup verification, data integrity checks, and rollback procedures.
 
 ##### Complete Database Reset
 

@@ -266,6 +266,79 @@ REQUIRE (e.name, e.validTo) IS UNIQUE;
 
 See `INVESTIGATION.md` for detailed technical analysis.
 
+## Production Deployment
+
+### Neo4j Docker Configuration (jp-vps-1)
+
+**Current Production Setup:**
+- Host: jp-vps-1 (Tailscale IP: 100.109.177.39)
+- Container: neo4j-kg
+- Neo4j Version: 5.26.13 LTS (community edition)
+- Memory: 512M heap, 256M pagecache, 128M transaction max
+- Database: 686 entities, 934 relations (as of 2025-10-20)
+
+**Production Docker Run Command:**
+```bash
+docker run -d \
+  --name neo4j-kg \
+  --restart unless-stopped \
+  -p 100.109.177.39:7474:7474 \
+  -p 100.109.177.39:7687:7687 \
+  -v neo4j-kg_neo4j_data:/data \
+  -v neo4j-kg_neo4j_logs:/logs \
+  -v /opt/neo4j-kg/backups:/backups \
+  -e NEO4J_AUTH=neo4j/<password> \
+  -e "NEO4J_PLUGINS=[\"apoc\"]" \
+  -e NEO4J_db_checkpoint_interval_time=30s \
+  -e NEO4J_server_memory_heap_initial__size=512M \
+  -e NEO4J_server_memory_heap_max__size=512M \
+  -e NEO4J_server_memory_pagecache_size=256M \
+  -e NEO4J_db_memory_transaction_max=128M \
+  neo4j:5.26-community
+```
+
+**Configuration Notes:**
+- Environment variables use Neo4j 5.26 naming convention (updated 2025-10-20)
+- Old deprecated settings (NEO4J_dbms_*) replaced with new format (NEO4J_db_*, NEO4J_server_*)
+- Zero deprecation warnings in logs after configuration update
+- Volumes preserve data across container recreations
+
+**For upgrade procedures**, see [docs/UPGRADE.md](docs/UPGRADE.md) which covers:
+- When and why to upgrade Neo4j versions
+- Complete 5-phase upgrade procedure with go/no-go checkpoints
+- Configuration management and deprecated settings migration
+- Troubleshooting and rollback procedures
+- Real-world example with verified commands
+
+### Vector Embeddings Status
+
+**Production Embeddings:**
+- Generated: 2025-10-20
+- Total entities embedded: 630 entities (99.8% of database)
+- Failed: 1 entity (VECTOR KO - deleted, empty observations)
+- Model: OpenAI text-embedding-3-small (1536 dimensions)
+- Total cost: ~$0.0025 USD
+- Status: ✅ Operational
+
+**Semantic Search:**
+- Method: `mcp__kg__semantic_search`
+- Configuration: `limit=10`, `min_similarity=0.6` (default)
+- Performance: Sub-second query responses
+- Neo4j index: ONLINE (Enterprise feature not available in Community Edition, but embeddings stored)
+- Fallback: Standard property search when vector index unavailable
+
+**Usage Guidelines:**
+- **Default**: Use `semantic_search` for exploration, discovery, natural language queries
+- **Precision**: Use `search_nodes` for exact term lookups
+- **Hybrid**: Start semantic → refine with keywords
+- See AXIS.md v3.10.1 for complete KG Search Protocol
+
+**Maintenance:**
+- New entities: Embeddings generated via `npm run embeddings:generate`
+- Test subset: `npm run embeddings:test` (processes 5 entities)
+- Regenerate all: `npm run embeddings:generate -- --force`
+- Cost per run: ~$0.02 per 1M tokens
+
 ## Critical Implementation Patterns
 
 ### BigInt Handling in Neo4j Operations

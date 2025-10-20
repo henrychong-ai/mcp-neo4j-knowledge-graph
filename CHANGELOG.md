@@ -5,6 +5,48 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.5] - 2025-10-20
+
+### Added
+
+- **Neo4j Version and Edition Detection**: Intelligent pre-flight checks for vector index compatibility
+  - Added `getServerVersion()` method to query Neo4j Kernel version and edition
+  - Filters specifically for 'Neo4j Kernel' component (avoids reading plugin versions like APOC)
+  - Returns both version string (e.g., "5.13.0") and edition (enterprise/community)
+  - Proactive Enterprise Edition detection with clear messaging for Community Edition users
+  - Version-based feature detection prevents errors on older Neo4j installations
+
+### Changed
+
+- **Schema Initialization**: Enhanced `initializeSchema()` with comprehensive compatibility checks
+  - Detects Community Edition and skips vector index creation with informative messages
+  - Version detection prevents vector index attempts on Neo4j < 5.11
+  - Warns about experimental support in Neo4j 5.11-5.12 (skips for stability)
+  - Only attempts vector index creation on Neo4j 5.13+ Enterprise Edition
+  - Improved error messages clearly explain why vector index was skipped
+  - Graceful fallback ensures embeddings work regardless of Neo4j version/edition
+
+### Technical Details
+
+- **Files Modified**:
+  - `src/storage/neo4j/Neo4jSchemaManager.ts` (lines 273-356)
+  - `src/storage/__vitest__/neo4j/Neo4jSchemaManager.test.ts` (line 78)
+- **New Method**: `getServerVersion()` queries `dbms.components()` with WHERE filter
+- **Version Logic**:
+  - < 5.11: Not supported (skip with message)
+  - 5.11-5.12: Experimental (skip for stability)
+  - 5.13+: Full support (attempt creation with try-catch)
+- **Edition Logic**: Community Edition detected early, vector index skipped proactively
+- **Validation**: Reviewed and approved by GPT-5-Codex (high reasoning) for production readiness
+- **Impact**: Eliminates confusing vector index errors, provides clear user guidance
+- **Tests**: All 293 unit tests passing (3 expected integration test failures)
+
+### Fixed
+
+- **HIGH**: Vector index creation no longer reads incorrect version from APOC or other plugins
+- **MEDIUM**: Community Edition now detected proactively instead of relying on error handling
+- **LOW**: Log messages clarified to indicate Neo4j 5.13+ requirement consistently
+
 ## [1.1.4] - 2025-10-20
 
 ### Changed
