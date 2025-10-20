@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.4] - 2025-10-20
+
+### Changed
+
+- **MCP Tool Descriptions**: Completed rebranding cleanup by removing remaining "Memento MCP" references
+  - Updated all 18 MCP tool descriptions in `listToolsHandler.ts`
+  - Changed "Memento MCP knowledge graph memory" → "knowledge graph"
+  - Provides neutral, accurate tool descriptions
+  - Completes branding transformation started in v1.1.0
+
+### Technical Details
+
+- **Files Modified**: `src/server/handlers/listToolsHandler.ts`, `src/cli/neo4j-setup.ts`
+- **Tool Descriptions Updated**: 18 MCP operations (create_entities, create_relations, add_observations, delete_entities, delete_observations, delete_relations, get_relation, update_relation, read_graph, search_nodes, open_nodes, semantic_search, get_entity_embedding, get_entity_history, get_relation_history, get_graph_at_time, get_decayed_graph, force_generate_embedding, debug_embedding_config)
+- **Impact**: MCP clients now see consistent, professional tool descriptions without legacy branding
+- **Tests**: All 290 unit tests passing
+
 ## [1.1.3] - 2025-10-20
 
 ### Added

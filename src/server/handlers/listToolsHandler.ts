@@ -7,7 +7,7 @@ export async function handleListToolsRequest(): Promise<{ tools: Array<Record<st
   const baseTools = [
     {
       name: 'create_entities',
-      description: 'Create multiple new entities in your Memento MCP knowledge graph memory system',
+      description: 'Create multiple new entities in your knowledge graph system',
       inputSchema: {
         type: 'object',
         properties: {
@@ -50,7 +50,7 @@ export async function handleListToolsRequest(): Promise<{ tools: Array<Record<st
     {
       name: 'create_relations',
       description:
-        'Create multiple new relations between entities in your Memento MCP knowledge graph memory. Relations should be in active voice',
+        'Create multiple new relations between entities in your knowledge graph. Relations should be in active voice',
       inputSchema: {
         type: 'object',
         properties: {
@@ -104,7 +104,7 @@ export async function handleListToolsRequest(): Promise<{ tools: Array<Record<st
     {
       name: 'add_observations',
       description:
-        'Add new observations to existing entities in your Memento MCP knowledge graph memory',
+        'Add new observations to existing entities in your knowledge graph',
       inputSchema: {
         type: 'object',
         properties: {
@@ -161,7 +161,7 @@ export async function handleListToolsRequest(): Promise<{ tools: Array<Record<st
     {
       name: 'delete_entities',
       description:
-        'Delete multiple entities and their associated relations from your Memento MCP knowledge graph memory',
+        'Delete multiple entities and their associated relations from your knowledge graph',
       inputSchema: {
         type: 'object',
         properties: {
@@ -177,7 +177,7 @@ export async function handleListToolsRequest(): Promise<{ tools: Array<Record<st
     {
       name: 'delete_observations',
       description:
-        'Delete specific observations from entities in your Memento MCP knowledge graph memory',
+        'Delete specific observations from entities in your knowledge graph',
       inputSchema: {
         type: 'object',
         properties: {
@@ -205,7 +205,7 @@ export async function handleListToolsRequest(): Promise<{ tools: Array<Record<st
     },
     {
       name: 'delete_relations',
-      description: 'Delete multiple relations from your Memento MCP knowledge graph memory',
+      description: 'Delete multiple relations from your knowledge graph',
       inputSchema: {
         type: 'object',
         properties: {
@@ -235,7 +235,7 @@ export async function handleListToolsRequest(): Promise<{ tools: Array<Record<st
     {
       name: 'get_relation',
       description:
-        'Get a specific relation with its enhanced properties from your Memento MCP knowledge graph memory',
+        'Get a specific relation with its enhanced properties from your knowledge graph',
       inputSchema: {
         type: 'object',
         properties: {
@@ -258,7 +258,7 @@ export async function handleListToolsRequest(): Promise<{ tools: Array<Record<st
     {
       name: 'update_relation',
       description:
-        'Update an existing relation with enhanced properties in your Memento MCP knowledge graph memory',
+        'Update an existing relation with enhanced properties in your knowledge graph',
       inputSchema: {
         type: 'object',
         properties: {
@@ -308,7 +308,7 @@ export async function handleListToolsRequest(): Promise<{ tools: Array<Record<st
     },
     {
       name: 'read_graph',
-      description: 'Read the entire Memento MCP knowledge graph memory system',
+      description: 'Read the entire knowledge graph system',
       inputSchema: {
         type: 'object',
         properties: {
@@ -321,7 +321,7 @@ export async function handleListToolsRequest(): Promise<{ tools: Array<Record<st
     },
     {
       name: 'search_nodes',
-      description: 'Search for nodes in your Memento MCP knowledge graph memory based on a query',
+      description: 'Search for nodes in your knowledge graph based on a query',
       inputSchema: {
         type: 'object',
         properties: {
@@ -336,7 +336,7 @@ export async function handleListToolsRequest(): Promise<{ tools: Array<Record<st
     },
     {
       name: 'open_nodes',
-      description: 'Open specific nodes in your Memento MCP knowledge graph memory by their names',
+      description: 'Open specific nodes in your knowledge graph by their names',
       inputSchema: {
         type: 'object',
         properties: {
@@ -352,7 +352,7 @@ export async function handleListToolsRequest(): Promise<{ tools: Array<Record<st
     {
       name: 'semantic_search',
       description:
-        'Search for entities semantically using vector embeddings and similarity in your Memento MCP knowledge graph memory',
+        'Search for entities semantically using vector embeddings and similarity in your knowledge graph',
       inputSchema: {
         type: 'object',
         properties: {
@@ -389,7 +389,7 @@ export async function handleListToolsRequest(): Promise<{ tools: Array<Record<st
     {
       name: 'get_entity_embedding',
       description:
-        'Get the vector embedding for a specific entity from your Memento MCP knowledge graph memory',
+        'Get the vector embedding for a specific entity from your knowledge graph',
       inputSchema: {
         type: 'object',
         properties: {
@@ -408,7 +408,7 @@ export async function handleListToolsRequest(): Promise<{ tools: Array<Record<st
     {
       name: 'get_entity_history',
       description:
-        'Get the version history of an entity from your Memento MCP knowledge graph memory',
+        'Get the version history of an entity from your knowledge graph',
       inputSchema: {
         type: 'object',
         properties: {
@@ -423,7 +423,7 @@ export async function handleListToolsRequest(): Promise<{ tools: Array<Record<st
     {
       name: 'get_relation_history',
       description:
-        'Get the version history of a relation from your Memento MCP knowledge graph memory',
+        'Get the version history of a relation from your knowledge graph',
       inputSchema: {
         type: 'object',
         properties: {
@@ -446,7 +446,7 @@ export async function handleListToolsRequest(): Promise<{ tools: Array<Record<st
     {
       name: 'get_graph_at_time',
       description:
-        'Get your Memento MCP knowledge graph memory as it existed at a specific point in time',
+        'Get your knowledge graph as it existed at a specific point in time',
       inputSchema: {
         type: 'object',
         properties: {
@@ -461,7 +461,7 @@ export async function handleListToolsRequest(): Promise<{ tools: Array<Record<st
     {
       name: 'get_decayed_graph',
       description:
-        'Get your Memento MCP knowledge graph memory with confidence values decayed based on time',
+        'Get your knowledge graph with confidence values decayed based on time',
       inputSchema: {
         type: 'object',
         properties: {
@@ -484,7 +484,7 @@ export async function handleListToolsRequest(): Promise<{ tools: Array<Record<st
     {
       name: 'force_generate_embedding',
       description:
-        'Forcibly generate and store an embedding for an entity in your Memento MCP knowledge graph memory',
+        'Forcibly generate and store an embedding for an entity in your knowledge graph',
       inputSchema: {
         type: 'object',
         properties: {
@@ -499,7 +499,7 @@ export async function handleListToolsRequest(): Promise<{ tools: Array<Record<st
     {
       name: 'debug_embedding_config',
       description:
-        'Debug tool to check embedding configuration and status of your Memento MCP knowledge graph memory system',
+        'Debug tool to check embedding configuration and status of your knowledge graph system',
       inputSchema: {
         type: 'object',
         properties: {
