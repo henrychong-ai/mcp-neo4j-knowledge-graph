@@ -1,6 +1,6 @@
-# Contributing to Memento MCP
+# Contributing to Neo4j Knowledge Graph MCP Server
 
-Thank you for your interest in contributing to Memento MCP! This document provides guidelines and instructions for contributing to this project.
+Thank you for your interest in contributing to this project! This document provides guidelines and instructions for contributing.
 
 ## Code of Conduct
 
@@ -16,8 +16,8 @@ By participating in this project, you agree to abide by our Code of Conduct:
 ### Getting Started
 
 1. Fork the repository
-2. Clone your fork: `git clone https://github.com/YOUR-USERNAME/memento-mcp.git`
-3. Add the upstream remote: `git remote add upstream https://github.com/gannonh/memento-mcp.git`
+2. Clone your fork: `git clone https://github.com/YOUR-USERNAME/mcp-neo4j-knowledge-graph.git`
+3. Add the upstream remote: `git remote add upstream https://github.com/henrychong-ai/mcp-neo4j-knowledge-graph.git`
 4. Install dependencies: `npm install`
 5. Setup Neo4j: `docker-compose up -d neo4j && npm run neo4j:init`
 
@@ -76,7 +76,7 @@ This project uses GitHub Actions for continuous integration on all pull requests
 - Linting checks ensure code quality standards are maintained
 - The workflow runs tests across target Node.js versions
 
-PRs cannot be merged until CI passes all checks. You can see the full CI workflow configuration in `.github/workflows/memento-mcp.yml`.
+PRs cannot be merged until CI passes all checks. You can see the full CI workflow configuration in `.github/workflows/mcp-neo4j-knowledge-graph.yml`.
 
 ## Documentation
 
