@@ -2,6 +2,114 @@
 
 ## 🚀 High Priority
 
+### Interactive Setup Guide for Claude Code (SETUP.md)
+
+**Goal**: Create a comprehensive, step-by-step setup guide that Claude Code sessions automatically read to help users get the MCP server running
+
+**Problem**: Users setting up the mcp-neo4j-knowledge-graph need clear, sequential instructions covering:
+- System prerequisites and dependency installation
+- Neo4j database setup (local or Docker)
+- Environment configuration
+- API key management (OpenAI)
+- Claude Desktop configuration
+- Claude Code configuration
+- Testing and verification
+- Troubleshooting common issues
+- Manual MCP tool invocation for testing
+
+Current state: Knowledge scattered across multiple files (README.md, CLAUDE.md, CONTRIBUTING.md)
+
+**Solution**: Create `SETUP.md` with complete setup walkthrough:
+1. **Prerequisites Check**
+   - OS requirements (macOS, Linux, Windows compatibility)
+   - Node.js version (≥20.0.0)
+   - Docker/Docker Compose (for Neo4j)
+   - Disk space requirements
+
+2. **Neo4j Installation & Setup**
+   - Option A: Docker Compose (recommended, one command)
+   - Option B: Local installation with Homebrew
+   - Initial schema creation
+   - Verification queries
+   - Connection string validation
+
+3. **Environment Configuration**
+   ```bash
+   NEO4J_URI=bolt://localhost:7687
+   NEO4J_USERNAME=neo4j
+   NEO4J_PASSWORD=<secure_password>
+   OPENAI_API_KEY=sk-... (optional, for embeddings)
+   ```
+
+4. **MCP Server Installation**
+   - npm install from @henrychong-ai/mcp-neo4j-knowledge-graph
+   - Local development setup (git clone + npm install + npm run build)
+   - Verification that server starts correctly
+
+5. **Claude Desktop Setup**
+   - Locate claude_desktop_config.json path
+   - Add MCP server configuration with full paths
+   - Format example with all required fields
+   - Common path issues and solutions
+
+6. **Claude Code Setup**
+   - Add to ~/.claude.json via CLI or manual edit
+   - Test MCP tool availability
+   - Verify tool descriptions load correctly
+
+7. **First MCP Tool Test**
+   - Create first entity via MCP tool
+   - Search for it via semantic search
+   - Add observations
+   - Verify embeddings generated
+   - Check Neo4j directly to confirm persistence
+
+8. **Troubleshooting Guide**
+   - Neo4j connection refused
+   - MCP server won't start
+   - OpenAI API key errors
+   - Claude can't find MCP server
+   - Embedding generation fails
+   - Query timeouts or slow performance
+
+9. **Next Steps**
+   - Link to CLAUDE.md for development
+   - Link to CONTRIBUTING.md for contributing
+   - Link to advanced features documentation
+   - Example workflows
+
+**Implementation Approach**:
+- Single, comprehensive markdown file (~200-300 lines)
+- Clear section headers for quick navigation
+- Copy-paste ready commands
+- Common mistakes highlighted in ⚠️ callouts
+- Platform-specific variations (macOS/Linux/Windows)
+- Screenshots or ASCII diagrams for config files
+- Quick reference checklist at top
+
+**Files**:
+- Create: `SETUP.md` in repository root
+- Update: README.md to link to SETUP.md prominently
+- Update: CLAUDE.md to reference SETUP.md for onboarding
+
+**Success Metrics**:
+- New users can complete full setup in < 15 minutes
+- Zero ambiguity about paths and configuration
+- All common errors have clear solutions
+- Users can verify working setup with provided checklist
+- Claude Code sessions automatically reference this for setup questions
+
+**Complexity**: Low (documentation only, no code changes)
+
+**ROI**: Very High (dramatically improves adoption, reduces support burden)
+
+**Files Affected**:
+- New: `SETUP.md`
+- Updated: `README.md` (add SETUP link in prominent location)
+- Updated: `CLAUDE.md` (reference SETUP for Claude Code users)
+
+---
+
 ### Hybrid Retrieval System (Semantic + Graph Context)
 
 **Goal**: Improve context relevance by combining vector similarity with graph structure and metadata
@@ -486,4 +594,4 @@ act push -j publish --secret NPM_TOKEN=...  # Test publish job
 ---
 
 **Last Updated:** 2025-10-20
-**Session Context:** v1.1.6 released with pre-public repository cleanup completed. Added three new high priority future enhancements: (1) Hybrid Retrieval System combining semantic search with graph context, (2) Batch Operations API for efficient bulk knowledge graph operations, (3) Automated Vector Embeddings Regeneration with scheduled and threshold-based automation. Embedding automation ensures semantic search accuracy remains high as knowledge graph evolves. All identified through dual analysis (Claude + GPT-5-Codex high reasoning) and strategic planning sessions. Normal semantic versioning will apply during implementation.
+**Session Context:** v1.1.6 released with pre-public repository cleanup completed. Added four new high priority tasks: (1) Interactive Setup Guide (SETUP.md) for Claude Code sessions - low complexity, very high ROI for user adoption, (2) Hybrid Retrieval System combining semantic search with graph context, (3) Batch Operations API for efficient bulk knowledge graph operations, (4) Automated Vector Embeddings Regeneration with scheduled and threshold-based automation. Setup guide prioritized first to improve onboarding experience and reduce support burden. All features identified through dual analysis (Claude + GPT-5-Codex high reasoning) and strategic planning sessions. Normal semantic versioning will apply during implementation.
