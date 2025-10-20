@@ -1,7 +1,7 @@
 # Neo4j MCP Codebase Investigation Report
 
 ## Investigation Objective
-Determine if the forked mcp-neo4j-knowledge-graph codebase uses subprocess (cypher-shell) or neo4j-driver directly for database operations, and identify the root cause of the `mcp__kg__add_observations` JSON parsing error encountered earlier.
+Determine if the mcp-neo4j-knowledge-graph codebase uses subprocess (cypher-shell) or neo4j-driver directly for database operations, and identify the root cause of the `mcp__kg__add_observations` JSON parsing error encountered earlier.
 
 ## Findings Summary
 
@@ -141,10 +141,10 @@ The `mcp__kg__add_observations` error was likely caused by:
 - MCP SDK compatibility issue
 - Not a code bug in this repository
 
-**Recommendation**: Test the current forked codebase. If it works, the problem was environmental and already solved by having a fresh fork. If it fails, we'll debug the actual cause.
+**Recommendation**: Test the current codebase. If it works, the problem was environmental and already solved. If it fails, we'll debug the actual cause.
 
 ---
 
 **Investigation Date**: 2025-10-17
-**Codebase Analyzed**: henrychong-ai/mcp-neo4j-knowledge-graph (forked from gannonh/memento-mcp)
+**Codebase Analyzed**: henrychong-ai/mcp-neo4j-knowledge-graph (maintained by Henry Chong, built on foundational work by Gannon Hall)
 **Files Examined**: 80+ TypeScript files, 0 subprocess calls found

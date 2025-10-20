@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.6] - 2025-10-20
+
+### Changed
+
+- **Pre-Public Repository Cleanup**: Completed final documentation cleanup before public repository launch
+  - Updated CONTRIBUTING.md to remove "Memento MCP" branding and legacy fork workflow instructions
+  - Cleaned INVESTIGATION.md historical notes to remove "forked" language while preserving technical accuracy
+  - Verified setup.test.ts already had correct assertions (no changes needed)
+  - All remaining "gannonh" and "memento-mcp" references are appropriate (CHANGELOG history, README attribution, TODO documentation)
+
+### Technical Details
+
+- **Files Modified**:
+  - `CONTRIBUTING.md` - Complete rewrite with updated repository URLs and branding
+  - `INVESTIGATION.md` - Removed "forked" references, updated attribution language
+- **Verification**: Comprehensive grep checks confirm only appropriate historical and attribution references remain
+- **Status**: 14/14 pre-public cleanup items completed (9 from previous versions + 5 in this release)
+- **Next Step**: Repository ready for public visibility
+
 ## [1.1.5] - 2025-10-20
 
 ### Added
