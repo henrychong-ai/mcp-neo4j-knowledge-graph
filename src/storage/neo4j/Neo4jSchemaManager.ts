@@ -281,29 +281,44 @@ export class Neo4jSchemaManager {
     await this.createEntityConstraints(recreate);
 
     // Create vector index for entity embeddings
+    // Note: Vector indexes require Neo4j Enterprise Edition
+    // Community Edition will log a warning but continue without vector index
     const indexName = this.config.vectorIndexName;
     const nodeLabel = 'Entity';
     const propertyName = 'embedding';
     const dimensions = this.config.vectorDimensions;
     const similarityFunction = this.config.similarityFunction;
 
-    if (recreate) {
-      await this.dropIndexIfExists(indexName);
-    }
-
-    const query = `
-      CREATE VECTOR INDEX ${indexName} IF NOT EXISTS
-      FOR (n:${nodeLabel})
-      ON (n.${propertyName})
-      OPTIONS {
-        indexConfig: {
-          \`vector.dimensions\`: ${dimensions},
-          \`vector.similarity_function\`: '${similarityFunction}'
-        }
+    try {
+      if (recreate) {
+        await this.dropIndexIfExists(indexName);
       }
-    `;
 
-    await this.connectionManager.executeQuery(query, {});
+      const query = `
+        CREATE VECTOR INDEX ${indexName} IF NOT EXISTS
+        FOR (n:${nodeLabel})
+        ON (n.${propertyName})
+        OPTIONS {
+          indexConfig: {
+            \`vector.dimensions\`: ${dimensions},
+            \`vector.similarity_function\`: '${similarityFunction}'
+          }
+        }
+      `;
+
+      await this.connectionManager.executeQuery(query, {});
+      this.log('Vector index created successfully');
+    } catch (vectorError) {
+      // Vector indexes are only available in Neo4j Enterprise Edition
+      // Community Edition will fail here, but we can still store embeddings
+      logger.warn(
+        'Failed to create vector index (likely Neo4j Community Edition). Embeddings will still be stored but semantic search will be slower.',
+        vectorError
+      );
+      this.log(
+        '⚠️  Vector index creation failed - continuing without index (embeddings will still work)'
+      );
+    }
 
     this.log('Schema initialization complete');
   }

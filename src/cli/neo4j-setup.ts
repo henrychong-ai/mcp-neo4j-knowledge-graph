@@ -4,7 +4,7 @@
  * Neo4j CLI Utility
  *
  * This script provides command-line utilities for managing Neo4j
- * operations for the Memento MCP project.
+ * operations for the mcp-neo4j-knowledge-graph server.
  */
 
 import { Neo4jConnectionManager } from '../storage/neo4j/Neo4jConnectionManager.js';
