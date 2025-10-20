@@ -73,7 +73,8 @@ describe('Neo4jSchemaManager', () => {
     await schemaManager.initializeSchema();
 
     // v1.1.3: Added constraint conflict detection (+1 call for listConstraints)
-    // Calls: listConstraints (conflict check), CREATE CONSTRAINT, listConstraints (verify), CREATE VECTOR INDEX
-    expect(connectionManager.executeQuery).toHaveBeenCalledTimes(4);
+    // v1.1.5: Added version detection (+1 call for getServerVersion)
+    // Calls: listConstraints (conflict check), CREATE CONSTRAINT, listConstraints (verify), getServerVersion, CREATE VECTOR INDEX
+    expect(connectionManager.executeQuery).toHaveBeenCalledTimes(5);
   });
 });

@@ -271,6 +271,35 @@ export class Neo4jSchemaManager {
   }
 
   /**
+   * Gets the Neo4j server version and edition
+   * @returns Object with version string (e.g., "5.13.0") and edition (e.g., "enterprise", "community")
+   */
+  async getServerVersion(): Promise<{ version: string; edition: string }> {
+    try {
+      this.log('Querying Neo4j server version and edition...');
+      const result = await this.connectionManager.executeQuery(
+        `CALL dbms.components() YIELD name, versions, edition
+         WHERE name = 'Neo4j Kernel'
+         RETURN versions[0] as version, edition`,
+        {}
+      );
+
+      if (result.records.length === 0) {
+        this.log('No Neo4j Kernel component found in dbms.components()');
+        return { version: 'unknown', edition: 'unknown' };
+      }
+
+      const version = result.records[0].get('version') || 'unknown';
+      const edition = result.records[0].get('edition') || 'unknown';
+      this.log(`Neo4j server: ${version} (${edition})`);
+      return { version, edition };
+    } catch (error) {
+      this.log(`Failed to query Neo4j version: ${error}`);
+      return { version: 'unknown', edition: 'unknown' };
+    }
+  }
+
+  /**
    * Initializes the schema by creating necessary constraints and indexes
    * @param recreate Whether to drop and recreate existing constraints and indexes
    */
@@ -281,13 +310,50 @@ export class Neo4jSchemaManager {
     await this.createEntityConstraints(recreate);
 
     // Create vector index for entity embeddings
-    // Note: Vector indexes require Neo4j Enterprise Edition
+    // Note: Vector indexes require Neo4j Enterprise Edition and Neo4j 5.13+
     // Community Edition will log a warning but continue without vector index
     const indexName = this.config.vectorIndexName;
     const nodeLabel = 'Entity';
     const propertyName = 'embedding';
     const dimensions = this.config.vectorDimensions;
     const similarityFunction = this.config.similarityFunction;
+
+    // Check Neo4j version and edition for vector index compatibility
+    const { version, edition } = await this.getServerVersion();
+    const versionParts = version.split('.');
+    const major = parseInt(versionParts[0], 10);
+    const minor = parseInt(versionParts[1], 10);
+
+    // Check Enterprise Edition requirement first
+    if (edition.toLowerCase() === 'community') {
+      this.log('⚠️  Neo4j Community Edition detected');
+      this.log('   Vector indexes require Neo4j Enterprise Edition');
+      this.log('   Skipping vector index creation - embeddings will still be stored');
+      this.log('   Semantic search will use fallback implementation without index optimization');
+      this.log('Schema initialization complete');
+      return;
+    }
+
+    // Determine if vector indexes are supported by this Neo4j version
+    if (version === 'unknown' || isNaN(major) || isNaN(minor)) {
+      this.log('⚠️  Unable to determine Neo4j version');
+      this.log('   Attempting vector index creation (may fail on older versions)');
+    } else if (major < 5 || (major === 5 && minor < 11)) {
+      this.log(`⚠️  Neo4j version ${version} does not support vector indexes (requires 5.13+)`);
+      this.log('   Skipping vector index creation - embeddings will still be stored');
+      this.log('   Semantic search will use fallback implementation without index optimization');
+      this.log('Schema initialization complete');
+      return;
+    } else if (major === 5 && minor >= 11 && minor < 13) {
+      this.log(`⚠️  Neo4j version ${version} has experimental vector index support`);
+      this.log('   Vector indexes are fully supported in Neo4j 5.13+');
+      this.log('   Skipping vector index creation for stability - embeddings will still be stored');
+      this.log('   Semantic search will use fallback implementation');
+      this.log('Schema initialization complete');
+      return;
+    } else {
+      this.log(`✓ Neo4j ${version} (${edition}) supports vector indexes`);
+    }
 
     try {
       if (recreate) {
