@@ -191,8 +191,6 @@ LIMIT 20
 - Cost tracking within budget (<$10/month)
 - Comprehensive audit log of all regeneration events
 
-**Version Target**: v1.2.0 (after Hybrid Retrieval and Batch Operations)
-
 **Complexity**: Medium (scheduling, monitoring, error handling)
 
 **ROI**: High (keeps semantic search accurate without manual work, enables dynamic knowledge graphs)
@@ -488,4 +486,4 @@ act push -j publish --secret NPM_TOKEN=...  # Test publish job
 ---
 
 **Last Updated:** 2025-10-20
-**Session Context:** v1.1.6 released with pre-public repository cleanup completed. Added three new high priority future enhancements scheduled for v1.2.0: (1) Hybrid Retrieval System combining semantic search with graph context, (2) Batch Operations API for efficient bulk knowledge graph operations, (3) Automated Vector Embeddings Regeneration with scheduled and threshold-based automation. Embedding automation ensures semantic search accuracy remains high as knowledge graph evolves. All identified through dual analysis (Claude + GPT-5-Codex high reasoning) and strategic planning sessions.
+**Session Context:** v1.1.6 released with pre-public repository cleanup completed. Added three new high priority future enhancements: (1) Hybrid Retrieval System combining semantic search with graph context, (2) Batch Operations API for efficient bulk knowledge graph operations, (3) Automated Vector Embeddings Regeneration with scheduled and threshold-based automation. Embedding automation ensures semantic search accuracy remains high as knowledge graph evolves. All identified through dual analysis (Claude + GPT-5-Codex high reasoning) and strategic planning sessions. Normal semantic versioning will apply during implementation.
