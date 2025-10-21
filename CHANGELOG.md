@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.7] - 2025-10-21
+
+### Changed
+
+- **Dependency Updates**: Updated core dependencies for improved stability and security
+  - @modelcontextprotocol/sdk: 1.11.0 → 1.20.1 (OAuth 2.1 framework, Streamable HTTP, bug fixes)
+  - TypeScript: 5.8.2 → 5.9.3 (latest stable release)
+  - Dev tooling: ESLint, Prettier, TypeScript ESLint, Vitest all updated to latest versions
+  - Resolved 1 moderate security vulnerability in dev dependencies
+
+### Technical Details
+
+- **Dependencies Updated**:
+  - Production: @modelcontextprotocol/sdk (1.20.1)
+  - DevDependencies: typescript (5.9.3), eslint (9.38.0), prettier (3.6.2), @typescript-eslint/eslint-plugin (8.46.2), @typescript-eslint/parser (8.46.2), typescript-eslint (8.46.2), vitest (3.2.4), @vitest/coverage-v8 (3.2.4), eslint-config-prettier (10.1.8), eslint-plugin-prettier (5.5.4)
+- **Security**: npm audit shows 0 vulnerabilities in production dependencies
+- **Backward Compatibility**: All 293 unit tests passing, no breaking changes
+- **MCP SDK Improvements**: OAuth 2.1 support, Streamable HTTP transport (replaces deprecated SSE), infinite recursion fix for 401 auth errors
+- **Impact**: Improved security posture, future-proofing for MCP protocol evolution, enhanced type checking
+
 ## [1.1.6] - 2025-10-20
 
 ### Changed
