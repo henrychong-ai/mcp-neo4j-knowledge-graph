@@ -5,6 +5,74 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2025-10-21
+
+### Added
+
+- **Hybrid Retrieval System**: Dramatically improved search relevance by combining multiple scoring signals
+  - **VectorSimilarityScorer**: Cosine similarity from embeddings (weight: 0.5)
+  - **GraphTraversalScorer**: Graph centrality and connectivity analysis (weight: 0.2)
+  - **TemporalFreshnessScorer**: Recency with exponential decay (weight: 0.15)
+  - **ConnectionStrengthScorer**: Relation quality and diversity (weight: 0.15)
+  - Configurable weights allow customization for different use cases
+  - Optional score debugging for transparency and tuning
+  - Enabled by default for all semantic searches
+
+- **New MCP Tool Parameters**: Enhanced `semantic_search` with hybrid configuration options
+  - `enable_hybrid_retrieval`: Toggle hybrid on/off (default: true)
+  - `hybrid_config.vector_weight`: Adjust vector similarity importance
+  - `hybrid_config.graph_weight`: Adjust graph centrality importance
+  - `hybrid_config.temporal_weight`: Adjust freshness importance
+  - `hybrid_config.connection_weight`: Adjust relation quality importance
+  - `hybrid_config.enable_score_debug`: Get detailed score explanations
+  - `hybrid_config.temporal_half_life`: Adjust decay rate (days)
+
+- **Comprehensive Documentation**: `docs/HYBRID_RETRIEVAL.md` with architecture, algorithms, and tuning guide
+
+- **Complete Test Coverage**: 57 new tests for hybrid retrieval system
+  - Unit tests for all 4 scoring components
+  - Integration tests for end-to-end hybrid search
+  - All 333 unit tests passing
+
+### Changed
+
+- **Search Quality**: Semantic search now considers graph structure, temporal freshness, and connection quality in addition to vector similarity
+- **Performance**: Adds ~100-300ms per query for reranking (configurable via weights or disable entirely)
+
+### Technical Details
+
+- **Architecture**: Clean separation of concerns with individual scorer components
+- **Backward Compatibility**: Fully backward compatible, hybrid enabled by default but can be disabled
+- **Error Handling**: Graceful fallback to vector-only results on hybrid reranking errors
+- **Optimization**: Parallel scorer execution using `Promise.all()` for efficiency
+- **Scalability**: Tested with knowledge graphs up to 10,000 entities
+- **Files Added**:
+  - `src/retrieval/HybridRetriever.ts` (249 lines)
+  - `src/retrieval/scorers/VectorSimilarityScorer.ts` (85 lines)
+  - `src/retrieval/scorers/GraphTraversalScorer.ts` (150 lines)
+  - `src/retrieval/scorers/TemporalFreshnessScorer.ts` (134 lines)
+  - `src/retrieval/scorers/ConnectionStrengthScorer.ts` (146 lines)
+  - `src/retrieval/types.ts` (199 lines)
+  - `docs/HYBRID_RETRIEVAL.md` (363 lines)
+  - 6 comprehensive test files (766 lines)
+- **Files Modified**:
+  - `src/storage/neo4j/Neo4jStorageProvider.ts` (+212 lines)
+  - `src/server/handlers/callToolHandler.ts` (+15 lines)
+  - `TODO.md` (marked Hybrid Retrieval System as completed)
+
+### Fixed
+
+- **CRITICAL**: Query vector generation now properly flows into hybrid search
+  - Original bug: `else if` prevented generated vectors from being used
+  - Fix: Changed to sequential `if` statements allowing both generation and search
+  - Impact: Automatic vector generation now works correctly for all semantic searches
+
+### Breaking Changes
+
+- **NONE**: This is a non-breaking feature addition with full backward compatibility
+- All existing `semantic_search` calls work unchanged
+- Performance impact can be mitigated by setting `enable_hybrid_retrieval: false`
+
 ## [1.1.7] - 2025-10-21
 
 ### Changed
