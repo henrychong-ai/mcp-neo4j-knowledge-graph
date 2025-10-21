@@ -32,7 +32,7 @@ cat $(npm root -g)/@henrychong-ai/mcp-neo4j-knowledge-graph/SETUP.md
 # "Read the SETUP.md file from the installed package and help me set up the MCP server"
 ```
 
-**For Contributors:** If you've cloned this repository, SETUP.md is in the root directory.
+The setup guide is also available in the repository root directory.
 
 ---
 

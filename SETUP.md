@@ -168,7 +168,7 @@ npm run neo4j:test
 
 ## 4. MCP Server Installation
 
-### Option A: Install from npm (Recommended for Users)
+### Install from npm
 
 ```bash
 # Global installation (recommended)
@@ -180,31 +180,10 @@ mcp-neo4j-knowledge-graph --version
 
 **Note**: The global executable is named `mcp-neo4j-knowledge-graph`.
 
-### Option B: Local Development Setup (For Contributors)
-
-```bash
-# Clone the repository
-git clone https://github.com/henrychong-ai/mcp-neo4j-knowledge-graph.git
-cd mcp-neo4j-knowledge-graph
-
-# Install dependencies
-npm install
-
-# Build the project
-npm run build
-
-# Verify build
-node build/index.js --version
-```
-
 ### Verify Server Starts Correctly
 
 ```bash
-# For global install:
 mcp-neo4j-knowledge-graph
-
-# For local development:
-node build/index.js
 
 # Expected: Server starts and waits for input (press Ctrl+C to exit)
 ```
@@ -259,31 +238,9 @@ Edit `claude_desktop_config.json`:
 }
 ```
 
-**For local development setup, use absolute path:**
-
-```json
-{
-  "mcpServers": {
-    "neo4j-knowledge-graph": {
-      "command": "node",
-      "args": [
-        "/absolute/path/to/mcp-neo4j-knowledge-graph/build/index.js"
-      ],
-      "env": {
-        "NEO4J_URI": "bolt://localhost:7687",
-        "NEO4J_USERNAME": "neo4j",
-        "NEO4J_PASSWORD": "your_secure_password_here",
-        "OPENAI_API_KEY": "sk-proj-..."
-      }
-    }
-  }
-}
-```
-
-**Common path issues:**
-- ⚠️ **Always use absolute paths** - relative paths won't work
-- ⚠️ **Don't use ~/** - expand to full path like `/Users/yourname/...`
-- ⚠️ **Windows users**: Use forward slashes or escaped backslashes
+**Important:**
+- Replace `your_secure_password_here` with your actual Neo4j password
+- Add your OpenAI API key if you want semantic search (optional)
 
 ### Restart Claude Desktop
 
@@ -448,17 +405,28 @@ Expected workflow:
 
 **Symptom:** `Node already exists with label 'Entity' and property 'name'`
 
-**Cause:** Old single-field constraint instead of composite `(name, validTo)` constraint
+**Cause:** Old single-field constraint blocks temporal versioning. This can happen when upgrading from older versions.
 
-**Solution:** See [docs/SCHEMA_CONSTRAINT_FIX.md](docs/SCHEMA_CONSTRAINT_FIX.md) for complete fix instructions.
+**Complete Fix:** Run these commands in Neo4j Browser (`http://localhost:7474`):
 
-Quick fix in Neo4j Browser:
 ```cypher
+// Step 1: Check current constraints
+SHOW CONSTRAINTS;
+
+// Step 2: Drop old single-field constraint if it exists
 DROP CONSTRAINT entity_name IF EXISTS;
+
+// Step 3: Create correct composite constraint for temporal versioning
 CREATE CONSTRAINT entity_name
 FOR (e:Entity)
 REQUIRE (e.name, e.validTo) IS UNIQUE;
+
+// Step 4: Verify the fix
+SHOW CONSTRAINTS;
+// You should see: UNIQUE (name, validTo) for Entity nodes
 ```
+
+**Why this is needed:** Temporal versioning creates multiple entity versions with the same name but different `validTo` timestamps. The composite constraint allows this, while a single-field constraint on `name` would block it.
 
 ### Embedding Generation Fails
 
@@ -493,15 +461,10 @@ REQUIRE (e.name, e.validTo) IS UNIQUE;
 
 ## 9. Next Steps
 
-### Development & Contribution
-- See [CLAUDE.md](CLAUDE.md) for development commands and architecture
-- See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines
-- Run tests: `npm test`
-
 ### Advanced Features
 - **Vector Embeddings**: Generate semantic search embeddings with `npm run embeddings:generate`
 - **Temporal Versioning**: All entities/relations track historical changes automatically
-- **Batch Operations**: Process multiple entities efficiently (see TODO.md for upcoming features)
+- **Batch Operations**: Efficiently process multiple entities in single operations
 
 ### Example Workflows
 
@@ -523,14 +486,6 @@ Create entities for frameworks, libraries, and tools you use.
 Add observations about versions, features, gotchas, and best practices.
 Use semantic search to find related concepts when learning new technologies.
 ```
-
-### Documentation Links
-
-- **Main README**: [README.md](README.md) - Project overview and features
-- **Development Guide**: [CLAUDE.md](CLAUDE.md) - Architecture and dev commands
-- **Schema Fix Guide**: [docs/SCHEMA_CONSTRAINT_FIX.md](docs/SCHEMA_CONSTRAINT_FIX.md)
-- **Neo4j Upgrade Guide**: [docs/UPGRADE.md](docs/UPGRADE.md)
-- **Changelog**: [CHANGELOG.md](CHANGELOG.md) - Version history
 
 ---
 
@@ -588,7 +543,3 @@ LIMIT 20
 ---
 
 **Setup complete!** You now have a fully functional Neo4j knowledge graph integrated with Claude.
-
-For questions or issues, see:
-- [GitHub Issues](https://github.com/henrychong-ai/mcp-neo4j-knowledge-graph/issues)
-- [Documentation](https://github.com/henrychong-ai/mcp-neo4j-knowledge-graph)
