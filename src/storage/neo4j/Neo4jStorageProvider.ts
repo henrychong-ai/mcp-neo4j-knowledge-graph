@@ -2150,7 +2150,9 @@ export class Neo4jStorageProvider implements StorageProvider {
             embedError
           );
         }
-      } else if (options.queryVector) {
+      }
+
+      if (options.queryVector) {
         diagnostics.stepsTaken.push({
           step: 'searchMethod',
           timestamp: Date.now(),
