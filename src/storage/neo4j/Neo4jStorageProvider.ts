@@ -11,6 +11,7 @@ import neo4j, { isInt } from 'neo4j-driver';
 import { Neo4jVectorStore } from './Neo4jVectorStore.js';
 import { EmbeddingServiceFactory } from '../../embeddings/EmbeddingServiceFactory.js';
 import type { EmbeddingService } from '../../embeddings/EmbeddingService.js';
+import { HybridRetriever, type HybridSearchConfig } from '../../retrieval/index.js';
 
 /**
  * Configuration options for Neo4j storage provider
@@ -87,6 +88,8 @@ interface ExtendedRelation {
  */
 interface Neo4jSemanticSearchOptions extends SemanticSearchOptions {
   queryVector?: number[];
+  hybridConfig?: Partial<HybridSearchConfig>;
+  enableHybridRetrieval?: boolean;
 }
 
 /**
@@ -1374,6 +1377,106 @@ export class Neo4jStorageProvider implements StorageProvider {
   }
 
   /**
+   * Get all relations for a specific entity (both incoming and outgoing)
+   * @param entityName Name of the entity
+   * @returns Array of relations connected to the entity
+   */
+  private async getEntityRelations(entityName: string): Promise<Relation[]> {
+    try {
+      const query = `
+        MATCH (e:Entity {name: $entityName})
+        WHERE e.validTo IS NULL
+        OPTIONAL MATCH (e)-[r1:RELATES_TO]->(other1:Entity)
+        WHERE r1.validTo IS NULL AND other1.validTo IS NULL
+        OPTIONAL MATCH (other2:Entity)-[r2:RELATES_TO]->(e)
+        WHERE r2.validTo IS NULL AND other2.validTo IS NULL
+        WITH e,
+             COLLECT(DISTINCT {rel: r1, from: e.name, to: other1.name}) AS outgoing,
+             COLLECT(DISTINCT {rel: r2, from: other2.name, to: e.name}) AS incoming
+        UNWIND (outgoing + incoming) AS relData
+        RETURN relData.rel AS r, relData.from AS fromName, relData.to AS toName
+      `;
+
+      const result = await this.connectionManager.executeQuery(query, { entityName });
+
+      const relations: Relation[] = [];
+      for (const record of result.records) {
+        const rel = record.get('r');
+        if (rel && rel.properties) {
+          const fromName = record.get('fromName');
+          const toName = record.get('toName');
+          relations.push(this.relationshipToRelation(rel.properties, fromName, toName));
+        }
+      }
+
+      return relations;
+    } catch (error) {
+      logger.error(`Error retrieving relations for entity ${entityName}`, error);
+      return []; // Return empty array on error to allow hybrid retrieval to continue
+    }
+  }
+
+  /**
+   * Get all entities in the knowledge graph
+   * @returns Array of all entities
+   */
+  private async getAllEntities(): Promise<Entity[]> {
+    try {
+      const query = `
+        MATCH (e:Entity)
+        WHERE e.validTo IS NULL
+        RETURN e
+        LIMIT 10000
+      `;
+
+      const result = await this.connectionManager.executeQuery(query, {});
+
+      const entities: Entity[] = [];
+      for (const record of result.records) {
+        const node = record.get('e').properties;
+        entities.push(this.nodeToEntity(node));
+      }
+
+      return entities;
+    } catch (error) {
+      logger.error('Error retrieving all entities', error);
+      return []; // Return empty array on error
+    }
+  }
+
+  /**
+   * Get all relations in the knowledge graph
+   * @returns Array of all relations
+   */
+  private async getAllRelations(): Promise<Relation[]> {
+    try {
+      const query = `
+        MATCH (from:Entity)-[r:RELATES_TO]->(to:Entity)
+        WHERE r.validTo IS NULL
+          AND from.validTo IS NULL
+          AND to.validTo IS NULL
+        RETURN r, from.name AS fromName, to.name AS toName
+        LIMIT 10000
+      `;
+
+      const result = await this.connectionManager.executeQuery(query, {});
+
+      const relations: Relation[] = [];
+      for (const record of result.records) {
+        const rel = record.get('r').properties;
+        const fromName = record.get('fromName');
+        const toName = record.get('toName');
+        relations.push(this.relationshipToRelation(rel, fromName, toName));
+      }
+
+      return relations;
+    } catch (error) {
+      logger.error('Error retrieving all relations', error);
+      return []; // Return empty array on error
+    }
+  }
+
+  /**
    * Get a specific relation by its source, target, and type
    * @param from Source entity name
    * @param to Target entity name
@@ -2047,7 +2150,9 @@ export class Neo4jStorageProvider implements StorageProvider {
             embedError
           );
         }
-      } else if (options.queryVector) {
+      }
+
+      if (options.queryVector) {
         diagnostics.stepsTaken.push({
           step: 'searchMethod',
           timestamp: Date.now(),
@@ -2097,10 +2202,18 @@ export class Neo4jStorageProvider implements StorageProvider {
             );
 
             if (foundResults > 0) {
-              // Convert to EntityData objects
-              const entityPromises = vectorResult.records.map(async (record) => {
-                const entityName = record.get('name');
-                return this.getEntity(entityName);
+              // Convert to EntityData objects with similarity scores
+              const vectorSearchResults = vectorResult.records.map((record) => ({
+                id: record.get('name'),
+                similarity: record.get('score'),
+                metadata: {
+                  entityType: record.get('entityType'),
+                  searchMethod: 'vector',
+                },
+              }));
+
+              const entityPromises = vectorSearchResults.map(async (result) => {
+                return this.getEntity(result.id as string);
               });
 
               const entities = (await Promise.all(entityPromises)).filter(Boolean);
@@ -2126,9 +2239,92 @@ export class Neo4jStorageProvider implements StorageProvider {
                 return result;
               }
 
-              // Get related relations
-              const entityNames = entities.map((e) => e.name);
-              const finalGraph = await this.openNodes(entityNames);
+              // Check if hybrid retrieval is enabled (defaults to true for hybridSearch)
+              const enableHybridRetrieval =
+                options.enableHybridRetrieval !== false &&
+                (options.hybridSearch === true || options.hybridSearch === undefined);
+
+              let finalEntities = entities;
+              let finalEntityNames = entities.map((e) => e.name);
+
+              if (enableHybridRetrieval) {
+                diagnostics.stepsTaken.push({
+                  step: 'hybridReranking',
+                  timestamp: Date.now(),
+                  status: 'started',
+                });
+
+                try {
+                  // Get all relations for the entities
+                  const relationsMap = new Map<string, Relation[]>();
+                  for (const entity of entities) {
+                    const entityRelations = await this.getEntityRelations(entity.name);
+                    relationsMap.set(entity.name, entityRelations);
+                  }
+
+                  // Get all entities and relations for graph analysis
+                  const allEntitiesResult = await this.getAllEntities();
+                  const allRelationsResult = await this.getAllRelations();
+
+                  // Initialize hybrid retriever
+                  const hybridRetriever = new HybridRetriever({
+                    config: {
+                      ...(options.hybridConfig || {}),
+                      enableScoreDebug: process.env.DEBUG === 'true',
+                    },
+                  });
+
+                  // Rerank results
+                  const hybridResults = await hybridRetriever.rerank(
+                    vectorSearchResults,
+                    entities,
+                    relationsMap,
+                    query,
+                    options.queryVector,
+                    allEntitiesResult,
+                    allRelationsResult
+                  );
+
+                  // Extract reranked entities
+                  finalEntities = hybridResults.map((r) => r.entity);
+                  finalEntityNames = hybridResults.map((r) => r.entity.name);
+
+                  // Add hybrid scores to diagnostics if debug mode
+                  if (process.env.DEBUG === 'true') {
+                    diagnostics.hybridScores = hybridResults.map((r) => ({
+                      entityName: r.entity.name,
+                      scores: r.scores,
+                      explanation: r.scores.explanation,
+                    }));
+                  }
+
+                  diagnostics.stepsTaken.push({
+                    step: 'hybridReranking',
+                    timestamp: Date.now(),
+                    status: 'completed',
+                    rerankedCount: hybridResults.length,
+                  });
+
+                  logger.debug(
+                    `Neo4jStorageProvider: Hybrid reranking completed with ${hybridResults.length} results`
+                  );
+                } catch (error) {
+                  logger.error(
+                    `Neo4jStorageProvider: Hybrid reranking failed, falling back to vector-only results`,
+                    error
+                  );
+                  diagnostics.stepsTaken.push({
+                    step: 'hybridReranking',
+                    timestamp: Date.now(),
+                    status: 'error',
+                    error: error instanceof Error ? error.message : String(error),
+                  });
+                  // Continue with original vector results on error
+                }
+              }
+
+              // Get related relations for final entities
+              const finalGraph = await this.openNodes(finalEntityNames);
 
               diagnostics.endTime = Date.now();
               diagnostics.totalTimeTaken = diagnostics.endTime - diagnostics.startTime;
