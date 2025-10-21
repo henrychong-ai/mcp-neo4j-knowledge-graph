@@ -13,6 +13,18 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - MCP server for Claude Desktop and Claude Code integration
 - Full test coverage with Vitest
 
+## Getting Started
+
+**First time setup?** See **[SETUP.md](SETUP.md)** for complete step-by-step instructions covering:
+- Prerequisites (Node.js, Neo4j, Docker)
+- Environment configuration
+- MCP server installation
+- Claude Desktop and Claude Code configuration
+- First entity creation and verification
+- Troubleshooting common issues
+
+This guide ensures new users can get the MCP server running in 10-15 minutes.
+
 ## Development Commands
 
 ### Build & Development
