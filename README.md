@@ -10,7 +10,7 @@ Scalable, high-performance knowledge graph memory system with semantic retrieval
 
 ## Getting Started
 
-**New to this MCP server?** See the **[Interactive Setup Guide (SETUP.md)](SETUP.md)** for complete step-by-step instructions covering:
+**New to this MCP server?** See the **Interactive Setup Guide (SETUP.md)** for complete step-by-step instructions covering:
 - Prerequisites and Neo4j installation
 - Environment configuration
 - Claude Desktop and Claude Code setup
@@ -18,6 +18,21 @@ Scalable, high-performance knowledge graph memory system with semantic retrieval
 - Troubleshooting common issues
 
 **Expected setup time:** 10-15 minutes
+
+### Accessing the Setup Guide
+
+The setup guide is included in the npm package. Access it via:
+
+```bash
+# After installing: npm install -g @henrychong-ai/mcp-neo4j-knowledge-graph
+# View the setup guide:
+cat $(npm root -g)/@henrychong-ai/mcp-neo4j-knowledge-graph/SETUP.md
+
+# Or ask Claude Code to read it and guide you through setup:
+# "Read the SETUP.md file from the installed package and help me set up the MCP server"
+```
+
+**For Contributors:** If you've cloned this repository, SETUP.md is in the root directory.
 
 ---
 
