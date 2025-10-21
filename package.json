@@ -30,7 +30,8 @@
     "claude"
   ],
   "files": [
-    "dist"
+    "dist",
+    "SETUP.md"
   ],
   "scripts": {
     "build": "tsc && shx chmod +x dist/*.js",
