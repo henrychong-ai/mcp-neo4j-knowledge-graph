@@ -1,27 +1,103 @@
 # TODO - Outstanding Tasks
 
-## 🚀 High Priority
+## 🚨 Critical Priority
 
-### Interactive Setup Guide for Claude Code (SETUP.md)
+### v1.2.0 Validation & Issue Diagnosis
 
-**Goal**: Create a comprehensive, step-by-step setup guide that Claude Code sessions automatically read to help users get the MCP server running
+**Goal**: Validate v1.2.0 release (Hybrid Retrieval System) and diagnose any issues in production
 
-**Status**: ⏳ **NOT YET STARTED** - Deferred in favor of Hybrid Retrieval System
+**Status**: ⏳ **NEEDS VALIDATION** - Released to npm but not fully tested
 
-**Problem**: Users setting up the mcp-neo4j-knowledge-graph need clear, sequential instructions covering system prerequisites, Neo4j setup, environment configuration, Claude Desktop/Code configuration, testing, and troubleshooting.
+**Problem**: v1.2.0 was released with major hybrid retrieval system changes. Need to validate:
+- npm package installs correctly
+- All MCP tools work with Claude Desktop and Claude Code
+- Hybrid retrieval system performs as expected
+- No breaking changes or regressions introduced
+- Performance impact acceptable (100-300ms overhead documented)
 
-**Solution**: Create `SETUP.md` with complete setup walkthrough covering prerequisites, Neo4j installation, environment configuration, MCP server installation, Claude Desktop/Code setup, first MCP tool test, and troubleshooting guide.
+**Testing Checklist**:
+1. **Fresh Install Test**:
+   - [ ] Clean npm install: `npm install -g @henrychong-ai/mcp-neo4j-knowledge-graph`
+   - [ ] Verify version: `mcp-neo4j-knowledge-graph --version` shows v1.2.0
+   - [ ] Server starts: No errors on launch
+   - [ ] MCP tools available in Claude Desktop/Code
 
-**Complexity**: Low (documentation only, no code changes)
+2. **Functionality Test**:
+   - [ ] Create entities via `mcp__kg__create_entities`
+   - [ ] Search via `mcp__kg__search_nodes` (keyword)
+   - [ ] Search via `mcp__kg__semantic_search` (vector)
+   - [ ] Hybrid retrieval enabled by default
+   - [ ] Add/delete observations work correctly
+   - [ ] Temporal versioning creates version chains
 
-**ROI**: Very High (dramatically improves adoption, reduces support burden)
+3. **Performance Test**:
+   - [ ] Semantic search response time < 2 seconds
+   - [ ] Hybrid retrieval overhead ~100-300ms as documented
+   - [ ] No memory leaks or connection issues
 
-**Files to Create**:
-- `SETUP.md` in repository root
-- Update README.md to link to SETUP.md prominently
-- Update CLAUDE.md to reference SETUP.md for onboarding
+4. **Breaking Changes Check**:
+   - [ ] Existing integrations still work
+   - [ ] Optional disable: `enable_hybrid_retrieval: false` works
+   - [ ] All existing MCP tool parameters unchanged
+
+**Files to Review**:
+- `src/storage/neo4j/Neo4jStorageProvider.ts` (query vector flow fix)
+- `src/retrieval/HybridRetriever.ts` (orchestrator)
+- `docs/HYBRID_RETRIEVAL.md` (user documentation)
+
+**Issue Diagnosis**:
+- Document any errors or unexpected behavior
+- Check GitHub Actions workflow logs
+- Review npm package contents
+- Test with different Neo4j versions/editions
 
 ---
+
+## 🧪 Testing & Validation
+
+### SETUP.md Interactive Setup Guide
+
+**Goal**: Validate SETUP.md works for public npm users before merging to main
+
+**Status**: ✅ **IMPLEMENTED** - Branch: `claude/view-next-todo-011CUKmNheUxgexehrHqwMqR`
+
+**Implementation Complete**:
+- ✅ Created comprehensive 545-line setup guide
+- ✅ Self-contained for public npm users (no private repo references)
+- ✅ Included in npm package via `package.json` files array
+- ✅ Updated README.md and CLAUDE.md with prominent links
+- ✅ Expanded inline troubleshooting (schema constraints, etc.)
+
+**Pre-Merge Testing Checklist**:
+1. **NPM Package Accessibility Test**:
+   - [ ] Install package: `npm install -g @henrychong-ai/mcp-neo4j-knowledge-graph`
+   - [ ] Access SETUP.md: `cat $(npm root -g)/@henrychong-ai/mcp-neo4j-knowledge-graph/SETUP.md`
+   - [ ] Verify all sections readable from npm package
+
+2. **Link Validation**:
+   - [ ] No broken file links (grep for .md references)
+   - [ ] No private repo URLs (grep for github.com)
+   - [ ] External links work (Neo4j docs, OpenAI, etc.)
+
+3. **User Journey Test**:
+   - [ ] Fresh user follows SETUP.md from npm package
+   - [ ] All commands work as documented
+   - [ ] Neo4j setup successful (Docker Compose recommended path)
+   - [ ] Claude Desktop configuration works
+   - [ ] First entity creation successful
+   - [ ] Troubleshooting sections resolve common issues
+
+4. **Documentation Quality**:
+   - [ ] Clear for beginners (no assumed knowledge)
+   - [ ] Code blocks properly formatted
+   - [ ] Screenshots/examples helpful (if any)
+   - [ ] Troubleshooting covers real issues
+
+**Merge Decision**: Only merge to main after checklist complete and tested by actual npm user workflow
+
+---
+
+## 🚀 High Priority
 
 ### Batch Operations API
 
@@ -185,6 +261,107 @@ LIMIT 20
 **Complexity**: Medium (scheduling, monitoring, error handling)
 
 **ROI**: High (keeps semantic search accurate without manual work, enables dynamic knowledge graphs)
+
+---
+
+## 🏗️ Infrastructure & CI/CD
+
+### Branch Testing & Preview Deployments
+
+**Goal**: Enable testing of branches before merging to main to prevent production issues
+
+**Status**: ⏳ **NOT STARTED** - Critical after v1.2.0 release issues
+
+**Problem**: Currently we merge to main → publish to npm → discover issues. Need ability to test branches in production-like environments before merging.
+
+**Solution Components**:
+
+1. **Branch Build & Test Automation**:
+   - GitHub Actions workflow for pull requests
+   - Run full test suite on every branch push
+   - Build package and verify no errors
+   - Report test results in PR comments
+
+2. **Preview NPM Packages** (Optional):
+   - Publish branch builds to npm with alpha/beta tags
+   - Example: `@henrychong-ai/mcp-neo4j-knowledge-graph@1.2.1-alpha.1`
+   - Test in real Claude Desktop/Code environments
+   - Clean up preview packages after merge/close
+
+3. **Automated Testing Checklist**:
+   - [ ] Unit tests (existing 333 tests)
+   - [ ] Integration tests with Neo4j (currently manual)
+   - [ ] Build verification (TypeScript compilation)
+   - [ ] Package size check (detect bloat)
+   - [ ] Dependency security audit
+
+**Implementation Phases**:
+1. Add `.github/workflows/pull-request.yml` workflow
+2. Configure test reporting and status checks
+3. Optional: Add preview package publishing
+4. Document testing process in CONTRIBUTING.md
+
+---
+
+### Cloud Testing Environments
+
+**Goal**: Set up cloud-based Neo4j instances for testing in Claude Code web and Codex web
+
+**Status**: ⏳ **NOT STARTED** - Needed for comprehensive testing
+
+**Problem**: Current testing limited to local Neo4j. Need cloud environments to test:
+- Claude Code web (browser-based, different networking)
+- Codex web (different authentication, environment)
+- Public internet accessibility
+- Production-like configurations
+
+**Solution Options**:
+
+1. **Neo4j Aura (Managed Cloud)**:
+   - Free tier: 200K nodes, 400K relationships
+   - Always-on, no Docker required
+   - Test connectivity from web environments
+   - Production-like performance characteristics
+
+2. **VPS-Hosted Neo4j** (Current jp-vps-1 option):
+   - Full control over configuration
+   - Already have jp-vps-1 with Neo4j 5.26
+   - Can create test database alongside production
+   - Tailscale access or public endpoint
+
+3. **Docker Cloud Environments**:
+   - Fly.io, Railway, Render
+   - On-demand Neo4j instances
+   - Good for ephemeral testing
+   - Cost: ~$5-10/month per instance
+
+**Testing Matrix**:
+```
+Environment          | Neo4j Location    | Test Type
+---------------------|-------------------|---------------------------
+Local Claude Code    | Local Docker      | Development ✅
+Local Claude Desktop | Local Docker      | Development ✅
+Claude Code Web      | Neo4j Aura        | Production-like ⏳
+Codex Web           | Neo4j Aura        | Integration ⏳
+CI/CD Pipeline      | GitHub Actions    | Automated ⏳
+```
+
+**Implementation Steps**:
+1. Set up Neo4j Aura free instance
+2. Document connection configuration
+3. Test from Claude Code web environment
+4. Test from Codex web environment
+5. Create testing playbook
+6. Add cloud testing to SETUP.md
+
+**Configuration Example**:
+```bash
+# Cloud Neo4j Aura
+NEO4J_URI=neo4j+s://xxxxx.databases.neo4j.io
+NEO4J_USERNAME=neo4j
+NEO4J_PASSWORD=secure_cloud_password
+OPENAI_API_KEY=sk-proj-...
+```
 
 ---
 
@@ -532,5 +709,11 @@ act push -j publish --secret NPM_TOKEN=...  # Test publish job
 
 ---
 
-**Last Updated:** 2025-10-20
-**Session Context:** v1.1.6 released with pre-public repository cleanup completed. Added four new high priority tasks: (1) Interactive Setup Guide (SETUP.md) for Claude Code sessions - low complexity, very high ROI for user adoption, (2) Hybrid Retrieval System combining semantic search with graph context, (3) Batch Operations API for efficient bulk knowledge graph operations, (4) Automated Vector Embeddings Regeneration with scheduled and threshold-based automation. Setup guide prioritized first to improve onboarding experience and reduce support burden. All features identified through dual analysis (Claude + GPT-5-Codex high reasoning) and strategic planning sessions. Normal semantic versioning will apply during implementation.
+**Last Updated:** 2025-10-21
+**Session Context:**
+- v1.2.0 released with Hybrid Retrieval System (merged to main, published to npm)
+- SETUP.md implemented on branch `claude/view-next-todo-011CUKmNheUxgexehrHqwMqR` (545 lines, self-contained for public npm users)
+- Added Critical Priority: v1.2.0 validation and issue diagnosis (needs testing before further releases)
+- Added Infrastructure & CI/CD tasks: Branch testing automation and cloud Neo4j environments for Claude Code web/Codex web testing
+- Testing & Validation section created for SETUP.md pre-merge checklist
+- Next steps: Validate v1.2.0 production release, test SETUP.md from npm user perspective, establish branch testing workflow
