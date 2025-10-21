@@ -8,6 +8,19 @@ Scalable, high-performance knowledge graph memory system with semantic retrieval
 
 ---
 
+## Getting Started
+
+**New to this MCP server?** See the **[Interactive Setup Guide (SETUP.md)](SETUP.md)** for complete step-by-step instructions covering:
+- Prerequisites and Neo4j installation
+- Environment configuration
+- Claude Desktop and Claude Code setup
+- First entity creation and verification
+- Troubleshooting common issues
+
+**Expected setup time:** 10-15 minutes
+
+---
+
 ## Installation
 
 ### Global Installation with npx (Recommended)
