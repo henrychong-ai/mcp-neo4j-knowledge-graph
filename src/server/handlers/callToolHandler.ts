@@ -360,6 +360,19 @@ export async function handleCallToolRequest(
 
       case 'semantic_search':
         try {
+          // Extract hybrid search configuration if provided
+          const hybridConfig = args.hybrid_config
+            ? {
+                vectorWeight: args.hybrid_config.vector_weight,
+                graphWeight: args.hybrid_config.graph_weight,
+                temporalWeight: args.hybrid_config.temporal_weight,
+                connectionWeight: args.hybrid_config.connection_weight,
+                enableScoreDebug: args.hybrid_config.enable_score_debug,
+                referenceTime: args.hybrid_config.reference_time,
+                temporalHalfLife: args.hybrid_config.temporal_half_life,
+              }
+            : undefined;
+
           // Extract search options from args
           const searchOptions = {
             limit: args.limit || 10,
@@ -368,6 +381,8 @@ export async function handleCallToolRequest(
             hybridSearch: args.hybrid_search !== undefined ? args.hybrid_search : true,
             semanticWeight: args.semantic_weight || 0.6,
             semanticSearch: true,
+            hybridConfig,
+            enableHybridRetrieval: args.enable_hybrid_retrieval !== false,
           };
 
           // Call the search method with semantic search options
