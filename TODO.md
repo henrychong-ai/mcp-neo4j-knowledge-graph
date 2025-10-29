@@ -2,13 +2,13 @@
 
 ## 🚨 Critical Priority
 
-### v1.2.0 Validation & Issue Diagnosis
+### v1.2.1 Validation & Issue Diagnosis
 
-**Goal**: Validate v1.2.0 release (Hybrid Retrieval System) and diagnose any issues in production
+**Goal**: Validate v1.2.1 release (Dependency Updates) and diagnose any issues in production
 
 **Status**: ⏳ **NEEDS VALIDATION** - Released to npm but not fully tested
 
-**Problem**: v1.2.0 was released with major hybrid retrieval system changes. Need to validate:
+**Problem**: v1.2.1 was released with major dependency updates (OpenAI SDK v6, Neo4j driver v6). Need to validate:
 - npm package installs correctly
 - All MCP tools work with Claude Desktop and Claude Code
 - Hybrid retrieval system performs as expected
@@ -18,7 +18,7 @@
 **Testing Checklist**:
 1. **Fresh Install Test**:
    - [ ] Clean npm install: `npm install -g @henrychong-ai/mcp-neo4j-knowledge-graph`
-   - [ ] Verify version: `mcp-neo4j-knowledge-graph --version` shows v1.2.0
+   - [ ] Verify version: `mcp-neo4j-knowledge-graph --version` shows v1.2.1
    - [ ] Server starts: No errors on launch
    - [ ] MCP tools available in Claude Desktop/Code
 
@@ -270,7 +270,7 @@ LIMIT 20
 
 **Goal**: Enable testing of branches before merging to main to prevent production issues
 
-**Status**: ⏳ **NOT STARTED** - Critical after v1.2.0 release issues
+**Status**: ⏳ **NOT STARTED** - Critical after v1.2.1 release
 
 **Problem**: Currently we merge to main → publish to npm → discover issues. Need ability to test branches in production-like environments before merging.
 
@@ -709,11 +709,12 @@ act push -j publish --secret NPM_TOKEN=...  # Test publish job
 
 ---
 
-**Last Updated:** 2025-10-21
+**Last Updated:** 2025-10-29
 **Session Context:**
-- v1.2.0 released with Hybrid Retrieval System (merged to main, published to npm)
-- SETUP.md implemented on branch `claude/view-next-todo-011CUKmNheUxgexehrHqwMqR` (545 lines, self-contained for public npm users)
-- Added Critical Priority: v1.2.0 validation and issue diagnosis (needs testing before further releases)
-- Added Infrastructure & CI/CD tasks: Branch testing automation and cloud Neo4j environments for Claude Code web/Codex web testing
-- Testing & Validation section created for SETUP.md pre-merge checklist
-- Next steps: Validate v1.2.0 production release, test SETUP.md from npm user perspective, establish branch testing workflow
+- v1.2.1 released with major dependency updates (OpenAI SDK v6, Neo4j driver v6, MCP SDK 1.20.2)
+- Updated 37 additional packages to latest minor/patch versions
+- Zero code changes required (backward compatible upgrades)
+- All 333 unit tests passing
+- Added Critical Priority: v1.2.1 validation and issue diagnosis (needs testing before further releases)
+- Previous: v1.2.0 released with Hybrid Retrieval System
+- Next steps: Validate v1.2.1 production release, test dependency upgrades in production environments
