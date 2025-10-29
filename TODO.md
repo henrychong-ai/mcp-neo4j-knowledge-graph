@@ -149,9 +149,9 @@
    - Test connectivity from web environments
    - Production-like performance characteristics
 
-2. **VPS-Hosted Neo4j** (Current jp-vps-1 option):
+2. **VPS-Hosted Neo4j** (Current vps-2 production):
    - Full control over configuration
-   - Already have jp-vps-1 with Neo4j 5.26
+   - Already have vps-2 with Neo4j 5.26
    - Can create test database alongside production
    - Tailscale access or public endpoint
 

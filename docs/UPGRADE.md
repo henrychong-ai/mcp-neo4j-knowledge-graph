@@ -12,6 +12,8 @@ This guide provides comprehensive instructions for upgrading Neo4j database vers
 
 **Tested Upgrade Path:** Neo4j 5.13.0 → 5.26.13 LTS (2025-10-20, jp-vps-1)
 
+**Note:** This upgrade was originally tested on jp-vps-1. Production Neo4j has since been migrated to **vps-2** (Singapore, 4C/12GB RAM). Historical references to jp-vps-1 in this document reflect the original upgrade testing environment.
+
 ---
 
 ## Table of Contents
