@@ -5,6 +5,48 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2025-10-29
+
+### Added
+
+- **Daily Embedding Automation**: Automated incremental vector embedding regeneration for production deployments
+  - Daily cron schedule at 3 AM Singapore time (19:00 UTC)
+  - `scheduleIncrementalRegeneration()` method in EmbeddingJobManager
+  - Checks all entities and schedules embedding jobs only for those missing embeddings
+  - Integrates with existing 10-second job processor for execution
+  - Uses node-cron library for reliable scheduling
+  - Production-ready: Deployed and running on vps-2 production server
+
+### Fixed
+
+- **Test Suite**: Updated semantic_search test expectations for hybrid retrieval parameters
+  - Fixed 2 failing tests in `callToolHandler.diagnostic.test.ts`
+  - Tests now correctly expect `enableHybridRetrieval` and `hybridConfig` parameters
+  - All 335 unit tests passing (8 expected integration test failures require Neo4j)
+
+### Technical Details
+
+- **Cron Schedule**: `'0 19 * * *'` with UTC timezone
+- **Implementation**: `src/index.ts` lines 140-166
+- **Method**: `EmbeddingJobManager.scheduleIncrementalRegeneration()` lines 780-857
+- **Dependencies**: node-cron@^3.0.3, @types/node-cron@^3.0.11
+- **Logging**: Comprehensive info/debug logs for monitoring and troubleshooting
+- **Error Handling**: Graceful failure handling - errors logged but don't crash service
+
+### Production Deployment
+
+- **Server**: vps-2 (Singapore, 4C/12GB RAM)
+- **Service**: systemd service `mcp-neo4j-kg.service`
+- **Status**: Active and running since 2025-10-29
+- **First Run**: 2025-10-30 03:00 SGT (2025-10-29 19:00 UTC)
+
+### Impact
+
+- **Automation**: No manual intervention needed for embedding generation
+- **Coverage**: Automatic embedding for new entities added to knowledge graph
+- **Efficiency**: Incremental approach processes only entities without embeddings
+- **Reliability**: Runs daily regardless of system restarts via systemd service
+
 ## [1.2.1] - 2025-10-29
 
 ### Changed

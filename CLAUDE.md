@@ -333,8 +333,17 @@ docker run -d \
 - **Hybrid**: Start semantic → refine with keywords
 - See AXIS.md v3.10.1 for complete KG Search Protocol
 
-**Maintenance:**
-- New entities: Embeddings generated via `npm run embeddings:generate`
+**Automated Maintenance (v1.3.0+):**
+- **Daily Cron**: Automatic incremental embedding generation at 3 AM Singapore time (19:00 UTC)
+- **Method**: `EmbeddingJobManager.scheduleIncrementalRegeneration()`
+- **Behavior**: Checks all entities, schedules jobs only for those missing embeddings
+- **Execution**: Processed by existing 10-second job queue
+- **Deployment**: Running on vps-2 production via systemd service `mcp-neo4j-kg.service`
+- **Logging**: Info/debug logs in service journal (`journalctl -u mcp-neo4j-kg -f`)
+- **Status**: Active since 2025-10-29
+
+**Manual Maintenance:**
+- On-demand generation: `npm run embeddings:generate`
 - Test subset: `npm run embeddings:test` (processes 5 entities)
 - Regenerate all: `npm run embeddings:generate -- --force`
 - Cost per run: ~$0.02 per 1M tokens
