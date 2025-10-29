@@ -268,10 +268,10 @@ See `INVESTIGATION.md` for detailed technical analysis.
 
 ## Production Deployment
 
-### Neo4j Docker Configuration (jp-vps-1)
+### Neo4j Docker Configuration (vps-2)
 
 **Current Production Setup:**
-- Host: jp-vps-1 (Tailscale IP: 100.109.177.39)
+- Host: vps-2 (Singapore VPS, 4C/12GB RAM)
 - Container: neo4j-kg
 - Neo4j Version: 5.26.13 LTS (community edition)
 - Memory: 512M heap, 256M pagecache, 128M transaction max
@@ -282,8 +282,8 @@ See `INVESTIGATION.md` for detailed technical analysis.
 docker run -d \
   --name neo4j-kg \
   --restart unless-stopped \
-  -p 100.109.177.39:7474:7474 \
-  -p 100.109.177.39:7687:7687 \
+  -p 7474:7474 \
+  -p 7687:7687 \
   -v neo4j-kg_neo4j_data:/data \
   -v neo4j-kg_neo4j_logs:/logs \
   -v /opt/neo4j-kg/backups:/backups \
