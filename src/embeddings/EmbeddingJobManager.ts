@@ -776,4 +776,82 @@ export class EmbeddingJobManager {
   getCacheEntry(key: string): CachedEmbedding | undefined {
     return this.cache.get(key);
   }
+
+  /**
+   * Schedule incremental regeneration for entities without embeddings
+   * This method queries all entities and schedules embedding jobs only for those missing embeddings
+   *
+   * @returns Number of entities scheduled for embedding generation
+   */
+  async scheduleIncrementalRegeneration(): Promise<number> {
+    this.logger.info('Starting incremental embedding regeneration check');
+
+    try {
+      // Get all entities from storage
+      const allEntities = await this._getAllEntitiesFromStorage();
+
+      this.logger.debug('Retrieved entities for embedding check', {
+        totalCount: allEntities.length
+      });
+
+      // Filter for entities without embeddings
+      const entitiesWithoutEmbeddings = allEntities.filter(entity => !entity.embedding);
+
+      this.logger.info('Found entities without embeddings', {
+        count: entitiesWithoutEmbeddings.length,
+        totalEntities: allEntities.length,
+        coverage: `${Math.round((allEntities.length - entitiesWithoutEmbeddings.length) / allEntities.length * 100)}%`
+      });
+
+      // Schedule embedding jobs for entities without embeddings
+      let scheduledCount = 0;
+      for (const entity of entitiesWithoutEmbeddings) {
+        try {
+          await this.scheduleEntityEmbedding(entity.name, 1);
+          scheduledCount++;
+        } catch (error) {
+          this.logger.warn('Failed to schedule embedding for entity', {
+            entityName: entity.name,
+            error: error instanceof Error ? error.message : String(error)
+          });
+        }
+      }
+
+      this.logger.info('Incremental regeneration scheduling complete', {
+        scheduled: scheduledCount,
+        missing: entitiesWithoutEmbeddings.length
+      });
+
+      return scheduledCount;
+    } catch (error) {
+      this.logger.error('Failed during incremental regeneration', {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Get all entities from storage provider
+   * This is a helper method to retrieve all entities for incremental regeneration
+   *
+   * @private
+   * @returns Array of all entities
+   */
+  private async _getAllEntitiesFromStorage(): Promise<Entity[]> {
+    // Use the storage provider's loadGraph method to get all entities
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const storageProviderAny = this.storageProvider as any;
+
+    if (typeof storageProviderAny.loadGraph === 'function') {
+      const graph = await storageProviderAny.loadGraph();
+      return graph.entities || [];
+    } else if (typeof storageProviderAny.getAllEntities === 'function') {
+      return await storageProviderAny.getAllEntities();
+    } else {
+      this.logger.error('Storage provider does not support entity retrieval');
+      throw new Error('Storage provider does not support getAllEntities or loadGraph');
+    }
+  }
 }
