@@ -276,6 +276,8 @@ describe('Diagnostic Tool Handlers', () => {
         hybridSearch: true,
         semanticWeight: 0.6,
         semanticSearch: true,
+        hybridConfig: undefined,
+        enableHybridRetrieval: true,
       });
 
       // Parse the response JSON
@@ -322,6 +324,8 @@ describe('Diagnostic Tool Handlers', () => {
         hybridSearch: true,
         semanticWeight: 0.7,
         semanticSearch: true,
+        hybridConfig: undefined,
+        enableHybridRetrieval: true,
       });
     });
 
