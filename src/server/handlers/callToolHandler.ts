@@ -361,15 +361,27 @@ export async function handleCallToolRequest(
       case 'semantic_search':
         try {
           // Extract hybrid search configuration if provided
-          const hybridConfig = args.hybrid_config
+          const hybridConfigRaw = args.hybrid_config as
+            | {
+                vector_weight?: number;
+                graph_weight?: number;
+                temporal_weight?: number;
+                connection_weight?: number;
+                enable_score_debug?: boolean;
+                reference_time?: number;
+                temporal_half_life?: number;
+              }
+            | undefined;
+
+          const hybridConfig = hybridConfigRaw
             ? {
-                vectorWeight: args.hybrid_config.vector_weight,
-                graphWeight: args.hybrid_config.graph_weight,
-                temporalWeight: args.hybrid_config.temporal_weight,
-                connectionWeight: args.hybrid_config.connection_weight,
-                enableScoreDebug: args.hybrid_config.enable_score_debug,
-                referenceTime: args.hybrid_config.reference_time,
-                temporalHalfLife: args.hybrid_config.temporal_half_life,
+                vectorWeight: hybridConfigRaw.vector_weight,
+                graphWeight: hybridConfigRaw.graph_weight,
+                temporalWeight: hybridConfigRaw.temporal_weight,
+                connectionWeight: hybridConfigRaw.connection_weight,
+                enableScoreDebug: hybridConfigRaw.enable_score_debug,
+                referenceTime: hybridConfigRaw.reference_time,
+                temporalHalfLife: hybridConfigRaw.temporal_half_life,
               }
             : undefined;
 
