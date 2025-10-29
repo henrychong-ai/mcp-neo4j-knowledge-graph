@@ -6,6 +6,7 @@ import { setupServer } from './server/setup.js';
 import { EmbeddingJobManager } from './embeddings/EmbeddingJobManager.js';
 import { EmbeddingServiceFactory } from './embeddings/EmbeddingServiceFactory.js';
 import { logger } from './utils/logger.js';
+import cron from 'node-cron';
 
 // Re-export the types and classes for use in other modules
 export * from './KnowledgeGraphManager.js';
@@ -135,6 +136,34 @@ try {
       });
     }
   }, EMBEDDING_PROCESS_INTERVAL);
+
+  // Schedule daily incremental embedding regeneration
+  // Runs at 3 AM Singapore time (19:00 UTC = 3 AM UTC+8)
+  cron.schedule('0 19 * * *', async () => {
+    logger.info('Starting daily incremental embedding regeneration (3 AM SGT)');
+
+    try {
+      const scheduledCount = await embeddingJobManager?.scheduleIncrementalRegeneration();
+      logger.info('Daily regeneration completed', {
+        entitiesScheduled: scheduledCount,
+        time: new Date().toISOString()
+      });
+    } catch (error) {
+      logger.error('Daily regeneration failed', {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        time: new Date().toISOString()
+      });
+    }
+  }, {
+    timezone: 'UTC'
+  });
+
+  logger.info('Embedding automation configured', {
+    periodicProcessing: `Every ${EMBEDDING_PROCESS_INTERVAL}ms`,
+    dailyRegeneration: '3 AM Singapore time (19:00 UTC)',
+    timezone: 'UTC'
+  });
 } catch (error) {
   // Fail gracefully if embedding job manager initialization fails
   logger.error('Failed to initialize EmbeddingJobManager', {
