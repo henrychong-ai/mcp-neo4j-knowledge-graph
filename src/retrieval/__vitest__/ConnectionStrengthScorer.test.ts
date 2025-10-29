@@ -112,7 +112,7 @@ describe('ConnectionStrengthScorer', () => {
       expect(explanation).toContain('Connection strength');
       expect(explanation).toContain('75.0%');
       expect(explanation).toContain('avg quality');
-      expect(explanation).toContain('2/3 strong'); // 2 out of 3 have confidence >= 0.7
+      expect(explanation).toContain('3/3 strong'); // All 3 relations have confidence >= 0.7 (0.9, 0.8, 0.7)
       expect(explanation).toContain('2 types'); // TYPE_A and TYPE_B
     });
 
