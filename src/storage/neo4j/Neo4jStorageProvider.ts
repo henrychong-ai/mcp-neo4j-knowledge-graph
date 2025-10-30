@@ -12,6 +12,7 @@ import { Neo4jVectorStore } from './Neo4jVectorStore.js';
 import { EmbeddingServiceFactory } from '../../embeddings/EmbeddingServiceFactory.js';
 import type { EmbeddingService } from '../../embeddings/EmbeddingService.js';
 import { HybridRetriever, type HybridSearchConfig } from '../../retrieval/index.js';
+import { LRUCache } from 'lru-cache';
 
 /**
  * Configuration options for Neo4j storage provider
@@ -113,6 +114,7 @@ export class Neo4jStorageProvider implements StorageProvider {
   };
   private vectorStore: Neo4jVectorStore;
   private embeddingService: EmbeddingService | null = null;
+  private searchCache: LRUCache<string, KnowledgeGraphWithDiagnostics>;
 
   /**
    * Create a new Neo4jStorageProvider
@@ -160,6 +162,19 @@ export class Neo4jStorageProvider implements StorageProvider {
       logger.error('Neo4jStorageProvider: Failed to initialize embedding service', error);
     }
 
+    // Initialize LRU cache for semantic search query results
+    this.searchCache = new LRUCache<string, KnowledgeGraphWithDiagnostics>({
+      max: 500, // Cache up to 500 unique queries
+      ttl: 1000 * 60 * 5, // 5 minute TTL for cache entries
+      maxSize: 10000, // Maximum 10K entities across all cached results
+      sizeCalculation: (graph) => graph.entities.length, // Size = entity count
+    });
+    logger.debug('Neo4jStorageProvider: Search result cache initialized', {
+      maxQueries: 500,
+      ttlMinutes: 5,
+      maxEntities: 10000,
+    });
+
     // Initialize the schema and vector store
     this.initializeSchema().catch((err) => {
       logger.error('Failed to initialize Neo4j schema', err);
@@ -171,6 +186,26 @@ export class Neo4jStorageProvider implements StorageProvider {
    */
   getConnectionManager(): Neo4jConnectionManager {
     return this.connectionManager;
+  }
+
+  /**
+   * Generate a cache key for semantic search queries
+   * Includes all parameters that affect search results
+   */
+  private generateCacheKey(
+    query: string,
+    options: SearchOptions & Neo4jSemanticSearchOptions = {}
+  ): string {
+    const parts = [
+      query,
+      String(options.limit || 10),
+      String(options.minSimilarity || 0.6),
+      options.entityTypes?.sort().join(',') || '',
+      String(options.hybridSearch || false),
+      String(options.semanticWeight || 0.6),
+      String(options.enableHybridRetrieval !== false),
+    ];
+    return parts.join(':');
   }
 
   /**
@@ -739,6 +774,10 @@ export class Neo4jStorageProvider implements StorageProvider {
           // Commit transaction
           await txc.commit();
 
+          // Clear search cache after creating entities
+          this.searchCache.clear();
+          logger.debug('Neo4jStorageProvider: Cleared search cache after creating entities');
+
           return createdEntities;
         } catch (error) {
           // Rollback on error
@@ -1104,6 +1143,10 @@ export class Neo4jStorageProvider implements StorageProvider {
           // Commit transaction
           await txc.commit();
 
+          // Clear search cache after adding observations
+          this.searchCache.clear();
+          logger.debug('Neo4jStorageProvider: Cleared search cache after adding observations');
+
           return results;
         } catch (error) {
           // Rollback on error
@@ -1148,6 +1191,10 @@ export class Neo4jStorageProvider implements StorageProvider {
 
           // Commit transaction
           await txc.commit();
+
+          // Clear search cache after deleting entities
+          this.searchCache.clear();
+          logger.debug('Neo4jStorageProvider: Cleared search cache after deleting entities');
         } catch (error) {
           // Rollback on error
           await txc.rollback();
@@ -1281,6 +1328,10 @@ export class Neo4jStorageProvider implements StorageProvider {
 
           // Commit transaction
           await txc.commit();
+
+          // Clear search cache after deleting observations
+          this.searchCache.clear();
+          logger.debug('Neo4jStorageProvider: Cleared search cache after deleting observations');
         } catch (error) {
           // Rollback on error
           await txc.rollback();
@@ -2031,12 +2082,33 @@ export class Neo4jStorageProvider implements StorageProvider {
     options: SearchOptions & Neo4jSemanticSearchOptions = {}
   ): Promise<KnowledgeGraphWithDiagnostics> {
     try {
+      // Generate cache key for this query
+      const cacheKey = this.generateCacheKey(query, options);
+
+      // Check cache first
+      const cachedResult = this.searchCache.get(cacheKey);
+      if (cachedResult) {
+        logger.debug('Neo4jStorageProvider: Cache hit for semantic search', {
+          query,
+          cacheKey,
+          entitiesCount: cachedResult.entities.length,
+        });
+        return cachedResult;
+      }
+
+      logger.debug('Neo4jStorageProvider: Cache miss for semantic search', {
+        query,
+        cacheKey,
+      });
+
       // Create diagnostics object for debugging
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const diagnostics: Record<string, any> = {
         query,
         startTime: Date.now(),
         stepsTaken: [],
+        cacheKey,
+        cacheHit: false,
       };
 
       // Log start of semantic search
@@ -2329,15 +2401,20 @@ export class Neo4jStorageProvider implements StorageProvider {
               diagnostics.endTime = Date.now();
               diagnostics.totalTimeTaken = diagnostics.endTime - diagnostics.startTime;
 
-              // Only include diagnostics if DEBUG is enabled
-              if (process.env.DEBUG === 'true') {
-                return {
-                  ...finalGraph,
-                  diagnostics,
-                };
-              }
+              // Prepare result and cache it
+              const result: KnowledgeGraphWithDiagnostics = process.env.DEBUG === 'true'
+                ? { ...finalGraph, diagnostics }
+                : finalGraph;
 
-              return finalGraph;
+              // Cache the result
+              this.searchCache.set(cacheKey, result);
+              logger.debug('Neo4jStorageProvider: Cached semantic search result', {
+                cacheKey,
+                entitiesCount: result.entities.length,
+                relationsCount: result.relations.length,
+              });
+
+              return result;
             } else {
               // No results from vector search
               diagnostics.stepsTaken.push({
@@ -2355,6 +2432,9 @@ export class Neo4jStorageProvider implements StorageProvider {
               if (process.env.DEBUG === 'true') {
                 result.diagnostics = diagnostics;
               }
+
+              // Cache the empty result
+              this.searchCache.set(cacheKey, result);
 
               return result;
             }
@@ -2444,15 +2524,15 @@ export class Neo4jStorageProvider implements StorageProvider {
         diagnostics.endTime = Date.now();
         diagnostics.totalTimeTaken = diagnostics.endTime - diagnostics.startTime;
 
-        // Only include diagnostics if DEBUG is enabled
-        if (process.env.DEBUG === 'true') {
-          return {
-            ...finalGraph,
-            diagnostics,
-          };
-        }
+        // Prepare result and cache it
+        const result: KnowledgeGraphWithDiagnostics = process.env.DEBUG === 'true'
+          ? { ...finalGraph, diagnostics }
+          : finalGraph;
 
-        return finalGraph;
+        // Cache the result
+        this.searchCache.set(cacheKey, result);
+
+        return result;
       }
 
       // If no query vector provided, fall back to text search
@@ -2485,15 +2565,15 @@ export class Neo4jStorageProvider implements StorageProvider {
       diagnostics.endTime = Date.now();
       diagnostics.totalTimeTaken = diagnostics.endTime - diagnostics.startTime;
 
-      // Only include diagnostics if DEBUG is enabled
-      if (process.env.DEBUG === 'true') {
-        return {
-          ...textResults,
-          diagnostics,
-        };
-      }
+      // Prepare result and cache it
+      const result: KnowledgeGraphWithDiagnostics = process.env.DEBUG === 'true'
+        ? { ...textResults, diagnostics }
+        : textResults;
 
-      return textResults;
+      // Cache the text search fallback result
+      this.searchCache.set(cacheKey, result);
+
+      return result;
     } catch (error) {
       logger.error('Error performing semantic search in Neo4j', error);
       throw error;
