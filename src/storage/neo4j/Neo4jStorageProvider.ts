@@ -167,7 +167,12 @@ export class Neo4jStorageProvider implements StorageProvider {
       max: 500, // Cache up to 500 unique queries
       ttl: 1000 * 60 * 5, // 5 minute TTL for cache entries
       maxSize: 10000, // Maximum 10K entities across all cached results
-      sizeCalculation: (graph) => graph.entities.length, // Size = entity count
+      sizeCalculation: (graph) => {
+        // Guard against undefined entities/relations
+        const entityCount = Array.isArray(graph.entities) ? graph.entities.length : 0;
+        const relationCount = Array.isArray(graph.relations) ? graph.relations.length : 0;
+        return entityCount + relationCount;
+      },
     });
     logger.debug('Neo4jStorageProvider: Search result cache initialized', {
       maxQueries: 500,
@@ -196,14 +201,29 @@ export class Neo4jStorageProvider implements StorageProvider {
     query: string,
     options: SearchOptions & Neo4jSemanticSearchOptions = {}
   ): string {
+    // Create a copy to avoid mutating caller's array
+    const entityTypes = options.entityTypes ? [...options.entityTypes].sort() : [];
+
+    // Serialize hybrid config if present
+    const hybridConfigKey = options.hybridConfig
+      ? JSON.stringify(options.hybridConfig)
+      : '';
+
+    // Hash query vector if present (vectors are large, hash them)
+    const vectorKey = options.queryVector
+      ? `v:${options.queryVector.length}:${options.queryVector.slice(0, 3).join(',')}`
+      : '';
+
     const parts = [
       query,
       String(options.limit || 10),
       String(options.minSimilarity || 0.6),
-      options.entityTypes?.sort().join(',') || '',
+      entityTypes.join(','),
       String(options.hybridSearch || false),
       String(options.semanticWeight || 0.6),
       String(options.enableHybridRetrieval !== false),
+      hybridConfigKey,
+      vectorKey,
     ];
     return parts.join(':');
   }
@@ -894,6 +914,10 @@ export class Neo4jStorageProvider implements StorageProvider {
           // Commit transaction
           await txc.commit();
 
+          // Clear search cache after creating relations
+          this.searchCache.clear();
+          logger.debug('Neo4jStorageProvider: Cleared search cache after creating relations');
+
           return createdRelations;
         } catch (error) {
           // Rollback on error
@@ -1381,6 +1405,10 @@ export class Neo4jStorageProvider implements StorageProvider {
 
           // Commit transaction
           await txc.commit();
+
+          // Clear search cache after deleting relations
+          this.searchCache.clear();
+          logger.debug('Neo4jStorageProvider: Cleared search cache after deleting relations');
         } catch (error) {
           // Rollback on error
           await txc.rollback();
@@ -1661,6 +1689,10 @@ export class Neo4jStorageProvider implements StorageProvider {
 
           // Commit transaction
           await txc.commit();
+
+          // Clear search cache after updating relation
+          this.searchCache.clear();
+          logger.debug('Neo4jStorageProvider: Cleared search cache after updating relation');
         } catch (error) {
           // Rollback on error
           await txc.rollback();
@@ -1943,6 +1975,10 @@ export class Neo4jStorageProvider implements StorageProvider {
 
           // Commit transaction
           await txc.commit();
+
+          // Clear search cache after updating entity embedding
+          this.searchCache.clear();
+          logger.debug('Neo4jStorageProvider: Cleared search cache after updating entity embedding');
         } catch (error) {
           // Rollback on error
           await txc.rollback();
@@ -2082,24 +2118,29 @@ export class Neo4jStorageProvider implements StorageProvider {
     options: SearchOptions & Neo4jSemanticSearchOptions = {}
   ): Promise<KnowledgeGraphWithDiagnostics> {
     try {
-      // Generate cache key for this query
-      const cacheKey = this.generateCacheKey(query, options);
+      // Check if caching is enabled (default: true)
+      const useCaching = options.useCache !== false;
 
-      // Check cache first
-      const cachedResult = this.searchCache.get(cacheKey);
-      if (cachedResult) {
-        logger.debug('Neo4jStorageProvider: Cache hit for semantic search', {
+      // Generate cache key for this query
+      const cacheKey = useCaching ? this.generateCacheKey(query, options) : '';
+
+      // Check cache first if caching enabled
+      if (useCaching) {
+        const cachedResult = this.searchCache.get(cacheKey);
+        if (cachedResult) {
+          logger.debug('Neo4jStorageProvider: Cache hit for semantic search', {
+            query,
+            cacheKey,
+            entitiesCount: cachedResult.entities.length,
+          });
+          return cachedResult;
+        }
+
+        logger.debug('Neo4jStorageProvider: Cache miss for semantic search', {
           query,
           cacheKey,
-          entitiesCount: cachedResult.entities.length,
         });
-        return cachedResult;
       }
-
-      logger.debug('Neo4jStorageProvider: Cache miss for semantic search', {
-        query,
-        cacheKey,
-      });
 
       // Create diagnostics object for debugging
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -2406,13 +2447,15 @@ export class Neo4jStorageProvider implements StorageProvider {
                 ? { ...finalGraph, diagnostics }
                 : finalGraph;
 
-              // Cache the result
-              this.searchCache.set(cacheKey, result);
-              logger.debug('Neo4jStorageProvider: Cached semantic search result', {
-                cacheKey,
-                entitiesCount: result.entities.length,
-                relationsCount: result.relations.length,
-              });
+              // Cache the result if caching enabled
+              if (useCaching) {
+                this.searchCache.set(cacheKey, result);
+                logger.debug('Neo4jStorageProvider: Cached semantic search result', {
+                  cacheKey,
+                  entitiesCount: result.entities.length,
+                  relationsCount: result.relations.length,
+                });
+              }
 
               return result;
             } else {
@@ -2433,8 +2476,10 @@ export class Neo4jStorageProvider implements StorageProvider {
                 result.diagnostics = diagnostics;
               }
 
-              // Cache the empty result
-              this.searchCache.set(cacheKey, result);
+              // Cache the empty result if caching enabled
+              if (useCaching) {
+                this.searchCache.set(cacheKey, result);
+              }
 
               return result;
             }
@@ -2529,8 +2574,10 @@ export class Neo4jStorageProvider implements StorageProvider {
           ? { ...finalGraph, diagnostics }
           : finalGraph;
 
-        // Cache the result
-        this.searchCache.set(cacheKey, result);
+        // Cache the result if caching enabled
+        if (useCaching) {
+          this.searchCache.set(cacheKey, result);
+        }
 
         return result;
       }
@@ -2570,8 +2617,10 @@ export class Neo4jStorageProvider implements StorageProvider {
         ? { ...textResults, diagnostics }
         : textResults;
 
-      // Cache the text search fallback result
-      this.searchCache.set(cacheKey, result);
+      // Cache the text search fallback result if caching enabled
+      if (useCaching) {
+        this.searchCache.set(cacheKey, result);
+      }
 
       return result;
     } catch (error) {
