@@ -5,6 +5,7 @@ import { initializeStorageProvider } from './config/storage.js';
 import { setupServer } from './server/setup.js';
 import { EmbeddingJobManager } from './embeddings/EmbeddingJobManager.js';
 import { EmbeddingServiceFactory } from './embeddings/EmbeddingServiceFactory.js';
+import { PrometheusMetrics } from './metrics/PrometheusMetrics.js';
 import { logger } from './utils/logger.js';
 import cron from 'node-cron';
 
@@ -15,6 +16,10 @@ export { RelationMetadata, Relation } from './types/relation.js';
 
 // Initialize storage and create KnowledgeGraphManager
 const storageProvider = initializeStorageProvider();
+
+// Initialize Prometheus metrics (environment-gated)
+const prometheusMetrics = PrometheusMetrics.getInstance();
+prometheusMetrics.startServer(9091);
 
 // Initialize embedding job manager only if storage provider supports it
 let embeddingJobManager: EmbeddingJobManager | undefined = undefined;
@@ -122,48 +127,7 @@ try {
     logger
   );
 
-  // Schedule periodic processing for embedding jobs
-  const EMBEDDING_PROCESS_INTERVAL = 10000; // 10 seconds - more frequent processing
-  setInterval(async () => {
-    try {
-      // Process pending embedding jobs
-      await embeddingJobManager?.processJobs(10);
-    } catch (error) {
-      // Log error but don't crash
-      logger.error('Error in scheduled job processing', {
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
-      });
-    }
-  }, EMBEDDING_PROCESS_INTERVAL);
-
-  // Schedule daily incremental embedding regeneration
-  // Runs at 3 AM Singapore time (19:00 UTC = 3 AM UTC+8)
-  cron.schedule('0 19 * * *', async () => {
-    logger.info('Starting daily incremental embedding regeneration (3 AM SGT)');
-
-    try {
-      const scheduledCount = await embeddingJobManager?.scheduleIncrementalRegeneration();
-      logger.info('Daily regeneration completed', {
-        entitiesScheduled: scheduledCount,
-        time: new Date().toISOString()
-      });
-    } catch (error) {
-      logger.error('Daily regeneration failed', {
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
-        time: new Date().toISOString()
-      });
-    }
-  }, {
-    timezone: 'UTC'
-  });
-
-  logger.info('Embedding automation configured', {
-    periodicProcessing: `Every ${EMBEDDING_PROCESS_INTERVAL}ms`,
-    dailyRegeneration: '3 AM Singapore time (19:00 UTC)',
-    timezone: 'UTC'
-  });
+  logger.info('EmbeddingJobManager initialized (background jobs will start only in production)');
 } catch (error) {
   // Fail gracefully if embedding job manager initialization fails
   logger.error('Failed to initialize EmbeddingJobManager', {
@@ -274,8 +238,58 @@ export async function main(): Promise<void> {
   await server.connect(transport);
 }
 
-// Only run main if not in a test environment
+// Only run main and background jobs if not in a test environment
 if (!process.env.VITEST && !process.env.NODE_ENV?.includes('test')) {
+  // Schedule periodic processing for embedding jobs (production only)
+  if (embeddingJobManager) {
+    const EMBEDDING_PROCESS_INTERVAL = 10000; // 10 seconds - more frequent processing
+    setInterval(async () => {
+      try {
+        // Process pending embedding jobs
+        await embeddingJobManager?.processJobs(10);
+      } catch (error) {
+        // Log error but don't crash
+        logger.error('Error in scheduled job processing', {
+          error: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined,
+        });
+      }
+    }, EMBEDDING_PROCESS_INTERVAL);
+
+    // Schedule daily incremental embedding regeneration
+    // Runs at 3 AM Singapore time (19:00 UTC = 3 AM UTC+8)
+    cron.schedule(
+      '0 19 * * *',
+      async () => {
+        logger.info('Starting daily incremental embedding regeneration (3 AM SGT)');
+
+        try {
+          const scheduledCount = await embeddingJobManager?.scheduleIncrementalRegeneration();
+          logger.info('Daily regeneration completed', {
+            entitiesScheduled: scheduledCount,
+            time: new Date().toISOString(),
+          });
+        } catch (error) {
+          logger.error('Daily regeneration failed', {
+            error: error instanceof Error ? error.message : String(error),
+            stack: error instanceof Error ? error.stack : undefined,
+            time: new Date().toISOString(),
+          });
+        }
+      },
+      {
+        timezone: 'UTC',
+      }
+    );
+
+    logger.info('Embedding automation configured', {
+      periodicProcessing: `Every ${EMBEDDING_PROCESS_INTERVAL}ms`,
+      dailyRegeneration: '3 AM Singapore time (19:00 UTC)',
+      timezone: 'UTC',
+    });
+  }
+
+  // Start MCP server
   main().catch((error) => {
     // Log error but don't use console.error
     logger.error(`Main process terminated: ${error}`);
