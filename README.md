@@ -8,6 +8,44 @@ Scalable, high-performance knowledge graph memory system with semantic retrieval
 
 ---
 
+## What's New
+
+### v1.4.0 (2025-11-05) - Production Observability
+**Prometheus Metrics Integration** for production monitoring and performance analysis:
+- Query performance tracking with histograms (loadGraph, searchNodes, semanticSearch)
+- Cache metrics ready for future cache implementation
+- HTTP metrics endpoint on port 9091
+- Default Node.js process metrics (CPU, memory, event loop)
+- Environment-gated (disabled by default, enable with `ENABLE_PROMETHEUS_METRICS=true`)
+- Designed for Prometheus scraping and Grafana dashboards
+
+### v1.3.0 (2025-10-29) - Automated Maintenance
+**Daily Embedding Automation** eliminates manual intervention:
+- Automatic incremental embedding regeneration at 3 AM Singapore time (19:00 UTC)
+- Checks all entities and schedules jobs only for those missing embeddings
+- Integrates with existing 10-second job processor
+- Running in production via systemd service
+- Maintains >95% embedding coverage automatically
+
+### v1.2.1 (2025-10-29) - Modern Stack
+**Major Dependency Updates** for performance and future-proofing:
+- **Neo4j Driver v6.0**: Vector type support, GQL Status Objects, enhanced error handling
+- **OpenAI SDK v6.7**: 60% smaller embedding responses, improved performance
+- **MCP SDK v1.20.2**: Latest protocol improvements and bug fixes
+- Zero breaking changes for existing code
+- All 340 unit tests passing
+
+### v1.2.0 (2025-10-21) - Intelligent Search
+**Hybrid Retrieval System** dramatically improves search relevance:
+- **4 Specialized Scorers**: Vector similarity (50%), graph centrality (20%), temporal freshness (15%), connection strength (15%)
+- **Configurable Weights**: Customize scoring for different use cases
+- **Score Debugging**: Transparent score breakdowns for tuning
+- **Automatic Reranking**: Combines multiple signals for better results
+- **Comprehensive Documentation**: See `docs/HYBRID_RETRIEVAL.md`
+- Enabled by default, ~100-300ms overhead per query
+
+---
+
 ## Installation
 
 ### Global Installation with npx (Recommended)
@@ -258,10 +296,71 @@ Find semantically related entities based on meaning rather than just keywords:
 - **Multi-Model Support**: Compatible with multiple embedding models (OpenAI text-embedding-3-small/large)
 - **Contextual Retrieval**: Retrieve information based on semantic meaning rather than exact keyword matches
 - **Optimized Defaults**: Tuned parameters for balance between precision and recall (0.6 similarity threshold, hybrid search enabled)
-- **Hybrid Search**: Combines semantic and keyword search for more comprehensive results
 - **Adaptive Search**: System intelligently chooses between vector-only, keyword-only, or hybrid search based on query characteristics and available data
 - **Performance Optimization**: Prioritizes vector search for semantic understanding while maintaining fallback mechanisms for resilience
 - **Query-Aware Processing**: Adjusts search strategy based on query complexity and available entity embeddings
+
+#### Hybrid Retrieval System (v1.2.0+)
+
+The Hybrid Retrieval System dramatically improves search relevance by combining multiple scoring signals beyond simple vector similarity. Enabled by default for all semantic searches.
+
+**Four Specialized Scorers:**
+
+1. **Vector Similarity Scorer (50% weight)**
+   - Cosine similarity from entity embeddings
+   - Primary signal for semantic understanding
+   - Handles synonyms and conceptual relationships
+
+2. **Graph Traversal Scorer (20% weight)**
+   - Analyzes graph centrality and connectivity
+   - Identifies well-connected, important entities
+   - Considers structural importance in knowledge graph
+
+3. **Temporal Freshness Scorer (15% weight)**
+   - Prioritizes recently updated information
+   - Exponential decay with 30-day half-life (configurable)
+   - Balances recency with validity period
+
+4. **Connection Strength Scorer (15% weight)**
+   - Evaluates relation quality and diversity
+   - Considers confidence levels and connection variety
+   - Rewards entities with strong, diverse relationships
+
+**Configuration Options:**
+
+The hybrid system is highly configurable through the `semantic_search` tool:
+
+```javascript
+{
+  enable_hybrid_retrieval: true,  // Toggle hybrid on/off
+  hybrid_config: {
+    vector_weight: 0.5,           // Adjust vector importance
+    graph_weight: 0.2,            // Adjust graph centrality importance
+    temporal_weight: 0.15,        // Adjust freshness importance
+    connection_weight: 0.15,      // Adjust relation quality importance
+    enable_score_debug: false,    // Get detailed score explanations
+    temporal_half_life: 30        // Decay rate in days
+  }
+}
+```
+
+**Use Case Profiles:**
+
+- **Real-time News/Updates**: Increase `temporal_weight` to 0.3+
+- **Core Concepts/Hubs**: Increase `graph_weight` to 0.3+
+- **Pure Semantic**: Set `vector_weight` to 1.0, others to 0.0
+- **Balanced (default)**: 50/20/15/15 split
+
+**Performance:**
+- Adds ~100-300ms per query for reranking
+- Parallel scorer execution for efficiency
+- Graceful fallback to vector-only on errors
+- Can be disabled with `enable_hybrid_retrieval: false`
+
+**Documentation:**
+- Complete guide: `docs/HYBRID_RETRIEVAL.md`
+- Scoring algorithms, tuning recommendations, troubleshooting
+- Architecture details and implementation notes
 
 ### Temporal Awareness
 
@@ -299,6 +398,36 @@ Rich metadata support for both entities and relations with custom fields:
 - **Structured Data**: Store complex structured data within metadata fields
 - **Query Support**: Search and filter based on metadata properties
 - **Extensible Schema**: Add custom fields as needed without modifying the core data model
+
+### Automated Embedding Generation (v1.3.0+)
+
+Vector embeddings are generated and maintained automatically without manual intervention:
+
+**Daily Automation:**
+- **Schedule**: Runs daily at 3 AM Singapore time (19:00 UTC)
+- **Incremental Processing**: Only generates embeddings for entities that don't have them
+- **Smart Detection**: Automatically identifies entities missing embeddings
+- **Production Deployment**: Runs via systemd service on production servers
+- **Coverage Target**: Maintains >95% embedding coverage across all entities
+
+**Execution:**
+- Integrates with existing 10-second job queue processor
+- Uses OpenAI text-embedding-3-small model (1536 dimensions)
+- Comprehensive logging for monitoring and troubleshooting
+- Graceful error handling - failures don't crash the service
+
+**Manual Triggers:**
+- On-demand generation: `npm run embeddings:generate`
+- Test subset: `npm run embeddings:test` (processes 5 entities)
+- Force regeneration: `npm run embeddings:generate -- --force`
+
+**Cost Management:**
+- Incremental approach minimizes API calls
+- Only processes entities without embeddings
+- Typical cost: ~$0.02 per 1M tokens
+- Production cost: ~$0.0025 per daily run (for typical workloads)
+
+This automation ensures semantic search remains highly effective as your knowledge graph grows, without requiring manual embedding regeneration.
 
 ## MCP API Tools
 
@@ -397,18 +526,27 @@ The following tools are available to LLM client hosts through the Model Context 
 
 - **semantic_search**
 
-  - Search for entities semantically using vector embeddings and similarity
+  - Search for entities semantically using vector embeddings and similarity with optional hybrid retrieval
   - Input:
     - `query` (string): The text query to search for semantically
     - `limit` (number, optional): Maximum results to return (default: 10)
     - `min_similarity` (number, optional): Minimum similarity threshold (0.0-1.0, default: 0.6)
     - `entity_types` (string[], optional): Filter results by entity types
-    - `hybrid_search` (boolean, optional): Combine keyword and semantic search (default: true)
-    - `semantic_weight` (number, optional): Weight of semantic results in hybrid search (0.0-1.0, default: 0.6)
+    - `enable_hybrid_retrieval` (boolean, optional): Enable hybrid scoring with multiple signals (default: true)
+    - `hybrid_config` (object, optional): Configuration for hybrid retrieval system
+      - `vector_weight` (number): Weight for vector similarity (default: 0.5)
+      - `graph_weight` (number): Weight for graph centrality (default: 0.2)
+      - `temporal_weight` (number): Weight for temporal freshness (default: 0.15)
+      - `connection_weight` (number): Weight for connection strength (default: 0.15)
+      - `enable_score_debug` (boolean): Return detailed score breakdowns (default: false)
+      - `temporal_half_life` (number): Decay rate in days (default: 30)
   - Features:
-    - Intelligently selects optimal search method (vector, keyword, or hybrid) based on query context
-    - Gracefully handles queries with no semantic matches through fallback mechanisms
-    - Maintains high performance with automatic optimization decisions
+    - **Hybrid Retrieval (v1.2.0+)**: Combines vector similarity, graph structure, temporal freshness, and connection quality
+    - **Adaptive Search**: Intelligently selects optimal search method based on query context
+    - **Configurable Weights**: Customize scoring for different use cases
+    - **Score Debugging**: Get transparent score explanations with `enable_score_debug: true`
+    - **Graceful Fallback**: Handles queries with no semantic matches through fallback mechanisms
+    - **High Performance**: ~100-300ms overhead for hybrid reranking, can be disabled if needed
 
 - **get_entity_embedding**
   - Get the vector embedding for a specific entity
