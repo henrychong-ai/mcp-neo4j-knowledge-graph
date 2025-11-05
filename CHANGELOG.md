@@ -5,6 +5,66 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] - 2025-11-05
+
+### Added
+
+- **Prometheus Metrics Integration**: Production-grade observability for MCP server performance
+  - `PrometheusMetrics` module with environment-gated metrics collection
+  - HTTP metrics endpoint on port 9091 (enabled via `ENABLE_PROMETHEUS_METRICS=true`)
+  - Query performance metrics:
+    - `mcp_query_duration_seconds`: Histogram tracking query execution time with operation and cache_status labels
+    - `mcp_cache_hits_total`: Counter for cache hits (ready for future cache implementation)
+    - `mcp_cache_misses_total`: Counter for cache misses
+    - `mcp_cache_invalidations_total`: Counter for cache invalidations
+    - `mcp_cache_size_current`: Gauge for current cache size
+  - Default Node.js process metrics (CPU, memory, event loop, etc.)
+  - Instrumented query operations: `loadGraph`, `searchNodes`, `openNodes`, `semanticSearch`
+  - Designed for vps-2 production deployment with minimal local machine overhead
+
+### Technical Details
+
+**PrometheusMetrics Module** (`src/metrics/PrometheusMetrics.ts`):
+- Singleton pattern for consistent metrics collection across all operations
+- Environment-gated server startup (`ENABLE_PROMETHEUS_METRICS=true` required)
+- Query timer helper for easy operation instrumentation
+- HTTP server on port 9091 exposing `/metrics` endpoint in Prometheus exposition format
+- Comprehensive metric types: Counter, Gauge, Histogram with appropriate bucketing
+
+**Neo4jStorageProvider Instrumentation**:
+- All main query methods instrumented with query duration tracking
+- Cache status tracking (currently 'disabled', ready for cache PR merge)
+- Try/finally pattern ensures metrics recorded even on errors
+- Zero performance impact when metrics disabled (environment check only)
+
+**Integration with vps-2 Monitoring Stack**:
+- Metrics designed for Prometheus scraping (existing stack: Prometheus 9090, Grafana 3000)
+- Port 9091 chosen to avoid conflicts with existing exporters (neo4j-exporter: 9099, node-exporter: 9100)
+- Ready for Prometheus configuration update: `scrape_configs` → `mcp-kg-server:9091`
+
+### Dependencies
+
+- Added `prom-client@^15.1.0` (official Prometheus client for Node.js)
+
+### Impact
+
+- **Production Observability**: Full visibility into query performance and cache effectiveness
+- **Zero Local Overhead**: Metrics collection disabled by default, only enabled on vps-2 deployment
+- **Future Cache Integration**: Instrumentation ready for query result caching PR (#3)
+- **Grafana Dashboards**: Enables creation of MCP server performance dashboards
+
+### Configuration
+
+To enable metrics collection:
+```bash
+export ENABLE_PROMETHEUS_METRICS=true
+```
+
+Access metrics:
+```bash
+curl http://localhost:9091/metrics
+```
+
 ## [1.3.1] - 2025-10-29
 
 ### Fixed
