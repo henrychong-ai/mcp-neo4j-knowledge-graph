@@ -5,6 +5,7 @@ import { initializeStorageProvider } from './config/storage.js';
 import { setupServer } from './server/setup.js';
 import { EmbeddingJobManager } from './embeddings/EmbeddingJobManager.js';
 import { EmbeddingServiceFactory } from './embeddings/EmbeddingServiceFactory.js';
+import { PrometheusMetrics } from './metrics/PrometheusMetrics.js';
 import { logger } from './utils/logger.js';
 import cron from 'node-cron';
 
@@ -15,6 +16,10 @@ export { RelationMetadata, Relation } from './types/relation.js';
 
 // Initialize storage and create KnowledgeGraphManager
 const storageProvider = initializeStorageProvider();
+
+// Initialize Prometheus metrics (environment-gated)
+const prometheusMetrics = PrometheusMetrics.getInstance();
+prometheusMetrics.startServer(9091);
 
 // Initialize embedding job manager only if storage provider supports it
 let embeddingJobManager: EmbeddingJobManager | undefined = undefined;
