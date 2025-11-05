@@ -466,7 +466,76 @@ OPENAI_EMBEDDING_MODEL=text-embedding-3-small
 
 # Debug Settings
 DEBUG=true
+
+# Prometheus Metrics (Optional - Production Monitoring)
+ENABLE_PROMETHEUS_METRICS=true  # Enable metrics collection and HTTP endpoint
 ```
+
+### Prometheus Metrics
+
+The MCP server includes built-in Prometheus metrics for production observability. Metrics are **disabled by default** to minimize local machine overhead and only enabled when explicitly configured.
+
+#### Enabling Metrics
+
+Set the environment variable to enable metrics collection:
+
+```bash
+export ENABLE_PROMETHEUS_METRICS=true
+```
+
+When enabled, the metrics server starts on **port 9091** and exposes a `/metrics` endpoint in Prometheus exposition format.
+
+#### Available Metrics
+
+**Query Performance:**
+- `mcp_query_duration_seconds` - Histogram tracking query execution time
+  - Labels: `operation` (loadGraph, searchNodes, openNodes, semanticSearch), `cache_status` (hit, miss, disabled)
+  - Buckets: 1ms, 5ms, 10ms, 50ms, 100ms, 500ms, 1s, 5s
+
+**Cache Performance (ready for future cache integration):**
+- `mcp_cache_hits_total` - Counter for cache hits
+- `mcp_cache_misses_total` - Counter for cache misses
+- `mcp_cache_invalidations_total` - Counter for cache invalidations
+- `mcp_cache_size_current` - Gauge for current cache size
+
+**Process Metrics:**
+- Default Node.js process metrics (CPU, memory, event loop, garbage collection)
+
+#### Accessing Metrics
+
+Once enabled, metrics are available at:
+
+```bash
+curl http://localhost:9091/metrics
+```
+
+#### Production Deployment
+
+For production deployments (e.g., vps-2), configure Prometheus to scrape the metrics endpoint:
+
+```yaml
+scrape_configs:
+  - job_name: "mcp-kg-server"
+    scrape_interval: 30s
+    static_configs:
+      - targets: ["localhost:9091"]
+        labels:
+          instance: "mcp-neo4j-knowledge-graph"
+          environment: "production"
+```
+
+Metrics can then be visualized in Grafana with custom dashboards showing:
+- Query performance trends
+- Cache hit/miss ratios
+- System resource utilization
+- Operation latency distributions
+
+#### Port Selection
+
+Port 9091 is chosen to avoid conflicts with common Prometheus exporters:
+- 9090: Prometheus server
+- 9099: neo4j-exporter
+- 9100: node-exporter
 
 ### Command Line Options
 
