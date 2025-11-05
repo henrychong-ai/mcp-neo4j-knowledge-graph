@@ -1,6 +1,7 @@
 import type { KnowledgeGraph } from '../KnowledgeGraphManager.js';
 import type { Relation } from '../types/relation.js';
 import type { EntityEmbedding, SemanticSearchOptions } from '../types/entity-embedding.js';
+import type { BatchConfig, BatchResult, ObservationBatch, EntityUpdate } from '../types/batch-operations.js';
 
 /**
  * Options for searching nodes in the knowledge graph
@@ -182,6 +183,45 @@ export interface StorageProvider {
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   getEntity(entityName: string): Promise<any | null>;
+
+  /**
+   * Optimized batch creation of entities using bulk operations
+   * @param entities Array of entities to create
+   * @param config Optional batch configuration
+   * @returns Promise resolving to batch result with successful and failed items
+   */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  createEntitiesBatch?(entities: any[], config?: BatchConfig): Promise<BatchResult<any>>;
+
+  /**
+   * Optimized batch creation of relations using bulk operations
+   * @param relations Array of relations to create
+   * @param config Optional batch configuration
+   * @returns Promise resolving to batch result with successful and failed items
+   */
+  createRelationsBatch?(relations: Relation[], config?: BatchConfig): Promise<BatchResult<Relation>>;
+
+  /**
+   * Optimized batch addition of observations to entities
+   * @param batches Array of observation batches
+   * @param config Optional batch configuration
+   * @returns Promise resolving to batch result with successful and failed items
+   */
+  addObservationsBatch?(
+    batches: ObservationBatch[],
+    config?: BatchConfig
+  ): Promise<BatchResult<ObservationBatch>>;
+
+  /**
+   * Optimized batch update of entities
+   * @param updates Array of entity updates
+   * @param config Optional batch configuration
+   * @returns Promise resolving to batch result with successful and failed items
+   */
+  updateEntitiesBatch?(
+    updates: EntityUpdate[],
+    config?: BatchConfig
+  ): Promise<BatchResult<EntityUpdate>>;
 }
 
 // Add static methods to the StorageProvider interface for JavaScript tests

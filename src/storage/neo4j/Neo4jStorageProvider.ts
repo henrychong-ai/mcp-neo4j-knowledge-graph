@@ -14,6 +14,7 @@ import type { EmbeddingService } from '../../embeddings/EmbeddingService.js';
 import { HybridRetriever, type HybridSearchConfig } from '../../retrieval/index.js';
 import { LRUCache } from 'lru-cache';
 import { PrometheusMetrics } from '../../metrics/PrometheusMetrics.js';
+import type { BatchConfig, BatchResult, ObservationBatch, EntityUpdate } from '../../types/batch-operations.js';
 
 /**
  * Configuration options for Neo4j storage provider
@@ -2692,6 +2693,372 @@ export class Neo4jStorageProvider implements StorageProvider {
       return {
         error: error instanceof Error ? error.message : String(error),
       };
+    }
+  }
+
+  /**
+   * Optimized batch creation of entities using bulk operations
+   * Uses UNWIND for efficient bulk inserts and parallel embedding generation
+   */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  async createEntitiesBatch(entities: any[], config?: BatchConfig): Promise<BatchResult<any>> {
+    const startTime = Date.now();
+    const maxBatchSize = config?.maxBatchSize || 100;
+    const enableParallel = config?.enableParallel !== false;
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const successful: any[] = [];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const failed: Array<{ item: any; error: string }> = [];
+
+    try {
+      // Split into chunks based on maxBatchSize
+      const chunks = [];
+      for (let i = 0; i < entities.length; i += maxBatchSize) {
+        chunks.push(entities.slice(i, i + maxBatchSize));
+      }
+
+      for (let chunkIndex = 0; chunkIndex < chunks.length; chunkIndex++) {
+        const chunk = chunks[chunkIndex];
+
+        // Generate embeddings in parallel if enabled and service available
+        const entitiesWithEmbeddings = await Promise.all(
+          chunk.map(async (entity) => {
+            let embedding = null;
+            if (enableParallel && this.embeddingService) {
+              try {
+                const text = Array.isArray(entity.observations)
+                  ? entity.observations.join('\n')
+                  : '';
+                embedding = await this.embeddingService.generateEmbedding(text);
+              } catch (error) {
+                logger.warn(`Failed to generate embedding for entity: ${entity.name}`, error);
+              }
+            }
+
+            const now = Date.now();
+            return {
+              id: uuidv4(),
+              name: entity.name,
+              entityType: entity.entityType,
+              observations: JSON.stringify(entity.observations || []),
+              version: 1,
+              createdAt: entity.createdAt || now,
+              updatedAt: entity.updatedAt || now,
+              validFrom: entity.validFrom || now,
+              validTo: null,
+              changedBy: entity.changedBy || null,
+              embedding: embedding,
+            };
+          })
+        );
+
+        // Use UNWIND for bulk insert
+        const session = await this.connectionManager.getSession();
+        try {
+          const txc = session.beginTransaction();
+
+          try {
+            const query = `
+              UNWIND $entities AS entity
+              CREATE (e:Entity {
+                id: entity.id,
+                name: entity.name,
+                entityType: entity.entityType,
+                observations: entity.observations,
+                version: entity.version,
+                createdAt: entity.createdAt,
+                updatedAt: entity.updatedAt,
+                validFrom: entity.validFrom,
+                validTo: entity.validTo,
+                changedBy: entity.changedBy,
+                embedding: entity.embedding
+              })
+              RETURN e
+            `;
+
+            await txc.run(query, { entities: entitiesWithEmbeddings });
+            await txc.commit();
+
+            successful.push(...chunk);
+
+            // Report progress if callback provided
+            if (config?.onProgress) {
+              config.onProgress({
+                total: entities.length,
+                completed: successful.length,
+                failed: failed.length,
+                percentage: (successful.length / entities.length) * 100,
+              });
+            }
+          } catch (error) {
+            await txc.rollback();
+            // Add all items in chunk to failed
+            chunk.forEach((entity) => {
+              failed.push({
+                item: entity,
+                error: error instanceof Error ? error.message : String(error),
+              });
+            });
+          }
+        } finally {
+          await session.close();
+        }
+      }
+
+      // Clear search cache after creating entities
+      this.searchCache.clear();
+
+      const totalTimeMs = Date.now() - startTime;
+      return {
+        successful,
+        failed,
+        totalTimeMs,
+        avgTimePerItemMs: totalTimeMs / entities.length,
+      };
+    } catch (error) {
+      logger.error('Error in createEntitiesBatch', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Optimized batch creation of relations using bulk operations
+   */
+  async createRelationsBatch(
+    relations: Relation[],
+    config?: BatchConfig
+  ): Promise<BatchResult<Relation>> {
+    const startTime = Date.now();
+    const maxBatchSize = config?.maxBatchSize || 100;
+    const successful: Relation[] = [];
+    const failed: Array<{ item: Relation; error: string }> = [];
+
+    try {
+      const chunks = [];
+      for (let i = 0; i < relations.length; i += maxBatchSize) {
+        chunks.push(relations.slice(i, i + maxBatchSize));
+      }
+
+      for (const chunk of chunks) {
+        const session = await this.connectionManager.getSession();
+        try {
+          const txc = session.beginTransaction();
+
+          try {
+            const now = Date.now();
+            const relationsWithMetadata = chunk.map((rel) => ({
+              id: uuidv4(),
+              from: rel.from,
+              to: rel.to,
+              relationType: rel.relationType,
+              strength: rel.strength ?? null,
+              confidence: rel.confidence ?? null,
+              metadata: rel.metadata ? JSON.stringify(rel.metadata) : null,
+              version: 1,
+              createdAt: now,
+              updatedAt: now,
+              validFrom: now,
+              validTo: null,
+              changedBy: null,
+            }));
+
+            const query = `
+              UNWIND $relations AS rel
+              MATCH (from:Entity {name: rel.from, validTo: NULL})
+              MATCH (to:Entity {name: rel.to, validTo: NULL})
+              CREATE (from)-[r:RELATES_TO {
+                id: rel.id,
+                relationType: rel.relationType,
+                strength: rel.strength,
+                confidence: rel.confidence,
+                metadata: rel.metadata,
+                version: rel.version,
+                createdAt: rel.createdAt,
+                updatedAt: rel.updatedAt,
+                validFrom: rel.validFrom,
+                validTo: rel.validTo,
+                changedBy: rel.changedBy
+              }]->(to)
+              RETURN r
+            `;
+
+            await txc.run(query, { relations: relationsWithMetadata });
+            await txc.commit();
+
+            successful.push(...chunk);
+
+            if (config?.onProgress) {
+              config.onProgress({
+                total: relations.length,
+                completed: successful.length,
+                failed: failed.length,
+                percentage: (successful.length / relations.length) * 100,
+              });
+            }
+          } catch (error) {
+            await txc.rollback();
+            chunk.forEach((rel) => {
+              failed.push({
+                item: rel,
+                error: error instanceof Error ? error.message : String(error),
+              });
+            });
+          }
+        } finally {
+          await session.close();
+        }
+      }
+
+      this.searchCache.clear();
+
+      const totalTimeMs = Date.now() - startTime;
+      return {
+        successful,
+        failed,
+        totalTimeMs,
+        avgTimePerItemMs: totalTimeMs / relations.length,
+      };
+    } catch (error) {
+      logger.error('Error in createRelationsBatch', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Optimized batch addition of observations to entities
+   */
+  async addObservationsBatch(
+    batches: ObservationBatch[],
+    config?: BatchConfig
+  ): Promise<BatchResult<ObservationBatch>> {
+    const startTime = Date.now();
+    const successful: ObservationBatch[] = [];
+    const failed: Array<{ item: ObservationBatch; error: string }> = [];
+
+    try {
+      for (const batch of batches) {
+        try {
+          // Use existing addObservations method for each batch
+          // This maintains temporal versioning correctly
+          await this.addObservations([{
+            entityName: batch.entityName,
+            contents: batch.observations,
+          }]);
+
+          successful.push(batch);
+
+          if (config?.onProgress) {
+            config.onProgress({
+              total: batches.length,
+              completed: successful.length,
+              failed: failed.length,
+              percentage: (successful.length / batches.length) * 100,
+            });
+          }
+        } catch (error) {
+          failed.push({
+            item: batch,
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
+      }
+
+      const totalTimeMs = Date.now() - startTime;
+      return {
+        successful,
+        failed,
+        totalTimeMs,
+        avgTimePerItemMs: totalTimeMs / batches.length,
+      };
+    } catch (error) {
+      logger.error('Error in addObservationsBatch', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Optimized batch update of entities
+   */
+  async updateEntitiesBatch(
+    updates: EntityUpdate[],
+    config?: BatchConfig
+  ): Promise<BatchResult<EntityUpdate>> {
+    const startTime = Date.now();
+    const successful: EntityUpdate[] = [];
+    const failed: Array<{ item: EntityUpdate; error: string }> = [];
+
+    try {
+      for (const update of updates) {
+        try {
+          // Handle observation additions
+          if (update.addObservations && update.addObservations.length > 0) {
+            await this.addObservations([{
+              entityName: update.name,
+              contents: update.addObservations,
+            }]);
+          }
+
+          // Handle observation removals
+          if (update.removeObservations && update.removeObservations.length > 0) {
+            await this.deleteObservations([{
+              entityName: update.name,
+              observations: update.removeObservations,
+            }]);
+          }
+
+          // Handle entity type update if specified
+          if (update.entityType) {
+            const session = await this.connectionManager.getSession();
+            try {
+              await session.run(
+                `
+                MATCH (e:Entity {name: $name, validTo: NULL})
+                SET e.entityType = $entityType,
+                    e.updatedAt = $now
+                RETURN e
+                `,
+                {
+                  name: update.name,
+                  entityType: update.entityType,
+                  now: Date.now(),
+                }
+              );
+            } finally {
+              await session.close();
+            }
+          }
+
+          successful.push(update);
+
+          if (config?.onProgress) {
+            config.onProgress({
+              total: updates.length,
+              completed: successful.length,
+              failed: failed.length,
+              percentage: (successful.length / updates.length) * 100,
+            });
+          }
+        } catch (error) {
+          failed.push({
+            item: update,
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
+      }
+
+      this.searchCache.clear();
+
+      const totalTimeMs = Date.now() - startTime;
+      return {
+        successful,
+        failed,
+        totalTimeMs,
+        avgTimePerItemMs: totalTimeMs / updates.length,
+      };
+    } catch (error) {
+      logger.error('Error in updateEntitiesBatch', error);
+      throw error;
     }
   }
 }
