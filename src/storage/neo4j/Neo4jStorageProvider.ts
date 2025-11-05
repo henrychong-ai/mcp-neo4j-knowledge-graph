@@ -13,6 +13,7 @@ import { EmbeddingServiceFactory } from '../../embeddings/EmbeddingServiceFactor
 import type { EmbeddingService } from '../../embeddings/EmbeddingService.js';
 import { HybridRetriever, type HybridSearchConfig } from '../../retrieval/index.js';
 import { LRUCache } from 'lru-cache';
+import { PrometheusMetrics } from '../../metrics/PrometheusMetrics.js';
 
 /**
  * Configuration options for Neo4j storage provider
@@ -365,6 +366,10 @@ export class Neo4jStorageProvider implements StorageProvider {
    * Load the complete knowledge graph from Neo4j
    */
   async loadGraph(): Promise<KnowledgeGraph> {
+    // Start Prometheus metrics timer
+    const metrics = PrometheusMetrics.getInstance();
+    const endTimer = metrics.startQueryTimer('loadGraph');
+
     try {
       const startTime = Date.now();
 
@@ -404,6 +409,9 @@ export class Neo4jStorageProvider implements StorageProvider {
       });
 
       const timeTaken = Date.now() - startTime;
+
+      // Record metrics (cache status 'disabled' until cache is implemented)
+      endTimer('disabled');
 
       // Return the complete graph
       return {
@@ -539,6 +547,10 @@ export class Neo4jStorageProvider implements StorageProvider {
    * @param options Optional search parameters
    */
   async searchNodes(query: string, options: SearchOptions = {}): Promise<KnowledgeGraph> {
+    // Start Prometheus metrics timer
+    const metrics = PrometheusMetrics.getInstance();
+    const endTimer = metrics.startQueryTimer('searchNodes');
+
     try {
       const startTime = Date.now();
 
@@ -601,6 +613,9 @@ export class Neo4jStorageProvider implements StorageProvider {
 
         const timeTaken = Date.now() - startTime;
 
+        // Record metrics (cache status 'disabled' until cache is implemented)
+        endTimer('disabled');
+
         // Return the search results as a graph
         return {
           entities,
@@ -611,6 +626,9 @@ export class Neo4jStorageProvider implements StorageProvider {
       }
 
       const timeTaken = Date.now() - startTime;
+
+      // Record metrics (cache status 'disabled' until cache is implemented)
+      endTimer('disabled');
 
       // Return just the entities if no relations
       return {
@@ -630,10 +648,15 @@ export class Neo4jStorageProvider implements StorageProvider {
    * @param names Array of node names to open
    */
   async openNodes(names: string[]): Promise<KnowledgeGraph> {
+    // Start Prometheus metrics timer
+    const metrics = PrometheusMetrics.getInstance();
+    const endTimer = metrics.startQueryTimer('openNodes');
+
     try {
       const startTime = Date.now();
 
       if (!names || names.length === 0) {
+        endTimer('disabled');
         return { entities: [], relations: [] };
       }
 
@@ -676,6 +699,9 @@ export class Neo4jStorageProvider implements StorageProvider {
       });
 
       const timeTaken = Date.now() - startTime;
+
+      // Record metrics (cache status 'disabled' until cache is implemented)
+      endTimer('disabled');
 
       // Return the entities and their relations
       return {
@@ -2117,6 +2143,10 @@ export class Neo4jStorageProvider implements StorageProvider {
     query: string,
     options: SearchOptions & Neo4jSemanticSearchOptions = {}
   ): Promise<KnowledgeGraphWithDiagnostics> {
+    // Start Prometheus metrics timer
+    const metrics = PrometheusMetrics.getInstance();
+    const endTimer = metrics.startQueryTimer('semanticSearch');
+
     try {
       // Check if caching is enabled (default: true)
       const useCaching = options.useCache !== false;
@@ -2626,6 +2656,9 @@ export class Neo4jStorageProvider implements StorageProvider {
     } catch (error) {
       logger.error('Error performing semantic search in Neo4j', error);
       throw error;
+    } finally {
+      // Record metrics (cache status 'disabled' until cache is implemented)
+      endTimer('disabled');
     }
   }
 
