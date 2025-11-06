@@ -1406,7 +1406,7 @@ export class KnowledgeGraphManager {
   async updateEntitiesBatch(
     updates: import('./types/batch-operations.js').EntityUpdate[],
     config?: import('./types/batch-operations.js').BatchConfig
-  ): Promise<import('./types/batch-operations.js').BatchResult<Entity>> {
+  ): Promise<import('./types/batch-operations.js').BatchResult<import('./types/batch-operations.js').EntityUpdate>> {
     // Validate updates
     if (!Array.isArray(updates) || updates.length === 0) {
       throw new Error('Entity updates must be a non-empty array');
