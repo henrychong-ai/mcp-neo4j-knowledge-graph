@@ -17,9 +17,8 @@ export { RelationMetadata, Relation } from './types/relation.js';
 // Initialize storage and create KnowledgeGraphManager
 const storageProvider = initializeStorageProvider();
 
-// Initialize Prometheus metrics (environment-gated)
-const prometheusMetrics = PrometheusMetrics.getInstance();
-prometheusMetrics.startServer(9091);
+// Initialize Prometheus metrics (will be initialized in production environment only)
+let prometheusMetrics: PrometheusMetrics | null = null;
 
 // Initialize embedding job manager only if storage provider supports it
 let embeddingJobManager: EmbeddingJobManager | undefined = undefined;
@@ -240,6 +239,10 @@ export async function main(): Promise<void> {
 
 // Only run main and background jobs if not in a test environment
 if (!process.env.VITEST && !process.env.NODE_ENV?.includes('test')) {
+  // Initialize Prometheus metrics (production only - prevents interval leaks in tests)
+  prometheusMetrics = PrometheusMetrics.getInstance();
+  prometheusMetrics.startServer(9091);
+
   // Schedule periodic processing for embedding jobs (production only)
   if (embeddingJobManager) {
     const EMBEDDING_PROCESS_INTERVAL = 10000; // 10 seconds - more frequent processing
