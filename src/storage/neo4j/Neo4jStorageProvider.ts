@@ -3014,7 +3014,51 @@ export class Neo4jStorageProvider implements StorageProvider {
             }
 
             if (updates.length > 0) {
-              // Step 2: Invalidate old versions in bulk
+              // Step 2: Query relationships BEFORE invalidation
+              const outgoingRels = await txc.run(`
+                UNWIND $updates AS upd
+                MATCH (e:Entity {id: upd.id})
+                MATCH (e)-[r:RELATES_TO]->(to:Entity)
+                WHERE r.validFrom <= upd.now AND r.validTo IS NULL
+                RETURN upd.newId as newId, collect({
+                  id: r.id,
+                  relationType: r.relationType,
+                  strength: r.strength,
+                  confidence: r.confidence,
+                  metadata: r.metadata,
+                  version: r.version,
+                  createdAt: r.createdAt,
+                  updatedAt: r.updatedAt,
+                  validFrom: r.validFrom,
+                  validTo: r.validTo,
+                  changedBy: r.changedBy,
+                  toName: to.name
+                }) as rels
+              `, { updates });
+
+              // Step 3: Query incoming relationships BEFORE invalidation
+              const incomingRels = await txc.run(`
+                UNWIND $updates AS upd
+                MATCH (e:Entity {id: upd.id})
+                MATCH (from:Entity)-[r:RELATES_TO]->(e)
+                WHERE r.validFrom <= upd.now AND r.validTo IS NULL
+                RETURN upd.newId as newId, collect({
+                  id: r.id,
+                  relationType: r.relationType,
+                  strength: r.strength,
+                  confidence: r.confidence,
+                  metadata: r.metadata,
+                  version: r.version,
+                  createdAt: r.createdAt,
+                  updatedAt: r.updatedAt,
+                  validFrom: r.validFrom,
+                  validTo: r.validTo,
+                  changedBy: r.changedBy,
+                  fromName: from.name
+                }) as rels
+              `, { updates });
+
+              // Step 4: Invalidate old versions in bulk
               await txc.run(`
                 UNWIND $updates AS upd
                 MATCH (e:Entity {id: upd.id})
@@ -3029,7 +3073,7 @@ export class Neo4jStorageProvider implements StorageProvider {
                 SET r2.validTo = upd.now
               `, { updates });
 
-              // Step 3: Create new versions in bulk
+              // Step 5: Create new versions in bulk
               await txc.run(`
                 UNWIND $updates AS upd
                 CREATE (e:Entity {
@@ -3046,49 +3090,59 @@ export class Neo4jStorageProvider implements StorageProvider {
                 })
               `, { updates });
 
-              // Step 4: Recreate outgoing relationships
-              await txc.run(`
-                UNWIND $updates AS upd
-                MATCH (oldE:Entity {id: upd.id})
-                MATCH (newE:Entity {id: upd.newId})
-                MATCH (oldE)-[oldR:RELATES_TO]->(to:Entity)
-                WHERE oldR.validFrom <= upd.now AND (oldR.validTo IS NULL OR oldR.validTo > upd.now)
-                CREATE (newE)-[newR:RELATES_TO {
-                  id: oldR.id,
-                  relationType: oldR.relationType,
-                  strength: oldR.strength,
-                  confidence: oldR.confidence,
-                  metadata: oldR.metadata,
-                  version: oldR.version,
-                  createdAt: oldR.createdAt,
-                  updatedAt: oldR.updatedAt,
-                  validFrom: oldR.validFrom,
-                  validTo: oldR.validTo,
-                  changedBy: oldR.changedBy
-                }]->(to)
-              `, { updates });
+              // Step 6: Recreate outgoing relationships with fresh validTo
+              for (const record of outgoingRels.records) {
+                const newId = record.get('newId');
+                const rels = record.get('rels');
+                if (rels && rels.length > 0) {
+                  await txc.run(`
+                    MATCH (newE:Entity {id: $newId})
+                    UNWIND $rels AS rel
+                    MATCH (to:Entity {name: rel.toName})
+                    WHERE to.validTo IS NULL
+                    CREATE (newE)-[newR:RELATES_TO {
+                      id: rel.id,
+                      relationType: rel.relationType,
+                      strength: rel.strength,
+                      confidence: rel.confidence,
+                      metadata: rel.metadata,
+                      version: rel.version,
+                      createdAt: rel.createdAt,
+                      updatedAt: rel.updatedAt,
+                      validFrom: rel.validFrom,
+                      validTo: null,
+                      changedBy: rel.changedBy
+                    }]->(to)
+                  `, { newId, rels });
+                }
+              }
 
-              // Step 5: Recreate incoming relationships
-              await txc.run(`
-                UNWIND $updates AS upd
-                MATCH (oldE:Entity {id: upd.id})
-                MATCH (newE:Entity {id: upd.newId})
-                MATCH (from:Entity)-[oldR:RELATES_TO]->(oldE)
-                WHERE oldR.validFrom <= upd.now AND (oldR.validTo IS NULL OR oldR.validTo > upd.now)
-                CREATE (from)-[newR:RELATES_TO {
-                  id: oldR.id,
-                  relationType: oldR.relationType,
-                  strength: oldR.strength,
-                  confidence: oldR.confidence,
-                  metadata: oldR.metadata,
-                  version: oldR.version,
-                  createdAt: oldR.createdAt,
-                  updatedAt: oldR.updatedAt,
-                  validFrom: oldR.validFrom,
-                  validTo: oldR.validTo,
-                  changedBy: oldR.changedBy
-                }]->(newE)
-              `, { updates });
+              // Step 7: Recreate incoming relationships with fresh validTo
+              for (const record of incomingRels.records) {
+                const newId = record.get('newId');
+                const rels = record.get('rels');
+                if (rels && rels.length > 0) {
+                  await txc.run(`
+                    MATCH (newE:Entity {id: $newId})
+                    UNWIND $rels AS rel
+                    MATCH (from:Entity {name: rel.fromName})
+                    WHERE from.validTo IS NULL
+                    CREATE (from)-[newR:RELATES_TO {
+                      id: rel.id,
+                      relationType: rel.relationType,
+                      strength: rel.strength,
+                      confidence: rel.confidence,
+                      metadata: rel.metadata,
+                      version: rel.version,
+                      createdAt: rel.createdAt,
+                      updatedAt: rel.updatedAt,
+                      validFrom: rel.validFrom,
+                      validTo: null,
+                      changedBy: rel.changedBy
+                    }]->(newE)
+                  `, { newId, rels });
+                }
+              }
             }
 
             await txc.commit();
@@ -3177,9 +3231,21 @@ export class Neo4jStorageProvider implements StorageProvider {
 
       if (addObsBatches.length > 0) {
         try {
-          await this.addObservationsBatch(addObsBatches, config);
+          const addObsResult = await this.addObservationsBatch(addObsBatches, config);
+
+          // Propagate failures from batch operation
+          for (const failure of addObsResult.failed) {
+            // Find the corresponding EntityUpdate
+            const failedUpdate = updates.find(u => u.name === failure.item.entityName);
+            if (failedUpdate) {
+              failed.push({
+                item: failedUpdate,
+                error: failure.error,
+              });
+            }
+          }
         } catch (error) {
-          // Mark observation additions as failed
+          // Mark all observation additions as failed on exception
           for (const update of updates.filter(u => u.addObservations && u.addObservations.length > 0)) {
             failed.push({
               item: update,
