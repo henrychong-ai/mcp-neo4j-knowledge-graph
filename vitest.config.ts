@@ -17,6 +17,9 @@ export default defineConfig({
     // Configure environment (node or jsdom)
     environment: 'node',
 
+    // Timeout for teardown to prevent hanging workers
+    teardownTimeout: 5000,
+
     // ESM support settings
     alias: {
       // Allow importing without .js extension in test files

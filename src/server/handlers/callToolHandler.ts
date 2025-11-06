@@ -677,6 +677,18 @@ export async function handleCallToolRequest(
           };
         }
 
+      case 'create_entities_batch':
+        return await toolHandlers.handleCreateEntitiesBatch(args, knowledgeGraphManager);
+
+      case 'create_relations_batch':
+        return await toolHandlers.handleCreateRelationsBatch(args, knowledgeGraphManager);
+
+      case 'add_observations_batch':
+        return await toolHandlers.handleAddObservationsBatch(args, knowledgeGraphManager);
+
+      case 'update_entities_batch':
+        return await toolHandlers.handleUpdateEntitiesBatch(args, knowledgeGraphManager);
+
       default:
         throw new Error(`Unknown tool: ${name}`);
     }
