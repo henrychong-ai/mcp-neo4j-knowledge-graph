@@ -1,5 +1,6 @@
 import promClient from 'prom-client';
 import http from 'http';
+import { logger } from '../utils/logger.js';
 
 /**
  * PrometheusMetrics - Manages Prometheus metrics collection for the MCP Knowledge Graph server
@@ -89,12 +90,12 @@ export class PrometheusMetrics {
     const enabled = process.env.ENABLE_PROMETHEUS_METRICS === 'true';
 
     if (!enabled) {
-      console.log('[PrometheusMetrics] Metrics collection disabled (ENABLE_PROMETHEUS_METRICS != true)');
+      logger.info('[PrometheusMetrics] Metrics collection disabled (ENABLE_PROMETHEUS_METRICS != true)');
       return;
     }
 
     if (this.server) {
-      console.log(`[PrometheusMetrics] Server already running on port ${port}`);
+      logger.info(`[PrometheusMetrics] Server already running on port ${port}`);
       return;
     }
 
@@ -110,7 +111,7 @@ export class PrometheusMetrics {
     });
 
     this.server.listen(port, () => {
-      console.log(`[PrometheusMetrics] Metrics server listening on http://localhost:${port}/metrics`);
+      logger.info(`[PrometheusMetrics] Metrics server listening on http://localhost:${port}/metrics`);
     });
   }
 
@@ -120,7 +121,7 @@ export class PrometheusMetrics {
   public stopServer(): void {
     if (this.server) {
       this.server.close(() => {
-        console.log('[PrometheusMetrics] Metrics server stopped');
+        logger.info('[PrometheusMetrics] Metrics server stopped');
       });
       this.server = null;
     }
