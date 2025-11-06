@@ -1262,7 +1262,12 @@ export class KnowledgeGraphManager {
     });
 
     // Call storage provider's batch method
-    return (this.storageProvider as any).createEntitiesBatch(entities, config);
+    const createEntitiesBatch = (this.storageProvider as any).createEntitiesBatch;
+    if (typeof createEntitiesBatch !== 'function') {
+      throw new Error('Storage provider does not support batch entity creation');
+    }
+
+    return createEntitiesBatch.call(this.storageProvider, entities, config);
   }
 
   /**
@@ -1319,7 +1324,12 @@ export class KnowledgeGraphManager {
     });
 
     // Call storage provider's batch method
-    return (this.storageProvider as any).createRelationsBatch(relations, config);
+    const createRelationsBatch = (this.storageProvider as any).createRelationsBatch;
+    if (typeof createRelationsBatch !== 'function') {
+      throw new Error('Storage provider does not support batch relation creation');
+    }
+
+    return createRelationsBatch.call(this.storageProvider, relations, config);
   }
 
   /**
@@ -1360,7 +1370,12 @@ export class KnowledgeGraphManager {
     });
 
     // Call storage provider's batch method
-    return (this.storageProvider as any).addObservationsBatch(batches, config);
+    const addObservationsBatch = (this.storageProvider as any).addObservationsBatch;
+    if (typeof addObservationsBatch !== 'function') {
+      throw new Error('Storage provider does not support batch observation addition');
+    }
+
+    return addObservationsBatch.call(this.storageProvider, batches, config);
   }
 
   /**
@@ -1412,6 +1427,11 @@ export class KnowledgeGraphManager {
     }
 
     // Call storage provider's batch method
-    return (this.storageProvider as any).updateEntitiesBatch(updates, config);
+    const updateEntitiesBatch = (this.storageProvider as any).updateEntitiesBatch;
+    if (typeof updateEntitiesBatch !== 'function') {
+      throw new Error('Storage provider does not support batch entity updates');
+    }
+
+    return updateEntitiesBatch.call(this.storageProvider, updates, config);
   }
 }
