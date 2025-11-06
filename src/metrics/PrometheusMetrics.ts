@@ -16,6 +16,7 @@ export class PrometheusMetrics {
   private static instance: PrometheusMetrics | null = null;
   private register: promClient.Registry;
   private server: http.Server | null = null;
+  private defaultMetricsInterval: (() => void) | null = null;
 
   // Cache performance counters
   public readonly cacheHits: promClient.Counter;
@@ -32,7 +33,9 @@ export class PrometheusMetrics {
     this.register = new promClient.Registry();
 
     // Add default metrics (process CPU, memory, etc.)
-    promClient.collectDefaultMetrics({ register: this.register });
+    // Store interval reference for cleanup
+    const clearFn = promClient.collectDefaultMetrics({ register: this.register });
+    this.defaultMetricsInterval = typeof clearFn === 'function' ? clearFn : null;
 
     // Initialize cache hit counter
     this.cacheHits = new promClient.Counter({
@@ -119,11 +122,27 @@ export class PrometheusMetrics {
    * Stop the metrics HTTP server
    */
   public stopServer(): void {
+    // Clear intervals first to prevent resource leaks
+    this.stopDefaultMetrics();
+
     if (this.server) {
       this.server.close(() => {
         logger.info('[PrometheusMetrics] Metrics server stopped');
       });
       this.server = null;
+    }
+  }
+
+  /**
+   * Stop the default metrics collection intervals
+   * This prevents resource leaks by clearing the setInterval timers
+   * created by collectDefaultMetrics()
+   */
+  public stopDefaultMetrics(): void {
+    if (this.defaultMetricsInterval) {
+      this.defaultMetricsInterval();
+      this.defaultMetricsInterval = null;
+      logger.info('[PrometheusMetrics] Default metrics collection stopped');
     }
   }
 

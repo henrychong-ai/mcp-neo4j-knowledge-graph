@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.2] - 2025-11-06
+
+### Fixed
+
+- **Critical: Vitest Worker Resource Leak**: Fixed hanging test processes consuming excessive CPU and RAM
+  - **Problem**: After running tests, 7+ vitest worker processes remained active consuming 14-47% CPU and 600MB-1.2GB RAM each, making system almost unusable
+  - **Root Cause**: `PrometheusMetrics.collectDefaultMetrics()` creates unclearable `setInterval` timers that keep Node.js event loop alive, preventing vitest workers from terminating
+  - **Solution**: Implemented 4-layer defense-in-depth approach:
+    1. **Environment-gated initialization**: Moved `PrometheusMetrics.getInstance()` inside environment check (only initialize in production, never in tests)
+    2. **Cleanup methods**: Added `stopDefaultMetrics()` method to clear interval timers created by `collectDefaultMetrics()`
+    3. **Global test cleanup**: Created `vitest.setup.ts` with `afterAll()` hook to ensure cleanup after all tests
+    4. **Teardown timeout**: Added 5-second `teardownTimeout` to force worker termination if intervals still active
+  - **Verification**: Process count stable before and after tests (5 → 5), no accumulation, clean termination in ~3 seconds
+  - **Impact**: Tests now complete cleanly without resource leaks; system remains responsive after test runs
+
+**Files Modified**:
+- `src/index.ts`: Lines 20-21, 242-244 - Changed PrometheusMetrics to conditional initialization inside environment check
+- `src/metrics/PrometheusMetrics.ts`:
+  - Line 19: Added `defaultMetricsInterval` field to store interval reference
+  - Lines 37-38: Store interval reference when calling `collectDefaultMetrics()`
+  - Lines 141-147: Added `stopDefaultMetrics()` method to clear intervals
+  - Lines 124-134: Updated `stopServer()` to call cleanup method first
+- `vitest.setup.ts`: New file with global `afterAll()` cleanup hook
+- `vitest.config.ts`: Lines 5-6, 26-27 - Added `setupFiles` and `teardownTimeout` configuration
+
+**Technical Details**:
+- PrometheusMetrics interval timers are created by `prom-client.collectDefaultMetrics()` for system metrics (CPU, memory, etc.)
+- These intervals run continuously and cannot be cleared without storing the cleanup function reference
+- Node.js event loop stays active as long as intervals exist, preventing process termination
+- Environment-gating prevents initialization during tests: `if (!process.env.VITEST && !process.env.NODE_ENV?.includes('test'))`
+- Multiple layers of protection ensure cleanup even if initialization accidentally occurs during tests
+
 ## [1.5.1] - 2025-11-06
 
 ### Fixed
