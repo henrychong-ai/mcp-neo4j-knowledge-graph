@@ -2721,11 +2721,11 @@ export class Neo4jStorageProvider implements StorageProvider {
       for (let chunkIndex = 0; chunkIndex < chunks.length; chunkIndex++) {
         const chunk = chunks[chunkIndex];
 
-        // Generate embeddings in parallel if enabled and service available
+        // Generate embeddings if service available (parallel processing controlled by Promise.all)
         const entitiesWithEmbeddings = await Promise.all(
           chunk.map(async (entity) => {
             let embedding = null;
-            if (enableParallel && this.embeddingService) {
+            if (this.embeddingService) {
               try {
                 const text = Array.isArray(entity.observations)
                   ? entity.observations.join('\n')

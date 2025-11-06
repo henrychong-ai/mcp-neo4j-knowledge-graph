@@ -1267,7 +1267,16 @@ export class KnowledgeGraphManager {
       throw new Error('Storage provider does not support batch entity creation');
     }
 
-    return createEntitiesBatch.call(this.storageProvider, entities, config);
+    const result = await createEntitiesBatch.call(this.storageProvider, entities, config);
+
+    // Schedule embedding jobs for successfully created entities
+    if (this.embeddingJobManager && result.successful.length > 0) {
+      for (const entity of result.successful) {
+        await this.embeddingJobManager.scheduleEntityEmbedding(entity.name, 1);
+      }
+    }
+
+    return result;
   }
 
   /**
@@ -1375,7 +1384,16 @@ export class KnowledgeGraphManager {
       throw new Error('Storage provider does not support batch observation addition');
     }
 
-    return addObservationsBatch.call(this.storageProvider, batches, config);
+    const result = await addObservationsBatch.call(this.storageProvider, batches, config);
+
+    // Schedule re-embedding for successfully modified entities
+    if (this.embeddingJobManager && result.successful.length > 0) {
+      for (const batch of result.successful) {
+        await this.embeddingJobManager.scheduleEntityEmbedding(batch.entityName, 1);
+      }
+    }
+
+    return result;
   }
 
   /**
@@ -1432,6 +1450,15 @@ export class KnowledgeGraphManager {
       throw new Error('Storage provider does not support batch entity updates');
     }
 
-    return updateEntitiesBatch.call(this.storageProvider, updates, config);
+    const result = await updateEntitiesBatch.call(this.storageProvider, updates, config);
+
+    // Schedule re-embedding for successfully updated entities (priority 2 for updates)
+    if (this.embeddingJobManager && result.successful.length > 0) {
+      for (const entity of result.successful) {
+        await this.embeddingJobManager.scheduleEntityEmbedding(entity.name, 2);
+      }
+    }
+
+    return result;
   }
 }
