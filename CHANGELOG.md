@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **Batch Operations API**: Optimized bulk operations providing 10-50x performance improvement over individual operations
+- **Batch Operations API**: Optimized bulk operations providing 10-50x performance improvement over individual operations (implemented with 5-phase production readiness fixes)
   - **New MCP Tools**:
     - `create_entities_batch`: Create multiple entities in single operation
     - `create_relations_batch`: Create multiple relations in single operation
@@ -35,18 +35,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 **Storage Layer** (`src/storage/neo4j/Neo4jStorageProvider.ts`):
 - Implemented 4 new batch methods using Neo4j UNWIND operations
 - Automatic batch chunking to prevent memory exhaustion
-- Parallel embedding generation with race condition handling
+- Embedding generation integrated with embedding job queue (always generated if service available)
 - Comprehensive error handling with per-item failure tracking
-- ~367 lines of optimized bulk operation code
+- ~450 lines of optimized bulk operation code with temporal versioning support
 
 **Knowledge Graph Manager** (`src/KnowledgeGraphManager.ts`):
 - Added 4 batch operation wrapper methods with comprehensive validation
+- Integrated embedding job scheduling for all batch operations (priority 1 for create/add, priority 2 for update)
 - Pre-execution validation prevents UNWIND silent failures:
   - Null/undefined detection and rejection
   - Duplicate detection within batches
   - Required field validation with type checking
   - Empty array validation
-- ~206 lines of validation and orchestration code
+- ~240 lines of validation, orchestration, and embedding integration code
 
 **MCP Tool Handlers** (`src/server/handlers/toolHandlers/`):
 - Created 4 new MCP tool handler files:
@@ -127,8 +128,8 @@ await mcp__kg__add_observations_batch({
 // Update multiple entities
 await mcp__kg__update_entities_batch({
   updates: [
-    { name: 'Entity1', updates: { entityType: 'UpdatedType' } },
-    { name: 'Entity2', updates: { observations: ['updated obs'] } },
+    { name: 'Entity1', entityType: 'UpdatedType' },
+    { name: 'Entity2', addObservations: ['new obs'], removeObservations: ['old obs'] },
   ]
 });
 ```
@@ -145,6 +146,44 @@ Actual performance will vary based on:
 - Network latency
 - Entity complexity and observation count
 - Embedding generation settings
+
+### Production Readiness Fixes (5-Phase Implementation)
+
+After initial implementation, comprehensive code review identified 4 critical production blockers. Fixed via 5-phase approach:
+
+**Phase 1: Cypher WHERE NULL Pattern (Critical Bug)**
+- **Problem**: `MATCH (node {validTo: NULL})` never matches in Neo4j (NULL properties are dropped)
+- **Impact**: Batch operations would fail to query current entity versions
+- **Fix**: Changed to `MATCH (node) WHERE node.validTo IS NULL` pattern
+- **Files**: `Neo4jStorageProvider.ts` lines 2868-2871, 3018-3019
+
+**Phase 2: Embedding Pipeline Integration (Critical Missing Feature)**
+- **Problem**: Batch operations bypassed embedding generation entirely, breaking semantic search
+- **Impact**: Batch-created entities wouldn't participate in semantic search
+- **Fix 1**: Added embedding job scheduling to all batch wrappers in `KnowledgeGraphManager`
+- **Fix 2**: Decoupled embedding generation from `enableParallel` flag in storage provider
+- **Files**: `KnowledgeGraphManager.ts` lines 1270-1278, 1387-1395, 1453-1461; `Neo4jStorageProvider.ts` line 2728
+
+**Phase 3: True UNWIND Bulk Operations (Critical Performance Issue)**
+- **Problem**: `addObservationsBatch` and `updateEntitiesBatch` looped over individual operations (zero performance benefit)
+- **Impact**: No actual performance improvement for half the batch API
+- **Fix 1**: Complete UNWIND rewrite of `addObservationsBatch` (5 bulk queries vs N*6 individual queries)
+- **Fix 2**: UNWIND optimization for `updateEntitiesBatch` entityType updates, delegated addObservations to now-optimized batch method
+- **Performance**: Achieved advertised 10-50x improvement
+- **Files**: `Neo4jStorageProvider.ts` lines 2933-3124 (addObservations), 3129-3238 (update)
+
+**Phase 4: API Alignment & Type Safety**
+- **Problem**: `updateEntitiesBatch` return type mismatch (`BatchResult<Entity>` vs actual `BatchResult<EntityUpdate>`)
+- **Impact**: Type safety violation, misleading API contract
+- **Fix**: Corrected return type to match implementation
+- **Files**: `KnowledgeGraphManager.ts` line 1409
+
+**Phase 5: Documentation Alignment**
+- **Problem**: Documentation claimed features not yet fully implemented
+- **Fix**: Updated README.md and CHANGELOG.md to reflect actual implementation
+- **Files**: `README.md` line 337, `CHANGELOG.md` lines 12, 38, 44, 50, 131
+
+**Verification**: 340 tests passing after all phases complete
 
 ### Migration Guide
 

@@ -334,7 +334,7 @@ await createEntitiesBatch(entities, {
 
 **Configuration Options**:
 - `maxBatchSize`: Control chunk size (default: 100)
-- `enableParallel`: Enable concurrent processing (default: false)
+- `enableParallel`: Reserved for future parallel chunk processing (embeddings always generated if service available)
 - `onProgress`: Callback for progress tracking
 
 ## MCP API Tools
