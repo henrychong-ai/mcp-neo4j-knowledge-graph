@@ -2865,8 +2865,10 @@ export class Neo4jStorageProvider implements StorageProvider {
 
             const query = `
               UNWIND $relations AS rel
-              MATCH (from:Entity {name: rel.from, validTo: NULL})
-              MATCH (to:Entity {name: rel.to, validTo: NULL})
+              MATCH (from:Entity {name: rel.from})
+              WHERE from.validTo IS NULL
+              MATCH (to:Entity {name: rel.to})
+              WHERE to.validTo IS NULL
               CREATE (from)-[r:RELATES_TO {
                 id: rel.id,
                 relationType: rel.relationType,
@@ -3013,7 +3015,8 @@ export class Neo4jStorageProvider implements StorageProvider {
             try {
               await session.run(
                 `
-                MATCH (e:Entity {name: $name, validTo: NULL})
+                MATCH (e:Entity {name: $name})
+                WHERE e.validTo IS NULL
                 SET e.entityType = $entityType,
                     e.updatedAt = $now
                 RETURN e

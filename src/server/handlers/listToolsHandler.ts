@@ -519,21 +519,19 @@ export async function handleListToolsRequest(): Promise<{ tools: Array<Record<st
               type: 'object',
               properties: {
                 name: { type: 'string', description: 'Name of the entity to update' },
-                updates: {
-                  type: 'object',
-                  properties: {
-                    entityType: { type: 'string', description: 'New entity type' },
-                    observations: {
-                      type: 'array',
-                      items: { type: 'string' },
-                      description: 'New observations (replaces existing)'
-                    },
-                    metadata: { type: 'object', description: 'Optional metadata' }
-                  },
-                  description: 'Fields to update'
+                entityType: { type: 'string', description: 'New entity type (optional)' },
+                addObservations: {
+                  type: 'array',
+                  items: { type: 'string' },
+                  description: 'Observations to add (optional)'
+                },
+                removeObservations: {
+                  type: 'array',
+                  items: { type: 'string' },
+                  description: 'Observations to remove (optional)'
                 }
               },
-              required: ['name', 'updates']
+              required: ['name']
             },
             description: 'Array of entity updates'
           },

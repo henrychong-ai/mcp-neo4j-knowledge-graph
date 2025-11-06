@@ -69,29 +69,29 @@ export interface BatchResult<T> {
  */
 export interface BatchProgress {
   /**
-   * Number of items processed so far
-   */
-  processed: number;
-
-  /**
    * Total number of items to process
    */
   total: number;
 
   /**
-   * Current batch number (1-indexed)
+   * Number of items completed successfully
    */
-  currentBatch: number;
+  completed: number;
 
   /**
-   * Total number of batches
+   * Number of items that failed
    */
-  totalBatches: number;
+  failed: number;
 
   /**
-   * Elapsed time in milliseconds since operation started
+   * Current progress percentage (0-100)
    */
-  elapsedMs: number;
+  percentage: number;
+
+  /**
+   * Estimated time remaining in milliseconds
+   */
+  estimatedTimeMs?: number;
 }
 
 /**
@@ -134,22 +134,17 @@ export interface EntityUpdate {
   name: string;
 
   /**
-   * Fields to update
+   * New entity type (optional)
    */
-  updates: {
-    /**
-     * New entity type
-     */
-    entityType?: string;
+  entityType?: string;
 
-    /**
-     * New observations (replaces existing observations)
-     */
-    observations?: string[];
+  /**
+   * Observations to add (optional)
+   */
+  addObservations?: string[];
 
-    /**
-     * Optional metadata
-     */
-    metadata?: Record<string, unknown>;
-  };
+  /**
+   * Observations to remove (optional)
+   */
+  removeObservations?: string[];
 }
