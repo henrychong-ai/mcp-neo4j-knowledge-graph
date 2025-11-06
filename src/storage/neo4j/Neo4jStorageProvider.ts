@@ -2937,32 +2937,176 @@ export class Neo4jStorageProvider implements StorageProvider {
     const startTime = Date.now();
     const successful: ObservationBatch[] = [];
     const failed: Array<{ item: ObservationBatch; error: string }> = [];
+    const maxBatchSize = config?.maxBatchSize || 100;
 
     try {
-      for (const batch of batches) {
+      // Split into chunks
+      const chunks = [];
+      for (let i = 0; i < batches.length; i += maxBatchSize) {
+        chunks.push(batches.slice(i, i + maxBatchSize));
+      }
+
+      for (const chunk of chunks) {
+        const session = await this.connectionManager.getSession();
         try {
-          // Use existing addObservations method for each batch
-          // This maintains temporal versioning correctly
-          await this.addObservations([{
-            entityName: batch.entityName,
-            contents: batch.observations,
-          }]);
+          const txc = session.beginTransaction();
 
-          successful.push(batch);
+          try {
+            // Step 1: Fetch all current entities in bulk
+            const entityNames = chunk.map(b => b.entityName);
+            const fetchQuery = `
+              UNWIND $names AS name
+              MATCH (e:Entity {name: name})
+              WHERE e.validTo IS NULL
+              RETURN e, name
+            `;
+            const fetchResult = await txc.run(fetchQuery, { names: entityNames });
 
-          if (config?.onProgress) {
-            config.onProgress({
-              total: batches.length,
-              completed: successful.length,
-              failed: failed.length,
-              percentage: (successful.length / batches.length) * 100,
+            // Build map of current entities
+            const entityMap = new Map();
+            fetchResult.records.forEach(record => {
+              const entity = record.get('e').properties;
+              const name = record.get('name');
+              entityMap.set(name, entity);
             });
+
+            // Process each batch item
+            const updates = [];
+            for (const batch of chunk) {
+              const currentEntity = entityMap.get(batch.entityName);
+              if (!currentEntity) {
+                failed.push({
+                  item: batch,
+                  error: `Entity not found: ${batch.entityName}`
+                });
+                continue;
+              }
+
+              const currentObservations = Array.isArray(currentEntity.observations)
+                ? currentEntity.observations
+                : JSON.parse(currentEntity.observations || '[]');
+
+              const newObservations = batch.observations.filter(
+                obs => !currentObservations.includes(obs)
+              );
+
+              if (newObservations.length === 0) {
+                successful.push(batch);
+                continue;
+              }
+
+              const allObservations = [...currentObservations, ...newObservations];
+              const now = Date.now();
+              const newVersion = (currentEntity.version ? Number(currentEntity.version) : 0) + 1;
+
+              updates.push({
+                id: currentEntity.id,
+                name: batch.entityName,
+                entityType: currentEntity.entityType,
+                observations: allObservations,
+                version: newVersion,
+                createdAt: Number(currentEntity.createdAt),
+                now: now,
+                newId: uuidv4()
+              });
+
+              successful.push(batch);
+            }
+
+            if (updates.length > 0) {
+              // Step 2: Invalidate old versions in bulk
+              await txc.run(`
+                UNWIND $updates AS upd
+                MATCH (e:Entity {id: upd.id})
+                SET e.validTo = upd.now
+                WITH e, upd
+                OPTIONAL MATCH (e)-[r:RELATES_TO]->()
+                WHERE r.validTo IS NULL
+                SET r.validTo = upd.now
+                WITH e, upd
+                OPTIONAL MATCH ()-[r2:RELATES_TO]->(e)
+                WHERE r2.validTo IS NULL
+                SET r2.validTo = upd.now
+              `, { updates });
+
+              // Step 3: Create new versions in bulk
+              await txc.run(`
+                UNWIND $updates AS upd
+                CREATE (e:Entity {
+                  id: upd.newId,
+                  name: upd.name,
+                  entityType: upd.entityType,
+                  observations: upd.observations,
+                  version: upd.version,
+                  createdAt: upd.createdAt,
+                  updatedAt: upd.now,
+                  validFrom: upd.now,
+                  validTo: null,
+                  changedBy: null
+                })
+              `, { updates });
+
+              // Step 4: Recreate outgoing relationships
+              await txc.run(`
+                UNWIND $updates AS upd
+                MATCH (oldE:Entity {id: upd.id})
+                MATCH (newE:Entity {id: upd.newId})
+                MATCH (oldE)-[oldR:RELATES_TO]->(to:Entity)
+                WHERE oldR.validFrom <= upd.now AND (oldR.validTo IS NULL OR oldR.validTo > upd.now)
+                CREATE (newE)-[newR:RELATES_TO {
+                  id: oldR.id,
+                  relationType: oldR.relationType,
+                  strength: oldR.strength,
+                  confidence: oldR.confidence,
+                  metadata: oldR.metadata,
+                  version: oldR.version,
+                  createdAt: oldR.createdAt,
+                  updatedAt: oldR.updatedAt,
+                  validFrom: oldR.validFrom,
+                  validTo: oldR.validTo,
+                  changedBy: oldR.changedBy
+                }]->(to)
+              `, { updates });
+
+              // Step 5: Recreate incoming relationships
+              await txc.run(`
+                UNWIND $updates AS upd
+                MATCH (oldE:Entity {id: upd.id})
+                MATCH (newE:Entity {id: upd.newId})
+                MATCH (from:Entity)-[oldR:RELATES_TO]->(oldE)
+                WHERE oldR.validFrom <= upd.now AND (oldR.validTo IS NULL OR oldR.validTo > upd.now)
+                CREATE (from)-[newR:RELATES_TO {
+                  id: oldR.id,
+                  relationType: oldR.relationType,
+                  strength: oldR.strength,
+                  confidence: oldR.confidence,
+                  metadata: oldR.metadata,
+                  version: oldR.version,
+                  createdAt: oldR.createdAt,
+                  updatedAt: oldR.updatedAt,
+                  validFrom: oldR.validFrom,
+                  validTo: oldR.validTo,
+                  changedBy: oldR.changedBy
+                }]->(newE)
+              `, { updates });
+            }
+
+            await txc.commit();
+
+            if (config?.onProgress) {
+              config.onProgress({
+                total: batches.length,
+                completed: successful.length,
+                failed: failed.length,
+                percentage: (successful.length / batches.length) * 100,
+              });
+            }
+          } catch (error) {
+            await txc.rollback();
+            throw error;
           }
-        } catch (error) {
-          failed.push({
-            item: batch,
-            error: error instanceof Error ? error.message : String(error),
-          });
+        } finally {
+          await session.close();
         }
       }
 
@@ -2971,7 +3115,7 @@ export class Neo4jStorageProvider implements StorageProvider {
         successful,
         failed,
         totalTimeMs,
-        avgTimePerItemMs: totalTimeMs / batches.length,
+        avgTimePerItemMs: totalTimeMs / (successful.length + failed.length),
       };
     } catch (error) {
       logger.error('Error in addObservationsBatch', error);
@@ -2991,17 +3135,63 @@ export class Neo4jStorageProvider implements StorageProvider {
     const failed: Array<{ item: EntityUpdate; error: string }> = [];
 
     try {
+      // Batch process entityType updates using UNWIND
+      const entityTypeUpdates = updates.filter(u => u.entityType);
+      if (entityTypeUpdates.length > 0) {
+        const session = await this.connectionManager.getSession();
+        try {
+          const now = Date.now();
+          const updateData = entityTypeUpdates.map(u => ({
+            name: u.name,
+            entityType: u.entityType,
+            now: now
+          }));
+
+          await session.run(`
+            UNWIND $updates AS upd
+            MATCH (e:Entity {name: upd.name})
+            WHERE e.validTo IS NULL
+            SET e.entityType = upd.entityType,
+                e.updatedAt = upd.now
+          `, { updates: updateData });
+        } catch (error) {
+          // Mark entityType updates as failed
+          for (const update of entityTypeUpdates) {
+            failed.push({
+              item: update,
+              error: error instanceof Error ? error.message : String(error),
+            });
+          }
+        } finally {
+          await session.close();
+        }
+      }
+
+      // Batch process observation additions
+      const addObsBatches = updates
+        .filter(u => u.addObservations && u.addObservations.length > 0)
+        .map(u => ({
+          entityName: u.name,
+          observations: u.addObservations!
+        }));
+
+      if (addObsBatches.length > 0) {
+        try {
+          await this.addObservationsBatch(addObsBatches, config);
+        } catch (error) {
+          // Mark observation additions as failed
+          for (const update of updates.filter(u => u.addObservations && u.addObservations.length > 0)) {
+            failed.push({
+              item: update,
+              error: error instanceof Error ? error.message : String(error),
+            });
+          }
+        }
+      }
+
+      // Process observation removals individually (less common operation)
       for (const update of updates) {
         try {
-          // Handle observation additions
-          if (update.addObservations && update.addObservations.length > 0) {
-            await this.addObservations([{
-              entityName: update.name,
-              contents: update.addObservations,
-            }]);
-          }
-
-          // Handle observation removals
           if (update.removeObservations && update.removeObservations.length > 0) {
             await this.deleteObservations([{
               entityName: update.name,
@@ -3009,30 +3199,10 @@ export class Neo4jStorageProvider implements StorageProvider {
             }]);
           }
 
-          // Handle entity type update if specified
-          if (update.entityType) {
-            const session = await this.connectionManager.getSession();
-            try {
-              await session.run(
-                `
-                MATCH (e:Entity {name: $name})
-                WHERE e.validTo IS NULL
-                SET e.entityType = $entityType,
-                    e.updatedAt = $now
-                RETURN e
-                `,
-                {
-                  name: update.name,
-                  entityType: update.entityType,
-                  now: Date.now(),
-                }
-              );
-            } finally {
-              await session.close();
-            }
+          // Only add to successful if not already in failed
+          if (!failed.find(f => f.item.name === update.name)) {
+            successful.push(update);
           }
-
-          successful.push(update);
 
           if (config?.onProgress) {
             config.onProgress({
@@ -3047,6 +3217,14 @@ export class Neo4jStorageProvider implements StorageProvider {
             item: update,
             error: error instanceof Error ? error.message : String(error),
           });
+        }
+      }
+
+      // Mark remaining updates as successful if not in failed
+      for (const update of updates) {
+        if (!failed.find(f => f.item.name === update.name) &&
+            !successful.find(s => s.name === update.name)) {
+          successful.push(update);
         }
       }
 
