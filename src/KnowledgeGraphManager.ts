@@ -1386,7 +1386,7 @@ export class KnowledgeGraphManager {
    * @returns Batch result with successful and failed updates
    */
   async updateEntitiesBatch(
-    updates: Array<{ name: string; updates: Partial<Entity> }>,
+    updates: import('./types/batch-operations.js').EntityUpdate[],
     config?: import('./types/batch-operations.js').BatchConfig
   ): Promise<import('./types/batch-operations.js').BatchResult<Entity>> {
     // Validate updates
@@ -1405,9 +1405,9 @@ export class KnowledgeGraphManager {
       if (!update.name || typeof update.name !== 'string') {
         throw new Error(`Entity update at index ${idx} has invalid 'name' field`);
       }
-      if (!update.updates || typeof update.updates !== 'object') {
+      if (!update.entityType && !update.addObservations && !update.removeObservations) {
         throw new Error(
-          `Entity update at index ${idx} has invalid 'updates' field (must be object)`
+          `Entity update at index ${idx} must specify at least one field to update`
         );
       }
     });
