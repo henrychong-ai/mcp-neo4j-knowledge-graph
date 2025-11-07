@@ -1208,4 +1208,257 @@ export class KnowledgeGraphManager {
 
     return this.storageProvider.getGraphAtTime(timestamp);
   }
+
+  /**
+   * Create multiple entities in a single optimized batch operation
+   *
+   * @param entities Array of entities to create
+   * @param config Optional batch configuration
+   * @returns Batch result with successful and failed entities
+   */
+  async createEntitiesBatch(
+    entities: Entity[],
+    config?: import('./types/batch-operations.js').BatchConfig
+  ): Promise<import('./types/batch-operations.js').BatchResult<Entity>> {
+    // Validate entities
+    if (!Array.isArray(entities) || entities.length === 0) {
+      throw new Error('Entities must be a non-empty array');
+    }
+
+    // Check for null/undefined entries (UNWIND edge case #2)
+    const nullCount = entities.filter((e) => e == null).length;
+    if (nullCount > 0) {
+      throw new Error(`Found ${nullCount} null/undefined entries in entities array`);
+    }
+
+    // Check for duplicates within batch (UNWIND edge case #4)
+    const names = new Set<string>();
+    const duplicates: string[] = [];
+    entities.forEach((entity, idx) => {
+      if (!entity.name) {
+        throw new Error(`Entity at index ${idx} is missing required 'name' field`);
+      }
+      if (names.has(entity.name)) {
+        duplicates.push(entity.name);
+      }
+      names.add(entity.name);
+    });
+
+    if (duplicates.length > 0) {
+      throw new Error(`Duplicate entity names within batch: ${duplicates.join(', ')}`);
+    }
+
+    // Validate required fields (UNWIND edge case #3)
+    entities.forEach((entity, idx) => {
+      if (!entity.name || typeof entity.name !== 'string') {
+        throw new Error(`Entity at index ${idx} has invalid 'name' field`);
+      }
+      if (!entity.entityType || typeof entity.entityType !== 'string') {
+        throw new Error(`Entity at index ${idx} has invalid 'entityType' field`);
+      }
+      if (!Array.isArray(entity.observations)) {
+        throw new Error(`Entity at index ${idx} has invalid 'observations' field (must be array)`);
+      }
+    });
+
+    // Call storage provider's batch method
+    const createEntitiesBatch = (this.storageProvider as any).createEntitiesBatch;
+    if (typeof createEntitiesBatch !== 'function') {
+      throw new Error('Storage provider does not support batch entity creation');
+    }
+
+    const result = await createEntitiesBatch.call(this.storageProvider, entities, config);
+
+    // Schedule embedding jobs for successfully created entities
+    if (this.embeddingJobManager && result.successful.length > 0) {
+      for (const entity of result.successful) {
+        await this.embeddingJobManager.scheduleEntityEmbedding(entity.name, 1);
+      }
+    }
+
+    return result;
+  }
+
+  /**
+   * Create multiple relations in a single optimized batch operation
+   *
+   * @param relations Array of relations to create
+   * @param config Optional batch configuration
+   * @returns Batch result with successful and failed relations
+   */
+  async createRelationsBatch(
+    relations: Relation[],
+    config?: import('./types/batch-operations.js').BatchConfig
+  ): Promise<import('./types/batch-operations.js').BatchResult<Relation>> {
+    // Validate relations
+    if (!Array.isArray(relations) || relations.length === 0) {
+      throw new Error('Relations must be a non-empty array');
+    }
+
+    // Check for null/undefined entries
+    const nullCount = relations.filter((r) => r == null).length;
+    if (nullCount > 0) {
+      throw new Error(`Found ${nullCount} null/undefined entries in relations array`);
+    }
+
+    // Check for duplicates within batch
+    const relationKeys = new Set<string>();
+    const duplicates: string[] = [];
+    relations.forEach((relation, idx) => {
+      if (!relation.from || !relation.to || !relation.relationType) {
+        return; // Will be caught by field validation below
+      }
+      const key = `${relation.from}->${relation.relationType}->${relation.to}`;
+      if (relationKeys.has(key)) {
+        duplicates.push(key);
+      }
+      relationKeys.add(key);
+    });
+
+    if (duplicates.length > 0) {
+      throw new Error(`Duplicate relations within batch: ${duplicates.join(', ')}`);
+    }
+
+    // Validate required fields
+    relations.forEach((relation, idx) => {
+      if (!relation.from || typeof relation.from !== 'string') {
+        throw new Error(`Relation at index ${idx} has invalid 'from' field`);
+      }
+      if (!relation.to || typeof relation.to !== 'string') {
+        throw new Error(`Relation at index ${idx} has invalid 'to' field`);
+      }
+      if (!relation.relationType || typeof relation.relationType !== 'string') {
+        throw new Error(`Relation at index ${idx} has invalid 'relationType' field`);
+      }
+    });
+
+    // Call storage provider's batch method
+    const createRelationsBatch = (this.storageProvider as any).createRelationsBatch;
+    if (typeof createRelationsBatch !== 'function') {
+      throw new Error('Storage provider does not support batch relation creation');
+    }
+
+    return createRelationsBatch.call(this.storageProvider, relations, config);
+  }
+
+  /**
+   * Add observations to multiple entities in a single optimized batch operation
+   *
+   * @param batches Array of observation batches
+   * @param config Optional batch configuration
+   * @returns Batch result with successful and failed batches
+   */
+  async addObservationsBatch(
+    batches: Array<{ entityName: string; observations: string[] }>,
+    config?: import('./types/batch-operations.js').BatchConfig
+  ): Promise<import('./types/batch-operations.js').BatchResult<any>> {
+    // Validate batches
+    if (!Array.isArray(batches) || batches.length === 0) {
+      throw new Error('Observation batches must be a non-empty array');
+    }
+
+    // Check for null/undefined entries
+    const nullCount = batches.filter((b) => b == null).length;
+    if (nullCount > 0) {
+      throw new Error(`Found ${nullCount} null/undefined entries in observation batches array`);
+    }
+
+    // Validate required fields
+    batches.forEach((batch, idx) => {
+      if (!batch.entityName || typeof batch.entityName !== 'string') {
+        throw new Error(`Observation batch at index ${idx} has invalid 'entityName' field`);
+      }
+      if (!Array.isArray(batch.observations)) {
+        throw new Error(
+          `Observation batch at index ${idx} has invalid 'observations' field (must be array)`
+        );
+      }
+      if (batch.observations.length === 0) {
+        throw new Error(`Observation batch at index ${idx} has empty observations array`);
+      }
+    });
+
+    // Call storage provider's batch method
+    const addObservationsBatch = (this.storageProvider as any).addObservationsBatch;
+    if (typeof addObservationsBatch !== 'function') {
+      throw new Error('Storage provider does not support batch observation addition');
+    }
+
+    const result = await addObservationsBatch.call(this.storageProvider, batches, config);
+
+    // Schedule re-embedding for successfully modified entities
+    if (this.embeddingJobManager && result.successful.length > 0) {
+      for (const batch of result.successful) {
+        await this.embeddingJobManager.scheduleEntityEmbedding(batch.entityName, 1);
+      }
+    }
+
+    return result;
+  }
+
+  /**
+   * Update multiple entities in a single optimized batch operation
+   *
+   * @param updates Array of entity updates
+   * @param config Optional batch configuration
+   * @returns Batch result with successful and failed updates
+   */
+  async updateEntitiesBatch(
+    updates: import('./types/batch-operations.js').EntityUpdate[],
+    config?: import('./types/batch-operations.js').BatchConfig
+  ): Promise<import('./types/batch-operations.js').BatchResult<import('./types/batch-operations.js').EntityUpdate>> {
+    // Validate updates
+    if (!Array.isArray(updates) || updates.length === 0) {
+      throw new Error('Entity updates must be a non-empty array');
+    }
+
+    // Check for null/undefined entries
+    const nullCount = updates.filter((u) => u == null).length;
+    if (nullCount > 0) {
+      throw new Error(`Found ${nullCount} null/undefined entries in entity updates array`);
+    }
+
+    // Validate required fields
+    updates.forEach((update, idx) => {
+      if (!update.name || typeof update.name !== 'string') {
+        throw new Error(`Entity update at index ${idx} has invalid 'name' field`);
+      }
+      if (!update.entityType && !update.addObservations && !update.removeObservations) {
+        throw new Error(
+          `Entity update at index ${idx} must specify at least one field to update`
+        );
+      }
+    });
+
+    // Check for duplicate entity names within batch
+    const names = new Set<string>();
+    const duplicates: string[] = [];
+    updates.forEach((update) => {
+      if (names.has(update.name)) {
+        duplicates.push(update.name);
+      }
+      names.add(update.name);
+    });
+
+    if (duplicates.length > 0) {
+      throw new Error(`Duplicate entity names in updates batch: ${duplicates.join(', ')}`);
+    }
+
+    // Call storage provider's batch method
+    const updateEntitiesBatch = (this.storageProvider as any).updateEntitiesBatch;
+    if (typeof updateEntitiesBatch !== 'function') {
+      throw new Error('Storage provider does not support batch entity updates');
+    }
+
+    const result = await updateEntitiesBatch.call(this.storageProvider, updates, config);
+
+    // Schedule re-embedding for successfully updated entities (priority 2 for updates)
+    if (this.embeddingJobManager && result.successful.length > 0) {
+      for (const entity of result.successful) {
+        await this.embeddingJobManager.scheduleEntityEmbedding(entity.name, 2);
+      }
+    }
+
+    return result;
+  }
 }
