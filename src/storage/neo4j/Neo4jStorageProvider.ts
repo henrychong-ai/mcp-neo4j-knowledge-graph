@@ -14,6 +14,7 @@ import type { EmbeddingService } from '../../embeddings/EmbeddingService.js';
 import { HybridRetriever, type HybridSearchConfig } from '../../retrieval/index.js';
 import { LRUCache } from 'lru-cache';
 import { PrometheusMetrics } from '../../metrics/PrometheusMetrics.js';
+import type { BatchConfig, BatchResult, ObservationBatch, EntityUpdate } from '../../types/batch-operations.js';
 
 /**
  * Configuration options for Neo4j storage provider
@@ -2692,6 +2693,619 @@ export class Neo4jStorageProvider implements StorageProvider {
       return {
         error: error instanceof Error ? error.message : String(error),
       };
+    }
+  }
+
+  /**
+   * Optimized batch creation of entities using bulk operations
+   * Uses UNWIND for efficient bulk inserts and parallel embedding generation
+   */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  async createEntitiesBatch(entities: any[], config?: BatchConfig): Promise<BatchResult<any>> {
+    const startTime = Date.now();
+    const maxBatchSize = config?.maxBatchSize || 100;
+    const enableParallel = config?.enableParallel !== false;
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const successful: any[] = [];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const failed: Array<{ item: any; error: string }> = [];
+
+    try {
+      // Split into chunks based on maxBatchSize
+      const chunks = [];
+      for (let i = 0; i < entities.length; i += maxBatchSize) {
+        chunks.push(entities.slice(i, i + maxBatchSize));
+      }
+
+      for (let chunkIndex = 0; chunkIndex < chunks.length; chunkIndex++) {
+        const chunk = chunks[chunkIndex];
+
+        // Generate embeddings if service available (parallel processing controlled by Promise.all)
+        const entitiesWithEmbeddings = await Promise.all(
+          chunk.map(async (entity) => {
+            let embedding = null;
+            if (this.embeddingService) {
+              try {
+                const text = Array.isArray(entity.observations)
+                  ? entity.observations.join('\n')
+                  : '';
+                embedding = await this.embeddingService.generateEmbedding(text);
+              } catch (error) {
+                logger.warn(`Failed to generate embedding for entity: ${entity.name}`, error);
+              }
+            }
+
+            const now = Date.now();
+            return {
+              id: uuidv4(),
+              name: entity.name,
+              entityType: entity.entityType,
+              observations: JSON.stringify(entity.observations || []),
+              version: 1,
+              createdAt: entity.createdAt || now,
+              updatedAt: entity.updatedAt || now,
+              validFrom: entity.validFrom || now,
+              validTo: null,
+              changedBy: entity.changedBy || null,
+              embedding: embedding,
+            };
+          })
+        );
+
+        // Use UNWIND for bulk insert
+        const session = await this.connectionManager.getSession();
+        try {
+          const txc = session.beginTransaction();
+
+          try {
+            const query = `
+              UNWIND $entities AS entity
+              CREATE (e:Entity {
+                id: entity.id,
+                name: entity.name,
+                entityType: entity.entityType,
+                observations: entity.observations,
+                version: entity.version,
+                createdAt: entity.createdAt,
+                updatedAt: entity.updatedAt,
+                validFrom: entity.validFrom,
+                validTo: entity.validTo,
+                changedBy: entity.changedBy,
+                embedding: entity.embedding
+              })
+              RETURN e
+            `;
+
+            await txc.run(query, { entities: entitiesWithEmbeddings });
+            await txc.commit();
+
+            successful.push(...chunk);
+
+            // Report progress if callback provided
+            if (config?.onProgress) {
+              config.onProgress({
+                total: entities.length,
+                completed: successful.length,
+                failed: failed.length,
+                percentage: (successful.length / entities.length) * 100,
+              });
+            }
+          } catch (error) {
+            await txc.rollback();
+            // Add all items in chunk to failed
+            chunk.forEach((entity) => {
+              failed.push({
+                item: entity,
+                error: error instanceof Error ? error.message : String(error),
+              });
+            });
+          }
+        } finally {
+          await session.close();
+        }
+      }
+
+      // Clear search cache after creating entities
+      this.searchCache.clear();
+
+      const totalTimeMs = Date.now() - startTime;
+      return {
+        successful,
+        failed,
+        totalTimeMs,
+        avgTimePerItemMs: totalTimeMs / entities.length,
+      };
+    } catch (error) {
+      logger.error('Error in createEntitiesBatch', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Optimized batch creation of relations using bulk operations
+   */
+  async createRelationsBatch(
+    relations: Relation[],
+    config?: BatchConfig
+  ): Promise<BatchResult<Relation>> {
+    const startTime = Date.now();
+    const maxBatchSize = config?.maxBatchSize || 100;
+    const successful: Relation[] = [];
+    const failed: Array<{ item: Relation; error: string }> = [];
+
+    try {
+      const chunks = [];
+      for (let i = 0; i < relations.length; i += maxBatchSize) {
+        chunks.push(relations.slice(i, i + maxBatchSize));
+      }
+
+      for (const chunk of chunks) {
+        const session = await this.connectionManager.getSession();
+        try {
+          const txc = session.beginTransaction();
+
+          try {
+            const now = Date.now();
+            const relationsWithMetadata = chunk.map((rel) => ({
+              id: uuidv4(),
+              from: rel.from,
+              to: rel.to,
+              relationType: rel.relationType,
+              strength: rel.strength ?? null,
+              confidence: rel.confidence ?? null,
+              metadata: rel.metadata ? JSON.stringify(rel.metadata) : null,
+              version: 1,
+              createdAt: now,
+              updatedAt: now,
+              validFrom: now,
+              validTo: null,
+              changedBy: null,
+            }));
+
+            const query = `
+              UNWIND $relations AS rel
+              MATCH (from:Entity {name: rel.from})
+              WHERE from.validTo IS NULL
+              MATCH (to:Entity {name: rel.to})
+              WHERE to.validTo IS NULL
+              CREATE (from)-[r:RELATES_TO {
+                id: rel.id,
+                relationType: rel.relationType,
+                strength: rel.strength,
+                confidence: rel.confidence,
+                metadata: rel.metadata,
+                version: rel.version,
+                createdAt: rel.createdAt,
+                updatedAt: rel.updatedAt,
+                validFrom: rel.validFrom,
+                validTo: rel.validTo,
+                changedBy: rel.changedBy
+              }]->(to)
+              RETURN r
+            `;
+
+            await txc.run(query, { relations: relationsWithMetadata });
+            await txc.commit();
+
+            successful.push(...chunk);
+
+            if (config?.onProgress) {
+              config.onProgress({
+                total: relations.length,
+                completed: successful.length,
+                failed: failed.length,
+                percentage: (successful.length / relations.length) * 100,
+              });
+            }
+          } catch (error) {
+            await txc.rollback();
+            chunk.forEach((rel) => {
+              failed.push({
+                item: rel,
+                error: error instanceof Error ? error.message : String(error),
+              });
+            });
+          }
+        } finally {
+          await session.close();
+        }
+      }
+
+      this.searchCache.clear();
+
+      const totalTimeMs = Date.now() - startTime;
+      return {
+        successful,
+        failed,
+        totalTimeMs,
+        avgTimePerItemMs: totalTimeMs / relations.length,
+      };
+    } catch (error) {
+      logger.error('Error in createRelationsBatch', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Optimized batch addition of observations to entities
+   */
+  async addObservationsBatch(
+    batches: ObservationBatch[],
+    config?: BatchConfig
+  ): Promise<BatchResult<ObservationBatch>> {
+    const startTime = Date.now();
+    const successful: ObservationBatch[] = [];
+    const failed: Array<{ item: ObservationBatch; error: string }> = [];
+    const maxBatchSize = config?.maxBatchSize || 100;
+
+    try {
+      // Split into chunks
+      const chunks = [];
+      for (let i = 0; i < batches.length; i += maxBatchSize) {
+        chunks.push(batches.slice(i, i + maxBatchSize));
+      }
+
+      for (const chunk of chunks) {
+        const session = await this.connectionManager.getSession();
+        try {
+          const txc = session.beginTransaction();
+
+          try {
+            // Step 1: Fetch all current entities in bulk
+            const entityNames = chunk.map(b => b.entityName);
+            const fetchQuery = `
+              UNWIND $names AS name
+              MATCH (e:Entity {name: name})
+              WHERE e.validTo IS NULL
+              RETURN e, name
+            `;
+            const fetchResult = await txc.run(fetchQuery, { names: entityNames });
+
+            // Build map of current entities
+            const entityMap = new Map();
+            fetchResult.records.forEach(record => {
+              const entity = record.get('e').properties;
+              const name = record.get('name');
+              entityMap.set(name, entity);
+            });
+
+            // Process each batch item
+            const updates = [];
+            for (const batch of chunk) {
+              const currentEntity = entityMap.get(batch.entityName);
+              if (!currentEntity) {
+                failed.push({
+                  item: batch,
+                  error: `Entity not found: ${batch.entityName}`
+                });
+                continue;
+              }
+
+              const currentObservations = Array.isArray(currentEntity.observations)
+                ? currentEntity.observations
+                : JSON.parse(currentEntity.observations || '[]');
+
+              const newObservations = batch.observations.filter(
+                obs => !currentObservations.includes(obs)
+              );
+
+              if (newObservations.length === 0) {
+                successful.push(batch);
+                continue;
+              }
+
+              const allObservations = [...currentObservations, ...newObservations];
+              const now = Date.now();
+              const newVersion = (currentEntity.version ? Number(currentEntity.version) : 0) + 1;
+
+              updates.push({
+                id: currentEntity.id,
+                name: batch.entityName,
+                entityType: currentEntity.entityType,
+                observations: allObservations,
+                version: newVersion,
+                createdAt: Number(currentEntity.createdAt),
+                now: now,
+                newId: uuidv4()
+              });
+
+              successful.push(batch);
+            }
+
+            if (updates.length > 0) {
+              // Step 2: Query relationships BEFORE invalidation
+              const outgoingRels = await txc.run(`
+                UNWIND $updates AS upd
+                MATCH (e:Entity {id: upd.id})
+                MATCH (e)-[r:RELATES_TO]->(to:Entity)
+                WHERE r.validFrom <= upd.now AND r.validTo IS NULL
+                RETURN upd.newId as newId, collect({
+                  id: r.id,
+                  relationType: r.relationType,
+                  strength: r.strength,
+                  confidence: r.confidence,
+                  metadata: r.metadata,
+                  version: r.version,
+                  createdAt: r.createdAt,
+                  updatedAt: r.updatedAt,
+                  validFrom: r.validFrom,
+                  validTo: r.validTo,
+                  changedBy: r.changedBy,
+                  toName: to.name
+                }) as rels
+              `, { updates });
+
+              // Step 3: Query incoming relationships BEFORE invalidation
+              const incomingRels = await txc.run(`
+                UNWIND $updates AS upd
+                MATCH (e:Entity {id: upd.id})
+                MATCH (from:Entity)-[r:RELATES_TO]->(e)
+                WHERE r.validFrom <= upd.now AND r.validTo IS NULL
+                RETURN upd.newId as newId, collect({
+                  id: r.id,
+                  relationType: r.relationType,
+                  strength: r.strength,
+                  confidence: r.confidence,
+                  metadata: r.metadata,
+                  version: r.version,
+                  createdAt: r.createdAt,
+                  updatedAt: r.updatedAt,
+                  validFrom: r.validFrom,
+                  validTo: r.validTo,
+                  changedBy: r.changedBy,
+                  fromName: from.name
+                }) as rels
+              `, { updates });
+
+              // Step 4: Invalidate old versions in bulk
+              await txc.run(`
+                UNWIND $updates AS upd
+                MATCH (e:Entity {id: upd.id})
+                SET e.validTo = upd.now
+                WITH e, upd
+                OPTIONAL MATCH (e)-[r:RELATES_TO]->()
+                WHERE r.validTo IS NULL
+                SET r.validTo = upd.now
+                WITH e, upd
+                OPTIONAL MATCH ()-[r2:RELATES_TO]->(e)
+                WHERE r2.validTo IS NULL
+                SET r2.validTo = upd.now
+              `, { updates });
+
+              // Step 5: Create new versions in bulk
+              await txc.run(`
+                UNWIND $updates AS upd
+                CREATE (e:Entity {
+                  id: upd.newId,
+                  name: upd.name,
+                  entityType: upd.entityType,
+                  observations: upd.observations,
+                  version: upd.version,
+                  createdAt: upd.createdAt,
+                  updatedAt: upd.now,
+                  validFrom: upd.now,
+                  validTo: null,
+                  changedBy: null
+                })
+              `, { updates });
+
+              // Step 6: Recreate outgoing relationships with fresh validTo
+              for (const record of outgoingRels.records) {
+                const newId = record.get('newId');
+                const rels = record.get('rels');
+                if (rels && rels.length > 0) {
+                  await txc.run(`
+                    MATCH (newE:Entity {id: $newId})
+                    UNWIND $rels AS rel
+                    MATCH (to:Entity {name: rel.toName})
+                    WHERE to.validTo IS NULL
+                    CREATE (newE)-[newR:RELATES_TO {
+                      id: rel.id,
+                      relationType: rel.relationType,
+                      strength: rel.strength,
+                      confidence: rel.confidence,
+                      metadata: rel.metadata,
+                      version: rel.version,
+                      createdAt: rel.createdAt,
+                      updatedAt: rel.updatedAt,
+                      validFrom: rel.validFrom,
+                      validTo: null,
+                      changedBy: rel.changedBy
+                    }]->(to)
+                  `, { newId, rels });
+                }
+              }
+
+              // Step 7: Recreate incoming relationships with fresh validTo
+              for (const record of incomingRels.records) {
+                const newId = record.get('newId');
+                const rels = record.get('rels');
+                if (rels && rels.length > 0) {
+                  await txc.run(`
+                    MATCH (newE:Entity {id: $newId})
+                    UNWIND $rels AS rel
+                    MATCH (from:Entity {name: rel.fromName})
+                    WHERE from.validTo IS NULL
+                    CREATE (from)-[newR:RELATES_TO {
+                      id: rel.id,
+                      relationType: rel.relationType,
+                      strength: rel.strength,
+                      confidence: rel.confidence,
+                      metadata: rel.metadata,
+                      version: rel.version,
+                      createdAt: rel.createdAt,
+                      updatedAt: rel.updatedAt,
+                      validFrom: rel.validFrom,
+                      validTo: null,
+                      changedBy: rel.changedBy
+                    }]->(newE)
+                  `, { newId, rels });
+                }
+              }
+            }
+
+            await txc.commit();
+
+            if (config?.onProgress) {
+              config.onProgress({
+                total: batches.length,
+                completed: successful.length,
+                failed: failed.length,
+                percentage: (successful.length / batches.length) * 100,
+              });
+            }
+          } catch (error) {
+            await txc.rollback();
+            throw error;
+          }
+        } finally {
+          await session.close();
+        }
+      }
+
+      const totalTimeMs = Date.now() - startTime;
+      return {
+        successful,
+        failed,
+        totalTimeMs,
+        avgTimePerItemMs: totalTimeMs / (successful.length + failed.length),
+      };
+    } catch (error) {
+      logger.error('Error in addObservationsBatch', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Optimized batch update of entities
+   */
+  async updateEntitiesBatch(
+    updates: EntityUpdate[],
+    config?: BatchConfig
+  ): Promise<BatchResult<EntityUpdate>> {
+    const startTime = Date.now();
+    const successful: EntityUpdate[] = [];
+    const failed: Array<{ item: EntityUpdate; error: string }> = [];
+
+    try {
+      // Batch process entityType updates using UNWIND
+      const entityTypeUpdates = updates.filter(u => u.entityType);
+      if (entityTypeUpdates.length > 0) {
+        const session = await this.connectionManager.getSession();
+        try {
+          const now = Date.now();
+          const updateData = entityTypeUpdates.map(u => ({
+            name: u.name,
+            entityType: u.entityType,
+            now: now
+          }));
+
+          await session.run(`
+            UNWIND $updates AS upd
+            MATCH (e:Entity {name: upd.name})
+            WHERE e.validTo IS NULL
+            SET e.entityType = upd.entityType,
+                e.updatedAt = upd.now
+          `, { updates: updateData });
+        } catch (error) {
+          // Mark entityType updates as failed
+          for (const update of entityTypeUpdates) {
+            failed.push({
+              item: update,
+              error: error instanceof Error ? error.message : String(error),
+            });
+          }
+        } finally {
+          await session.close();
+        }
+      }
+
+      // Batch process observation additions
+      const addObsBatches = updates
+        .filter(u => u.addObservations && u.addObservations.length > 0)
+        .map(u => ({
+          entityName: u.name,
+          observations: u.addObservations!
+        }));
+
+      if (addObsBatches.length > 0) {
+        try {
+          const addObsResult = await this.addObservationsBatch(addObsBatches, config);
+
+          // Propagate failures from batch operation
+          for (const failure of addObsResult.failed) {
+            // Find the corresponding EntityUpdate
+            const failedUpdate = updates.find(u => u.name === failure.item.entityName);
+            if (failedUpdate) {
+              failed.push({
+                item: failedUpdate,
+                error: failure.error,
+              });
+            }
+          }
+        } catch (error) {
+          // Mark all observation additions as failed on exception
+          for (const update of updates.filter(u => u.addObservations && u.addObservations.length > 0)) {
+            failed.push({
+              item: update,
+              error: error instanceof Error ? error.message : String(error),
+            });
+          }
+        }
+      }
+
+      // Process observation removals individually (less common operation)
+      for (const update of updates) {
+        try {
+          if (update.removeObservations && update.removeObservations.length > 0) {
+            await this.deleteObservations([{
+              entityName: update.name,
+              observations: update.removeObservations,
+            }]);
+          }
+
+          // Only add to successful if not already in failed
+          if (!failed.find(f => f.item.name === update.name)) {
+            successful.push(update);
+          }
+
+          if (config?.onProgress) {
+            config.onProgress({
+              total: updates.length,
+              completed: successful.length,
+              failed: failed.length,
+              percentage: (successful.length / updates.length) * 100,
+            });
+          }
+        } catch (error) {
+          failed.push({
+            item: update,
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
+      }
+
+      // Mark remaining updates as successful if not in failed
+      for (const update of updates) {
+        if (!failed.find(f => f.item.name === update.name) &&
+            !successful.find(s => s.name === update.name)) {
+          successful.push(update);
+        }
+      }
+
+      this.searchCache.clear();
+
+      const totalTimeMs = Date.now() - startTime;
+      return {
+        successful,
+        failed,
+        totalTimeMs,
+        avgTimePerItemMs: totalTimeMs / updates.length,
+      };
+    } catch (error) {
+      logger.error('Error in updateEntitiesBatch', error);
+      throw error;
     }
   }
 }
