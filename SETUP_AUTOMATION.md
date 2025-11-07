@@ -527,7 +527,310 @@ Hmm, the tools aren't showing up yet. Let's troubleshoot:
 Would you like me to verify your configuration?
 ```
 
-### 8.3 Final Success Celebration
+### 8.3 Optional: Add KG Usage Instructions to Claude User Preferences
+
+**AFTER SUCCESSFUL MCP TOOL TEST:**
+
+Now that your MCP server is working, you can optionally add Knowledge Graph usage instructions to your Claude user preferences file (~/.claude/CLAUDE.md). This helps Claude Code understand how to best use your knowledge graph.
+
+**ASK USER:**
+```
+Would you like to add Knowledge Graph (KG) usage instructions to your Claude user preferences?
+
+This will add helpful guidelines for:
+- When to use semantic_search vs search_nodes
+- Best practices for querying your knowledge graph
+- Token limit warnings and optimization tips
+
+Add instructions? (yes/no)
+```
+
+**IF NO:**
+```
+No problem! You can always add these instructions later by asking a future Claude Code session to:
+
+"Read and execute the setup guide at henrychong.com/mcp-neo4j-kg/setup and add KG usage instructions to my CLAUDE.md file"
+
+The setup guide contains the full instructions ready to add whenever you need them.
+```
+
+**CONTINUE TO SECTION 8.4**
+
+**IF YES:**
+
+#### Check if CLAUDE.md Exists
+
+**RUN:**
+```bash
+[ -f ~/.claude/CLAUDE.md ] && echo "exists" || echo "not found"
+```
+
+**IF NOT FOUND:**
+```
+I'll create a new ~/.claude/CLAUDE.md file with the KG instructions.
+```
+
+**IF EXISTS:**
+```
+I'll add the KG instructions to your existing ~/.claude/CLAUDE.md file.
+First, let me create a backup...
+```
+
+**RUN:**
+```bash
+cp ~/.claude/CLAUDE.md ~/.claude/CLAUDE.md.backup-$(date +%Y%m%d-%H%M%S)
+```
+
+#### Prepare KG Instructions Content
+
+**DETERMINE OPENAI KEY STATUS:**
+Check if user provided OpenAI API key during Section 3 setup.
+
+**IF OPENAI KEY PROVIDED (Semantic search enabled):**
+
+Create full instructions including semantic_search:
+
+**RUN:**
+```bash
+cat >> ~/.claude/CLAUDE.md << 'EOF'
+
+---
+
+# Knowledge Graph (KG) Usage Instructions
+
+*Added by mcp-neo4j-knowledge-graph setup on $(date +%Y-%m-%d)*
+
+## Abbreviation
+- **kg**: References the Neo4j knowledge graph and MCP tools (mcp__kg__search_nodes, mcp__kg__semantic_search, etc.)
+
+## Search Methods
+
+### semantic_search (Recommended for Exploration)
+
+Use `semantic_search` for concept exploration, discovery, and natural language queries:
+
+**When to use:**
+- Exploring topics without knowing exact terminology
+- Finding related concepts across different domains
+- Natural language queries about abstract ideas
+
+**Parameters:**
+- `limit`: Maximum results (default: 10)
+- `min_similarity`: Similarity threshold 0.0-1.0 (default: 0.6)
+- `entity_types`: Optional filter by type
+- `hybrid_search`: Combine with keyword search (default: true)
+
+**Example queries:**
+```
+semantic_search("software architecture patterns")     → Finds design patterns, architectural concepts
+semantic_search("database optimization techniques")   → Finds performance tuning, indexing strategies
+semantic_search("project management methodologies")   → Finds Agile, Scrum, workflow approaches
+```
+
+**Benefits:**
+- Finds conceptually related entities even with different terminology
+- Discovers unexpected connections
+- Works well with natural language queries
+
+### search_nodes (Precision Method)
+
+Use `search_nodes` for exact term matching:
+
+**When to use:**
+- Known exact terms or technical names
+- Quick existence checks
+- Technical lookups with specific terminology
+
+**Benefits:**
+- Fast and free (no API calls)
+- Predictable exact matches
+- Efficient for known terms
+
+**Example queries:**
+```
+search_nodes("Docker")          → Finds entities mentioning Docker
+search_nodes("React")           → Finds React-related entities
+search_nodes("PostgreSQL")      → Finds PostgreSQL entities
+```
+
+**Limitations:**
+- Literal matching only
+- Won't find synonyms or related concepts
+- Requires knowing exact terminology
+
+## Best Practices
+
+### Hybrid Approach (Recommended):
+1. Start with `semantic_search` for discovery
+2. Review results and identify exact terms used
+3. Use `search_nodes` for precision refinement
+
+### Query Optimization:
+- **Semantic search**: Natural language - "web development frontend frameworks modern"
+- **Keyword search**: Specific terms - "React", "Vue", "Angular"
+- **Escalation**: semantic_search → search_nodes → file search → web search
+
+## Critical Constraints
+
+### NEVER use read_graph()
+- ⚠️ The `read_graph()` tool always exceeds the 25,000 token response limit
+- Response size: ~173,000 tokens (confirmed)
+- **Always use `search_nodes()` or `semantic_search()` instead**
+
+### Token Limit Awareness
+- All MCP tool responses capped at 25,000 tokens maximum
+- Use targeted searches rather than broad retrieval
+- Apply filters early to reduce response size
+
+---
+
+EOF
+```
+
+**IF OPENAI KEY NOT PROVIDED (Semantic search disabled):**
+
+**ASK USER:**
+```
+You didn't set up an OpenAI API key, so semantic search isn't currently enabled.
+
+Would you like to include the semantic_search instructions anyway (as commented examples for future reference)?
+
+This way, if you add an OpenAI key later, you'll have the instructions ready.
+
+Include semantic_search instructions as comments? (yes/no)
+```
+
+**IF YES (include commented):**
+
+**RUN:**
+```bash
+cat >> ~/.claude/CLAUDE.md << 'EOF'
+
+---
+
+# Knowledge Graph (KG) Usage Instructions
+
+*Added by mcp-neo4j-knowledge-graph setup on $(date +%Y-%m-%d)*
+
+## Abbreviation
+- **kg**: References the Neo4j knowledge graph and MCP tools
+
+## Search Methods
+
+### search_nodes (Currently Available)
+
+Use `search_nodes` for exact term matching:
+
+**When to use:**
+- Known exact terms or technical names
+- Quick existence checks
+- Technical lookups with specific terminology
+
+**Example queries:**
+```
+search_nodes("Docker")          → Finds entities mentioning Docker
+search_nodes("React")           → Finds React-related entities
+search_nodes("PostgreSQL")      → Finds PostgreSQL entities
+```
+
+<!--
+### semantic_search (Requires OpenAI API Key)
+
+COMMENTED OUT - Add OpenAI API key to enable semantic search:
+
+Use `semantic_search` for concept exploration and natural language queries:
+
+**When to use:**
+- Exploring topics without knowing exact terminology
+- Finding related concepts across different domains
+- Natural language queries about abstract ideas
+
+**Parameters:**
+- `limit`: Maximum results (default: 10)
+- `min_similarity`: Similarity threshold 0.0-1.0 (default: 0.6)
+
+**Example queries:**
+```
+semantic_search("software architecture patterns")     → Finds design patterns, architectural concepts
+semantic_search("database optimization techniques")   → Finds performance tuning, indexing strategies
+```
+
+To enable: Add OPENAI_API_KEY to your ~/.claude.json MCP server config, then uncomment this section.
+-->
+
+## Critical Constraints
+
+### NEVER use read_graph()
+- ⚠️ The `read_graph()` tool always exceeds the 25,000 token response limit
+- **Always use `search_nodes()` or `semantic_search()` instead**
+
+---
+
+EOF
+```
+
+**IF NO (omit semantic search):**
+
+**RUN:**
+```bash
+cat >> ~/.claude/CLAUDE.md << 'EOF'
+
+---
+
+# Knowledge Graph (KG) Usage Instructions
+
+*Added by mcp-neo4j-knowledge-graph setup on $(date +%Y-%m-%d)*
+
+## Abbreviation
+- **kg**: References the Neo4j knowledge graph and MCP tools
+
+## Search Method
+
+### search_nodes
+
+Use `search_nodes` for exact term matching:
+
+**When to use:**
+- Known exact terms or technical names
+- Quick existence checks
+- Technical lookups with specific terminology
+
+**Example queries:**
+```
+search_nodes("Docker")          → Finds entities mentioning Docker
+search_nodes("React")           → Finds React-related entities
+search_nodes("PostgreSQL")      → Finds PostgreSQL entities
+```
+
+## Critical Constraints
+
+### NEVER use read_graph()
+- ⚠️ The `read_graph()` tool always exceeds the 25,000 token response limit
+- **Always use `search_nodes()` instead**
+
+---
+
+EOF
+```
+
+#### Verify Addition
+
+**RUN:**
+```bash
+tail -20 ~/.claude/CLAUDE.md
+```
+
+**TELL USER:**
+```
+✅ Knowledge Graph usage instructions added to ~/.claude/CLAUDE.md!
+
+A backup of your previous file was saved to:
+~/.claude/CLAUDE.md.backup-[timestamp]
+
+These instructions will help Claude Code use your knowledge graph more effectively in future sessions.
+```
+
+### 8.4 Final Success Celebration
 
 **AFTER SUCCESSFUL MCP TOOL TEST:**
 
@@ -550,7 +853,7 @@ Next steps:
 Happy graphing! 🚀
 ```
 
-### 8.4 Save Setup Summary
+### 8.5 Save Setup Summary
 
 **CREATE FILE** `mcp-neo4j-setup-summary.txt`:
 
