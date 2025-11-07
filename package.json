@@ -31,7 +31,7 @@
   ],
   "files": [
     "dist",
-    "SETUP.md"
+    "SETUP_AUTOMATION.md"
   ],
   "scripts": {
     "build": "tsc && shx chmod +x dist/*.js",

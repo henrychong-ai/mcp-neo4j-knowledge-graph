@@ -10,35 +10,42 @@ Scalable, high-performance knowledge graph memory system with semantic retrieval
 
 ---
 
-## Getting Started
+## 🚀 Quick Start
 
-**New to this MCP server?** See the **Interactive Setup Guide (SETUP.md)** for complete step-by-step instructions covering:
-- Prerequisites and Neo4j installation
-- Environment configuration
-- Claude Desktop and Claude Code setup
-- First entity creation and verification
-- Troubleshooting common issues
+### Automated Setup with Claude Code (Recommended)
 
-**Expected setup time:** 10-15 minutes
-
-### Accessing the Setup Guide
-
-The setup guide is included in the npm package. Access it via:
+The fastest way to get started is with automated guided setup:
 
 ```bash
-# After installing: npm install -g @henrychong-ai/mcp-neo4j-knowledge-graph
-# View the setup guide:
-cat $(npm root -g)/@henrychong-ai/mcp-neo4j-knowledge-graph/SETUP.md
-
-# Or ask Claude Code to read it and guide you through setup:
-# "Read the SETUP.md file from the installed package and help me set up the MCP server"
+# Run this in your terminal - Claude Code will guide you through everything:
+claude code "Setup: https://henrychong.com/mcp-neo4j-kg"
 ```
 
-The setup guide is also available in the repository root directory.
+Claude Code will automatically:
+- ✓ Check prerequisites (Node.js, Docker)
+- ✓ Set up Neo4j database
+- ✓ Configure environment variables
+- ✓ Integrate with Claude Desktop/Code
+- ✓ Test your setup with first entity
+
+**No prior installation needed** - the automation handles everything!
 
 ---
 
-## Installation
+### Manual Setup
+
+If you prefer manual installation, see the detailed sections below for:
+- [Installation](#installation) - npm/npx setup
+- [Neo4j Setup](#storage-backend) - Docker or local database
+- [Configuration](#configuration) - Environment variables
+- [Claude Desktop](#integration-with-claude-desktop) - MCP client setup
+- [Claude Code](#integration-with-claude-code) - CLI client setup
+- [Testing](#testing-your-setup) - Verification steps
+
+**Expected manual setup time:** 10-15 minutes
+
+---
+
 ## Installation
 
 ### Global Installation with npx (Recommended)
@@ -791,6 +798,100 @@ The adaptive search capabilities provide practical benefits:
 4. **Improved Context Retrieval**: LLM conversations benefit from better context retrieval as the system can find relevant information across complex knowledge graphs
 
 For example, when a user asks "What do you know about machine learning?", the system can retrieve conceptually related entities even if they don't explicitly mention "machine learning" - perhaps entities about neural networks, data science, or specific algorithms. But if semantic search yields insufficient results, the system automatically adjusts its approach to ensure useful information is still returned.
+
+## Integration with Claude Code
+
+### Configuration
+
+Add this to your `~/.claude.json`:
+
+```json
+{
+  "mcpServers": {
+    "neo4j-kg": {
+      "command": "npx",
+      "args": ["-y", "@henrychong-ai/mcp-neo4j-knowledge-graph"],
+      "env": {
+        "MEMORY_STORAGE_TYPE": "neo4j",
+        "NEO4J_URI": "bolt://127.0.0.1:7687",
+        "NEO4J_USERNAME": "neo4j",
+        "NEO4J_PASSWORD": "your_password_here",
+        "NEO4J_DATABASE": "neo4j",
+        "NEO4J_VECTOR_INDEX": "entity_embeddings",
+        "NEO4J_VECTOR_DIMENSIONS": "1536",
+        "NEO4J_SIMILARITY_FUNCTION": "cosine",
+        "OPENAI_API_KEY": "your-openai-api-key",
+        "OPENAI_EMBEDDING_MODEL": "text-embedding-3-small"
+      }
+    }
+  }
+}
+```
+
+### Verify MCP Tools Available
+
+In a Claude Code session, the MCP tools will be automatically available. You can verify by asking:
+
+```
+Show me the available MCP tools for the knowledge graph
+```
+
+You should see tools like:
+- `mcp__kg__create_entities`
+- `mcp__kg__create_relations`
+- `mcp__kg__add_observations`
+- `mcp__kg__search_nodes`
+- `mcp__kg__semantic_search`
+- And more...
+
+## Testing Your Setup
+
+### Step 1: Create Your First Entity
+
+In Claude Desktop or Claude Code, say:
+
+```
+Use the knowledge graph to create an entity named "Python"
+of type "Programming Language" with the observation
+"General-purpose, high-level programming language known for readability"
+```
+
+### Step 2: Search for the Entity
+
+```
+Search the knowledge graph for "Python"
+```
+
+Claude should find your entity using the `mcp__kg__search_nodes` tool.
+
+### Step 3: Add More Observations
+
+```
+Add these observations to the Python entity:
+- Created by Guido van Rossum in 1991
+- Popular for data science, web development, and automation
+- Dynamic typing with interpreted execution
+```
+
+### Step 4: Verify in Neo4j Browser
+
+Open `http://localhost:7474` and run:
+
+```cypher
+MATCH (e:Entity {name: "Python"})
+WHERE e.validTo IS NULL
+RETURN e
+```
+
+You should see your entity with all observations.
+
+### Step 5: Test Semantic Search (If OpenAI API Key Configured)
+
+```
+Perform a semantic search for "programming languages for beginners"
+```
+
+The Python entity should appear in results based on semantic similarity.
 
 ## Troubleshooting
 
