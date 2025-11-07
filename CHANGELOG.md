@@ -5,6 +5,50 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.1] - 2025-11-07
+
+### Added
+
+- **Optional KG Usage Instructions in Setup**: SETUP_AUTOMATION.md now offers to add Knowledge Graph usage instructions to user's `~/.claude/CLAUDE.md` file
+  - New Section 8.3: Optional addition of KG usage guidelines to Claude user preferences
+  - Conditional content based on OpenAI API key availability (semantic_search instructions included only if enabled)
+  - Three instruction variants: full (with semantic_search), commented (semantic_search as examples), minimal (search_nodes only)
+  - Automatic backup of existing CLAUDE.md file before modification
+  - Includes "kg" abbreviation definition and triggerword explanation
+  - Best practices for semantic_search vs search_nodes usage
+  - Sanitized, generic examples suitable for all users
+  - Token limit warnings and query optimization guidance
+  - User can decline and add instructions later via setup guide
+
+### Changed
+
+- Renumbered Section 8.3 "Final Success Celebration" → Section 8.4
+- Renumbered Section 8.4 "Save Setup Summary" → Section 8.5
+
+## [1.7.0] - 2025-11-07
+
+### Added
+
+- **Automated Setup via Claude Code**: Complete interactive setup automation for zero-prior-installation scenarios
+  - SETUP_AUTOMATION.md: 596-line guide optimized for Claude Code interpretation
+  - Prerequisites check (Node.js ≥20.0.0, Docker)
+  - Neo4j setup (Docker or local installation paths)
+  - Automatic ~/.claude.json configuration with backup
+  - Optional Claude Desktop setup
+  - Critical restart instructions (/exit → claude --continue)
+  - Verification and testing workflows
+  - Setup summary file generation
+
+### Changed
+
+- README.md: Added Quick Start section at top with setup prompt
+- Merged SETUP.md manual instructions into README.md
+- Updated package.json files array to include SETUP_AUTOMATION.md
+
+### Removed
+
+- SETUP.md (merged into README.md, replaced by SETUP_AUTOMATION.md)
+
 ## [1.6.0] - 2025-11-06
 
 ### Added
