@@ -6,155 +6,27 @@
 
 ---
 
-# TODO - Outstanding Tasks
-
-## 🚨 Critical Priority
-
-*(No critical priority items - all clear!)*
-
----
-
-## 🎯 Next Priority - Ready to Merge
-
-### v1.5.0 Query Result Caching - READY FOR PR MERGE
-
-**Goal**: Dramatically improve semantic search performance through LRU caching
-
-**Status**: ✅ **COMPLETE** - Branch: `claude/check-published-version-011CUq7WxEjcEqQsurmGap5j`
-
-**Priority**: 🔥 **MERGE IMMEDIATELY** - Tested and production-ready
-
-**Implementation Complete**:
-- ✅ LRU cache for semantic search query results
-- ✅ 500 unique queries cached with 5-minute TTL
-- ✅ 10K entity limit across all cached results
-- ✅ Sub-millisecond response for repeated queries
-- ✅ Automatic cache invalidation on mutations
-- ✅ Prometheus metrics integration (cache hits/misses)
-- ✅ README.md updated with v1.2.0-v1.5.0 features
-- ✅ CHANGELOG.md v1.5.0 entry complete
-- ✅ 334 unit tests passing
-
-**PR URL**: https://github.com/henrychong-ai/mcp-neo4j-knowledge-graph/compare/main...claude/check-published-version-011CUq7WxEjcEqQsurmGap5j
-
-**Files Changed**:
-- `src/storage/neo4j/Neo4jStorageProvider.ts` (+150/-21 lines)
-- `README.md` (+193/-7 lines) - Comprehensive "What's New" section
-- `CHANGELOG.md` (+57 lines)
-- `package.json` (version bump to 1.5.0)
-
-**Action Required**:
-1. Create PR on GitHub
-2. Merge to main → triggers automated npm publish
-3. Verify GitHub Actions CI passes
-4. Confirm npm package published
-
----
-
-### SETUP.md Interactive Setup Guide - READY FOR PR MERGE
-
-**Goal**: Provide comprehensive setup guide for public npm users
-
-**Status**: ✅ **REBASED** - Branch: `claude/cc-automatic-setup-011CUq7WxEjcEqQsurmGap5j`
-
-**Priority**: 🔥 **MERGE AFTER v1.5.0** - Ready for testing and merge
-
-**Implementation Complete**:
-- ✅ Created comprehensive 545-line setup guide
-- ✅ Self-contained for public npm users (no private repo references)
-- ✅ Included in npm package via `package.json` files array
-- ✅ Updated README.md with "Getting Started" section
-- ✅ Expanded inline troubleshooting (schema constraints, etc.)
-- ✅ **Successfully rebased** onto main with v1.5.0 changes
-
-**PR URL**: https://github.com/henrychong-ai/mcp-neo4j-knowledge-graph/compare/main...claude/cc-automatic-setup-011CUq7WxEjcEqQsurmGap5j
-
-**Pre-Merge Testing Checklist**:
-1. **NPM Package Accessibility Test**:
-   - [ ] Install package: `npm install -g @henrychong-ai/mcp-neo4j-knowledge-graph`
-   - [ ] Access SETUP.md: `cat $(npm root -g)/@henrychong-ai/mcp-neo4j-knowledge-graph/SETUP.md`
-   - [ ] Verify all sections readable from npm package
-
-2. **Link Validation**:
-   - [ ] No broken file links (grep for .md references)
-   - [ ] No private repo URLs (grep for github.com)
-   - [ ] External links work (Neo4j docs, OpenAI, etc.)
-
-3. **User Journey Test**:
-   - [ ] Fresh user follows SETUP.md from npm package
-   - [ ] All commands work as documented
-   - [ ] Neo4j setup successful (Docker Compose recommended path)
-   - [ ] Claude Desktop configuration works
-   - [ ] First entity creation successful
-   - [ ] Troubleshooting sections resolve common issues
-
-4. **Documentation Quality**:
-   - [ ] Clear for beginners (no assumed knowledge)
-   - [ ] Code blocks properly formatted
-   - [ ] Screenshots/examples helpful (if any)
-   - [ ] Troubleshooting covers real issues
-
-**Merge Decision**: Merge after v1.5.0 is published and tested by actual npm user workflow
-
----
-
 ## 🚀 High Priority
 
-### Batch Operations API
+### Complete Temporal History Tests
 
-**Goal**: Enable efficient bulk operations for knowledge graph ingestion and updates
+**Goal**: Implement the 5 skipped temporal versioning tests
 
-**Status**: 🚧 **STORAGE LAYER COMPLETE** - Branch: `claude/batch-operations-api-011CUq7WxEjcEqQsurmGap5j`
+**Status**: ⏳ **NOT STARTED** - Technical debt in test suite
 
-**Progress**: 60% Complete (3 of 5 phases done)
-
-**Completed**:
-- ✅ Phase 1: Batch API interfaces and types (`src/types/batch-operations.ts`)
-- ✅ Phase 2: Storage methods with transaction management
-  - `createEntitiesBatch` - UNWIND + parallel embedding generation
-  - `createRelationsBatch` - UNWIND bulk operations
-  - `addObservationsBatch` - Batch observation additions
-  - `updateEntitiesBatch` - Batch entity updates
-- ✅ Performance: <5ms per entity target achieved with UNWIND
-- ✅ Partial failure handling with detailed error reports
-- ✅ Progress reporting via callbacks
-- ✅ Code compiles successfully
-
-**Remaining** (Phases 3-5):
-- [ ] Phase 3: MCP tool handlers
-  - Add handlers to `src/server/handlers/callToolHandler.ts`
-  - Register tools in `src/server/handlers/listToolsHandler.ts`
-- [ ] Phase 4: KnowledgeGraphManager wrappers
-  - Add wrapper methods in `src/KnowledgeGraphManager.ts`
-- [ ] Phase 5: Testing and documentation
-  - Unit tests for batch operations
-  - Integration tests with Neo4j
-  - README.md updates with batch API examples
-  - CHANGELOG.md entry
-
-**Problem**: Creating/updating many entities requires multiple MCP tool calls with individual transactions. This is slow for AI workflows that need to ingest large context dumps or process document batches.
+**Problem**: Five tests in temporal history test files are currently stubbed with TODO comments:
+- `src/storage/__vitest__/neo4j/Neo4jEntityHistoryTimestampConsistency.test.ts:121` - Timestamp consistency with delays
+- `src/storage/__vitest__/neo4j/Neo4jEntityHistoryTimestampConsistency.test.ts:125` - Timestamp consistency with rapid operations
+- `src/storage/__vitest__/neo4j/Neo4jEntityHistoryTracking.test.ts:118` - Entity update history
+- `src/storage/__vitest__/neo4j/Neo4jEntityHistoryTracking.test.ts:122` - Entity creation timestamp
+- `src/storage/__vitest__/neo4j/Neo4jEntityHistoryTracking.test.ts:126` - Version chain test
 
 **Solution**:
-- New MCP tools for batch operations:
-  - `create_entities_batch(entities: Entity[], config?: BatchConfig)`
-  - `create_relations_batch(relations: Relation[], config?: BatchConfig)`
-  - `add_observations_batch(batches: ObservationBatch[], config?: BatchConfig)`
-  - `update_entities_batch(updates: EntityUpdate[], config?: BatchConfig)`
-- Single transaction per batch with partial success handling
-- Progress reporting for long-running batches
-- Configurable batch size limits (default: 100 items)
+- Implement Neo4j-specific versions of these tests
+- Ensure temporal versioning logic is fully tested
+- Validate timestamp consistency across operations
 
-**Impact**:
-- **User Value**: 10-100x faster bulk operations, enables new use cases (document ingestion, context migration)
-- **Technical Complexity**: Medium (storage complete, handlers remaining)
-- **Estimated Remaining Time**: 2-3 hours
-
-**Success Metrics**:
-- ✅ < 5ms per entity for batches of 100+ entities (ACHIEVED)
-- ✅ Graceful partial failure handling with detailed error reports (IMPLEMENTED)
-- ✅ Zero transaction leaks or orphaned data (IMPLEMENTED)
-
-**PR URL**: https://github.com/henrychong-ai/mcp-neo4j-knowledge-graph/compare/main...claude/batch-operations-api-011CUq7WxEjcEqQsurmGap5j
+**Impact**: Improved test coverage and confidence in temporal versioning system
 
 ---
 
@@ -259,20 +131,97 @@ OPENAI_API_KEY=sk-proj-...
 
 ---
 
+## 🔧 Medium Priority
+
+*(No pending medium priority items)*
+
 ---
 
 ## ✅ Completed
 
+### v1.7.1 Optional KG Usage Instructions (2025-11-07)
+
+**Status**: ✅ **MERGED AND RELEASED** - Published to npm
+
+**Implementation**:
+- SETUP_AUTOMATION.md now offers to add Knowledge Graph usage instructions to user's `~/.claude/CLAUDE.md` file
+- Three instruction variants: full (with semantic_search), commented (semantic_search as examples), minimal (search_nodes only)
+- Automatic backup of existing CLAUDE.md file before modification
+- Includes "kg" abbreviation definition and triggerword explanation
+- Best practices for semantic_search vs search_nodes usage
+- Sanitized, generic examples suitable for all users
+
+**Files Changed**:
+- `SETUP_AUTOMATION.md` - Section 8.3 added
+- `CHANGELOG.md` - v1.7.1 entry
+
+---
+
+### v1.7.0 Automated Setup with Claude Code (2025-11-07)
+
+**Status**: ✅ **MERGED AND RELEASED** - Published to npm
+
+**Implementation**:
+- Complete interactive setup automation via SETUP_AUTOMATION.md
+- 596-line guide optimized for Claude Code interpretation
+- Prerequisites check (Node.js ≥20.0.0, Docker)
+- Neo4j setup (Docker or local installation paths)
+- Automatic ~/.claude.json configuration with backup
+- Optional Claude Desktop setup
+- Critical restart instructions (/exit → claude --continue)
+- Verification and testing workflows
+- Setup summary file generation
+
+**Files Changed**:
+- `SETUP_AUTOMATION.md` - New file
+- `README.md` - Quick Start section added
+- `package.json` - Added SETUP_AUTOMATION.md to files array
+- `CHANGELOG.md` - v1.7.0 entry
+
+---
+
+### v1.6.0 Batch Operations API (2025-11-06)
+
+**Status**: ✅ **MERGED AND RELEASED** - Published to npm
+
+**Implementation**:
+- **New MCP Tools**: `create_entities_batch`, `create_relations_batch`, `add_observations_batch`, `update_entities_batch`
+- **Performance**: 10-50x faster than individual operations for large datasets
+- **Optimized UNWIND Operations**: True bulk operations using Neo4j UNWIND
+- **Embedding Integration**: Automatic embedding generation for batch operations
+- **Transaction Safety**: Automatic rollback on failures with per-item error tracking
+- **Configuration Options**: maxBatchSize, enableParallel, onProgress callback
+
+**Technical Implementation**:
+- Storage layer: 4 new batch methods with UNWIND operations (~450 lines)
+- Knowledge Graph Manager: Validation, orchestration, embedding integration (~240 lines)
+- MCP Tool Handlers: 4 new handler files
+- Full 5-phase production readiness implementation
+
+**Files Changed**:
+- `src/storage/neo4j/Neo4jStorageProvider.ts` - Batch methods
+- `src/KnowledgeGraphManager.ts` - Batch wrappers and validation
+- `src/server/handlers/toolHandlers/*.ts` - 4 new handler files
+- `src/server/handlers/listToolsHandler.ts` - Tool registration
+- `src/server/handlers/callToolHandler.ts` - Tool routing
+- `README.md` - Batch API documentation
+- `CHANGELOG.md` - v1.6.0 entry
+
+**Testing**: Comprehensive validation and error handling
+
+---
+
 ### v1.5.0 Query Result Caching (2025-11-05)
 
-**Status**: ✅ **COMPLETE** - Ready for PR merge
+**Status**: ✅ **MERGED AND RELEASED** - Published to npm
 
 **Implementation**:
 - LRU cache for semantic search query results
 - 500 unique queries cached with 5-minute TTL
+- 10K entity limit across all cached results
 - Sub-millisecond response for repeated queries
 - Automatic cache invalidation on mutations
-- Prometheus metrics integration
+- Prometheus metrics integration (cache hits/misses)
 
 **Documentation**:
 - README.md updated with v1.2.0-v1.5.0 features
@@ -289,8 +238,6 @@ OPENAI_API_KEY=sk-proj-...
 - `package.json` (v1.5.0)
 
 **Testing**: 334 unit tests passing
-
-**Branch**: `claude/check-published-version-011CUq7WxEjcEqQsurmGap5j`
 
 ---
 
@@ -599,14 +546,6 @@ Professional standalone project identity with proper attribution to original wor
 
 ---
 
-## 🔧 Medium Priority
-
-*(No pending medium priority items)*
-
----
-
-## ✅ Completed
-
 ### Neo4j Vector Index Compatibility Enhancement (2025-10-20, v1.1.5)
 - ✅ **Intelligent version and edition detection** for vector index compatibility
   - Added `getServerVersion()` method querying Neo4j Kernel component specifically
@@ -712,24 +651,25 @@ act push -j publish --secret NPM_TOKEN=...  # Test publish job
 
 ---
 
-**Last Updated:** 2025-11-05
+**Last Updated:** 2025-11-15
+
+**Current Version:** v1.7.1
 
 **Session Context:**
-- ✅ **v1.5.0 Query Result Caching** - Complete and ready for PR merge
-- ✅ **README.md comprehensive update** - v1.2.0-v1.5.0 features documented
-- ✅ **SETUP.md branch rebased** - Ready for merge after v1.5.0
-- 🚧 **Batch Operations API** - Storage layer complete (60% done, MCP handlers remaining)
-- ✅ **334 unit tests passing** - All code compiles successfully
-- ✅ **3 branches pushed** with production-ready code
+- ✅ **v1.7.1** - Latest version published to npm
+- ✅ **Automated Setup** - SETUP_AUTOMATION.md for Claude Code
+- ✅ **Batch Operations API** - Fully implemented and released in v1.6.0
+- ✅ **Query Result Caching** - Released in v1.5.0
+- ✅ **All recent features merged** - v1.5.0 through v1.7.1 complete
 
 **Current State:**
-- Production-ready v1.5.0 awaiting PR creation and merge
-- High-impact batch operations 60% complete
-- Documentation fully up to date
-- All tests passing, zero known issues
+- Latest version: 1.7.1 published and operational
+- All major features from v1.5.0-v1.7.1 merged and released
+- Documentation up to date
+- Outstanding: Temporal history tests, CI/CD improvements
 
-**Next Steps:**
-1. Create and merge v1.5.0 PR → triggers automated npm publish
-2. Merge SETUP.md branch for better onboarding
-3. Complete Batch Operations API (handlers + tests + docs)
-4. Consider implementing Branch Testing & Preview Deployments for safer releases
+**Next Priorities:**
+1. Complete the 5 skipped temporal history tests
+2. Implement Branch Testing & Preview Deployments for safer releases
+3. Set up Cloud Testing Environments (Neo4j Aura)
+4. Consider new features: Graph Analytics, Import/Export, Visualization UI
