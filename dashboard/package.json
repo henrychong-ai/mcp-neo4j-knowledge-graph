@@ -1,0 +1,47 @@
+{
+  "name": "@henrychong-ai/mcp-neo4j-dashboard",
+  "version": "1.0.0",
+  "description": "Next.js visualization dashboard for Neo4j knowledge graph",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "next": "^14.2.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "@tanstack/react-query": "^5.56.0",
+    "cytoscape": "^3.30.0",
+    "cytoscape-cose-bilkent": "^1.2.10",
+    "lucide-react": "^0.446.0",
+    "neo4j-driver": "^5.25.0"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "^6.5.0",
+    "@testing-library/react": "^16.0.1",
+    "@testing-library/user-event": "^14.5.2",
+    "@types/cytoscape": "^3.21.5",
+    "@types/node": "^20",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "@vitejs/plugin-react": "^4.3.0",
+    "@vitest/coverage-v8": "^2.1.0",
+    "autoprefixer": "^10.4.20",
+    "eslint": "^8",
+    "eslint-config-next": "14.2.0",
+    "happy-dom": "^15.7.4",
+    "postcss": "^8",
+    "tailwindcss": "^3.4.0",
+    "typescript": "^5",
+    "vitest": "^2.1.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
