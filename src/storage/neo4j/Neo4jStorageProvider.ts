@@ -226,6 +226,7 @@ export class Neo4jStorageProvider implements StorageProvider {
       String(options.enableHybridRetrieval !== false),
       hybridConfigKey,
       vectorKey,
+      options.domain || 'all',
     ];
     return parts.join(':');
   }
@@ -1094,6 +1095,7 @@ export class Neo4jStorageProvider implements StorageProvider {
                 id: $id,
                 name: $name,
                 entityType: $entityType,
+                domain: $domain,
                 observations: $observations,
                 version: $version,
                 createdAt: $createdAt,
@@ -1109,6 +1111,7 @@ export class Neo4jStorageProvider implements StorageProvider {
               id: newEntityId,
               name: currentNode.name,
               entityType: currentNode.entityType,
+              domain: currentNode.domain || null,
               observations: JSON.stringify(allObservations),
               version: newVersion,
               createdAt: Number(currentNode.createdAt), // Convert BigInt to Number
@@ -1365,6 +1368,7 @@ export class Neo4jStorageProvider implements StorageProvider {
                 id: $id,
                 name: $name,
                 entityType: $entityType,
+                domain: $domain,
                 observations: $observations,
                 version: $version,
                 createdAt: $createdAt,
@@ -1380,6 +1384,7 @@ export class Neo4jStorageProvider implements StorageProvider {
               id: newEntityId,
               name: currentNode.name,
               entityType: currentNode.entityType,
+              domain: currentNode.domain || null,
               observations: JSON.stringify(updatedObservations),
               version: newVersion,
               createdAt: currentNode.createdAt,
@@ -2334,6 +2339,17 @@ export class Neo4jStorageProvider implements StorageProvider {
           const session = await this.connectionManager.getSession();
 
           try {
+            // Build domain filter if provided
+            const domainFilter = options.domain ? 'AND node.domain = $domain' : '';
+            const queryParams: Record<string, unknown> = {
+              limit: neo4j.int(searchLimit),
+              embedding: options.queryVector,
+              minScore: minSimilarity,
+            };
+            if (options.domain) {
+              queryParams.domain = options.domain;
+            }
+
             const vectorResult = await session.run(
               `
               CALL db.index.vector.queryNodes(
@@ -2342,15 +2358,11 @@ export class Neo4jStorageProvider implements StorageProvider {
                 $embedding
               )
               YIELD node, score
-              WHERE score >= $minScore
+              WHERE score >= $minScore ${domainFilter}
               RETURN node.name AS name, node.entityType AS entityType, score
               ORDER BY score DESC
             `,
-              {
-                limit: neo4j.int(searchLimit),
-                embedding: options.queryVector,
-                minScore: minSimilarity,
-              }
+              queryParams
             );
 
             const foundResults = vectorResult.records.length;
@@ -3018,6 +3030,7 @@ export class Neo4jStorageProvider implements StorageProvider {
                 id: currentEntity.id,
                 name: batch.entityName,
                 entityType: currentEntity.entityType,
+                domain: currentEntity.domain || null,
                 observations: allObservations,
                 version: newVersion,
                 createdAt: Number(currentEntity.createdAt),
@@ -3095,6 +3108,7 @@ export class Neo4jStorageProvider implements StorageProvider {
                   id: upd.newId,
                   name: upd.name,
                   entityType: upd.entityType,
+                  domain: upd.domain,
                   observations: upd.observations,
                   version: upd.version,
                   createdAt: upd.createdAt,

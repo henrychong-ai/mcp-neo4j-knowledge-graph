@@ -965,6 +965,7 @@ export class KnowledgeGraphManager {
             entityTypes: options.entityTypes || [],
             facets: options.facets || [],
             offset: options.offset || 0,
+            domain: options.domain,
           });
 
           return results;
@@ -974,7 +975,7 @@ export class KnowledgeGraphManager {
 
           // Explicitly call searchNodes if available in the provider
           if (this.storageProvider) {
-            return (this.storageProvider as StorageProvider).searchNodes(query);
+            return (this.storageProvider as StorageProvider).searchNodes(query, { domain: options.domain });
           }
         }
       } else {
@@ -983,7 +984,7 @@ export class KnowledgeGraphManager {
     }
 
     // Use basic search
-    return this.searchNodes(query);
+    return this.searchNodes(query, { domain: options.domain });
   }
 
   /**
@@ -1002,6 +1003,7 @@ export class KnowledgeGraphManager {
       entityTypes?: string[];
       facets?: string[];
       offset?: number;
+      domain?: string;
     } = {}
   ): Promise<KnowledgeGraph> {
     // Find similar entities using vector similarity
@@ -1431,7 +1433,7 @@ export class KnowledgeGraphManager {
       if (!update.name || typeof update.name !== 'string') {
         throw new Error(`Entity update at index ${idx} has invalid 'name' field`);
       }
-      if (!update.entityType && !update.addObservations && !update.removeObservations) {
+      if (!update.entityType && !update.domain && !update.addObservations && !update.removeObservations) {
         throw new Error(
           `Entity update at index ${idx} must specify at least one field to update`
         );

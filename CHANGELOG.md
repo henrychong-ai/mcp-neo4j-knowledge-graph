@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.8.1] - 2025-12-22
+
+### Fixed
+
+- **Critical: Domain preserved on observation updates** - Entities now retain their domain property when adding or deleting observations
+  - Fixed `addObservations()` to include domain in new entity version
+  - Fixed `deleteObservations()` to include domain in new entity version
+  - Fixed `addObservationsBatch()` to preserve domain during bulk updates
+
+- **Critical: Semantic search domain filtering** - Domain filter now properly applied to vector searches
+  - Fixed `semanticSearch()` to pass domain option to internal search
+  - Fixed vector query to include domain WHERE clause
+  - Fixed all fallback paths to preserve domain parameter
+
+- **update_entities_batch domain-only updates** - Can now update only the domain field without requiring other fields
+
+- **Cache key includes domain** - Different domain filters now correctly return separate cached results
+
 ## [1.8.0] - 2025-12-22
 
 ### Added
