@@ -21,6 +21,12 @@ export interface SearchOptions {
    * Filter results by entity types
    */
   entityTypes?: string[];
+
+  /**
+   * Filter results by domain
+   * Valid values: 'medical', 'money', 'infra', 'claude', 'general'
+   */
+  domain?: string;
 }
 
 /**

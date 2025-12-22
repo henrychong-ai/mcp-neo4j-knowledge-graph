@@ -5,6 +5,44 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.8.0] - 2025-12-22
+
+### Added
+
+- **Domain Property for Namespace Scoping**: Optional `domain` property on entities for logical namespace organization
+  - **Valid Domains**: `medical`, `money`, `infra`, `claude`, `general`
+  - **Default**: `null` (uncategorized) - explicitly different from `general` (intentionally general-purpose)
+  - **Backward Compatible**: Existing entities without domain continue to work; domain is optional filter
+  - **Tool Schema Updates**:
+    - `create_entities`: Added optional `domain` property with enum validation
+    - `search_nodes`: Added optional `domain` filter parameter
+    - `semantic_search`: Added optional `domain` filter parameter
+    - `create_entities_batch`: Added optional `domain` property
+    - `update_entities_batch`: Added optional `domain` property for updates
+  - **Storage Layer**: Neo4j stores domain as node property, filtered via WHERE clause
+  - **Vector Search**: Domain filtering integrated into semantic search queries
+  - **Cross-Domain Queries**: Omitting domain parameter queries across all domains (no partitioning)
+
+### Technical Implementation
+
+**Entity Interface** (`src/KnowledgeGraphManager.ts`):
+- Added `VALID_DOMAINS` constant and `Domain` type
+- Extended `Entity` interface with `domain?: Domain | null`
+
+**Storage Provider** (`src/storage/neo4j/Neo4jStorageProvider.ts`):
+- `createEntities`: Stores domain property on Entity nodes
+- `searchNodes`: Filters by domain when provided
+- `createEntitiesBatch`: Stores domain in bulk operations
+- `updateEntitiesBatch`: Supports domain field updates
+
+**Vector Store** (`src/storage/neo4j/Neo4jVectorStore.ts`):
+- `search`: Added domain filter to vector similarity queries
+- `searchByPatternFallback`: Added domain filter to fallback search
+
+**Tool Handlers** (`src/server/handlers/`):
+- `callToolHandler.ts`: Passes domain option to search operations
+- `listToolsHandler.ts`: Updated tool schemas with domain properties
+
 ## [1.7.1] - 2025-11-07
 
 ### Added

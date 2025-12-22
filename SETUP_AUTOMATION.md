@@ -432,8 +432,8 @@ Would you like me to test it now by creating a sample entity?
 {
   "entities": [
     {
-      "name": "Setup_Test",
-      "entityType": "Test",
+      "name": "setup-test",
+      "entityType": "test",
       "observations": ["Successfully created during automated setup on [DATE]"]
     }
   ]

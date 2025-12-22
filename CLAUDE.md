@@ -95,15 +95,24 @@ npx vitest run --grep "temporal versioning"
 
 ### Data Model
 
-**Entities**: Nodes with name, type, observations, and optional embeddings
+**Entities**: Nodes with name, type, domain, observations, and optional embeddings
 ```typescript
 {
   name: string;           // Unique identifier
-  entityType: string;     // Category/classification
+  entityType: string;     // Category/classification (lowercase-kebab-case)
+  domain?: Domain | null; // Optional namespace: 'medical' | 'money' | 'infra' | 'claude' | 'general'
   observations: string[]; // Knowledge fragments
   embedding?: EntityEmbedding;
 }
 ```
+
+**EntityType Convention**: Use `lowercase-kebab-case` format (e.g., `person`, `medical-condition`, `claude-code-skill`). No uppercase, spaces, or underscores.
+
+**Domain Property**: Optional namespace for logical organization of entities:
+- **Valid values**: `medical`, `money`, `infra`, `claude`, `general`
+- **Default**: `null` (uncategorized) - different from `general` (explicitly general-purpose)
+- **Query behavior**: Omit domain parameter to query across all domains; specify domain to filter
+- **Migration**: Existing entities without domain continue to work unchanged
 
 **Relations**: Directed edges between entities with temporal metadata
 ```typescript

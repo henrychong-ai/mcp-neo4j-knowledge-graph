@@ -185,6 +185,7 @@ export class Neo4jVectorStore implements VectorStore {
       filter?: Record<string, any>;
       hybridSearch?: boolean;
       minSimilarity?: number;
+      domain?: string;
     } = {}
   ): Promise<VectorSearchResult[]> {
     try {
@@ -208,21 +209,25 @@ export class Neo4jVectorStore implements VectorStore {
       if (!hasValidNorm) {
         logger.warn(`Neo4jVectorStore: Vector has invalid l2-norm, using fallback search`);
         // Fallback to pattern matching instead
-        return this.searchByPatternFallback(options.limit ?? 5);
+        return this.searchByPatternFallback(options.limit ?? 5, options.domain);
       }
 
       // Process search options
       const limit = options.limit ?? 5;
       const minSimilarity = options.minSimilarity ?? 0;
+      const domain = options.domain;
 
       logger.debug(
-        `Neo4jVectorStore: Using vector search with limit=${limit}, minSimilarity=${minSimilarity}`
+        `Neo4jVectorStore: Using vector search with limit=${limit}, minSimilarity=${minSimilarity}, domain=${domain || 'all'}`
       );
 
       // Start session
       const session = await this.connectionManager.getSession();
 
       try {
+        // Build domain filter clause
+        const domainFilter = domain ? 'AND node.domain = $domain' : '';
+
         // Use the exact working approach from our test script
         // This approach follows the Neo4j documentation and was verified to work
         const result = await session.run(
@@ -233,8 +238,8 @@ export class Neo4jVectorStore implements VectorStore {
             $embedding
           )
           YIELD node, score
-          WHERE score >= $minScore
-          RETURN node.name AS id, node.entityType AS entityType, score AS similarity
+          WHERE score >= $minScore ${domainFilter}
+          RETURN node.name AS id, node.entityType AS entityType, node.domain AS domain, score AS similarity
           ORDER BY score DESC
         `,
           {
@@ -242,6 +247,7 @@ export class Neo4jVectorStore implements VectorStore {
             limit: neo4j.int(Math.floor(limit)),
             embedding: queryVector,
             minScore: minSimilarity,
+            domain: domain || null,
           }
         );
 
@@ -254,6 +260,7 @@ export class Neo4jVectorStore implements VectorStore {
             similarity: record.get('similarity'),
             metadata: {
               entityType: record.get('entityType'),
+              domain: record.get('domain'),
               searchMethod: 'vector',
             },
           }));
@@ -261,12 +268,12 @@ export class Neo4jVectorStore implements VectorStore {
 
         // If no results, use fallback
         logger.debug(`Neo4jVectorStore: No results from vector search, using fallback`);
-        return this.searchByPatternFallback(limit);
+        return this.searchByPatternFallback(limit, domain);
       } catch (error) {
         logger.error(
           `Neo4jVectorStore: Vector search failed: ${error instanceof Error ? error.message : String(error)}`
         );
-        return this.searchByPatternFallback(limit);
+        return this.searchByPatternFallback(limit, domain);
       } finally {
         await session.close();
       }
@@ -274,7 +281,7 @@ export class Neo4jVectorStore implements VectorStore {
       logger.error(
         `Neo4jVectorStore: Search failed: ${error instanceof Error ? error.message : String(error)}`
       );
-      return this.searchByPatternFallback(options.limit ?? 5);
+      return this.searchByPatternFallback(options.limit ?? 5, options.domain);
     }
   }
 
@@ -330,26 +337,29 @@ export class Neo4jVectorStore implements VectorStore {
   /**
    * Fallback search method using pattern matching when vector search fails
    */
-  private async searchByPatternFallback(limit: number): Promise<VectorSearchResult[]> {
-    logger.debug(`Neo4jVectorStore: Using fallback query`);
+  private async searchByPatternFallback(limit: number, domain?: string): Promise<VectorSearchResult[]> {
+    logger.debug(`Neo4jVectorStore: Using fallback query with domain=${domain || 'all'}`);
 
     const session = await this.connectionManager.getSession();
     try {
+      const domainFilter = domain ? 'AND e.domain = $domain' : '';
       const fallbackQuery = `
         MATCH (e:Entity)
-        WHERE e.name =~ "(?i).*test.*" OR e.name =~ "(?i).*search.*" OR e.name =~ "(?i).*keyword.*" OR e.name =~ "(?i).*unique.*" OR e.name =~ "(?i).*vector.*" OR e.name =~ "(?i).*embedding.*"
-        OR ANY(obs IN e.observations WHERE obs =~ "(?i).*test.*" OR obs =~ "(?i).*search.*" OR obs =~ "(?i).*keyword.*" OR obs =~ "(?i).*unique.*" OR obs =~ "(?i).*vector.*" OR obs =~ "(?i).*embedding.*" OR obs =~ "(?i).*vectorsearch.*" OR obs =~ "(?i).*similarsearch.*")
-        RETURN e.name AS id, e.entityType AS entityType, 0.75 AS similarity
+        WHERE (e.name =~ "(?i).*test.*" OR e.name =~ "(?i).*search.*" OR e.name =~ "(?i).*keyword.*" OR e.name =~ "(?i).*unique.*" OR e.name =~ "(?i).*vector.*" OR e.name =~ "(?i).*embedding.*"
+        OR ANY(obs IN e.observations WHERE obs =~ "(?i).*test.*" OR obs =~ "(?i).*search.*" OR obs =~ "(?i).*keyword.*" OR obs =~ "(?i).*unique.*" OR obs =~ "(?i).*vector.*" OR obs =~ "(?i).*embedding.*" OR obs =~ "(?i).*vectorsearch.*" OR obs =~ "(?i).*similarsearch.*"))
+        ${domainFilter}
+        RETURN e.name AS id, e.entityType AS entityType, e.domain AS domain, 0.75 AS similarity
         UNION
         MATCH (e:Entity)
+        WHERE 1=1 ${domainFilter}
         WITH e
         ORDER BY e.createdAt DESC
         LIMIT 3
-        RETURN e.name AS id, e.entityType AS entityType, 0.5 AS similarity
+        RETURN e.name AS id, e.entityType AS entityType, e.domain AS domain, 0.5 AS similarity
         LIMIT $limit
       `;
 
-      const fallbackResult = await session.run(fallbackQuery, { limit: neo4j.int(limit) });
+      const fallbackResult = await session.run(fallbackQuery, { limit: neo4j.int(limit), domain: domain || null });
       logger.debug(
         `Neo4jVectorStore: Fallback search returned ${fallbackResult.records.length} results`
       );
@@ -357,7 +367,7 @@ export class Neo4jVectorStore implements VectorStore {
       return fallbackResult.records.map((record) => ({
         id: record.get('id'),
         similarity: record.get('similarity'),
-        metadata: { entityType: record.get('entityType') },
+        metadata: { entityType: record.get('entityType'), domain: record.get('domain') },
       }));
     } finally {
       await session.close();

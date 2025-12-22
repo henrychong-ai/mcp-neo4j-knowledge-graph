@@ -81,8 +81,8 @@ describe('KnowledgeGraphManager Search', () => {
     // Call the search method without options
     const result = await manager.search('test query');
 
-    // Should call searchNodes
-    expect(mockStorageProvider.searchNodes).toHaveBeenCalledWith('test query');
+    // Should call searchNodes with domain option
+    expect(mockStorageProvider.searchNodes).toHaveBeenCalledWith('test query', { domain: undefined });
     expect(mockStorageProvider.semanticSearch).not.toHaveBeenCalled();
 
     // Result should be what searchNodes returns
@@ -136,7 +136,7 @@ describe('KnowledgeGraphManager Search', () => {
     const result = await manager.search('test query', { semanticSearch: true });
 
     // Should fall back to searchNodes
-    expect(mockStorageProvider.searchNodes).toHaveBeenCalledWith('test query');
+    expect(mockStorageProvider.searchNodes).toHaveBeenCalledWith('test query', { domain: undefined });
 
     // Result should be what searchNodes returns
     expect(result.entities.length).toBe(1);

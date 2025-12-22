@@ -92,6 +92,8 @@ Example:
 }
 ```
 
+**EntityType Convention:** Use `lowercase-kebab-case` for entityType values (e.g., `person`, `medical-condition`, `claude-code-skill`). Avoid uppercase, spaces, or underscores.
+
 ### Relations
 
 Relations define directed connections between entities with enhanced properties:
@@ -424,6 +426,7 @@ The following tools are available to LLM client hosts through the Model Context 
     - Each object contains:
       - `name` (string): Entity identifier
       - `entityType` (string): Type classification
+      - `domain` (string, optional): Namespace scope - one of: `medical`, `money`, `infra`, `claude`, `general`. Default: `null` (uncategorized)
       - `observations` (string[]): Associated observations
 
 - **add_observations**
@@ -498,7 +501,9 @@ The following tools are available to LLM client hosts through the Model Context 
 - **search_nodes**
 
   - Search for nodes based on query
-  - Input: `query` (string)
+  - Input:
+    - `query` (string): Search query
+    - `domain` (string, optional): Filter by domain - one of: `medical`, `money`, `infra`, `claude`, `general`. Omit to search all domains
 
 - **open_nodes**
   - Retrieve specific nodes by name
@@ -514,6 +519,7 @@ The following tools are available to LLM client hosts through the Model Context 
     - `limit` (number, optional): Maximum results to return (default: 10)
     - `min_similarity` (number, optional): Minimum similarity threshold (0.0-1.0, default: 0.6)
     - `entity_types` (string[], optional): Filter results by entity types
+    - `domain` (string, optional): Filter by domain - one of: `medical`, `money`, `infra`, `claude`, `general`. Omit to search all domains
     - `hybrid_search` (boolean, optional): Combine keyword and semantic search (default: true)
     - `semantic_weight` (number, optional): Weight of semantic results in hybrid search (0.0-1.0, default: 0.6)
   - Features:

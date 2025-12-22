@@ -24,6 +24,11 @@ export async function handleListToolsRequest(): Promise<{ tools: Array<Record<st
                   type: 'string',
                   description: 'The type of the entity',
                 },
+                domain: {
+                  type: 'string',
+                  description: 'Optional domain for namespace scoping',
+                  enum: ['medical', 'money', 'infra', 'claude', 'general'],
+                },
                 observations: {
                   type: 'array',
                   items: {
@@ -330,6 +335,11 @@ export async function handleListToolsRequest(): Promise<{ tools: Array<Record<st
             description:
               'The search query to match against entity names, types, and observation content',
           },
+          domain: {
+            type: 'string',
+            description: 'Filter results by domain',
+            enum: ['medical', 'money', 'infra', 'claude', 'general'],
+          },
         },
         required: ['query'],
       },
@@ -382,6 +392,11 @@ export async function handleListToolsRequest(): Promise<{ tools: Array<Record<st
             description:
               'Weight of semantic results in hybrid search from 0.0 to 1.0 (default: 0.6)',
           },
+          domain: {
+            type: 'string',
+            description: 'Filter results by domain',
+            enum: ['medical', 'money', 'infra', 'claude', 'general'],
+          },
         },
         required: ['query'],
       },
@@ -414,6 +429,11 @@ export async function handleListToolsRequest(): Promise<{ tools: Array<Record<st
               properties: {
                 name: { type: 'string', description: 'The name of the entity' },
                 entityType: { type: 'string', description: 'The type of the entity' },
+                domain: {
+                  type: 'string',
+                  description: 'Domain for namespace scoping',
+                  enum: ['medical', 'money', 'infra', 'claude', 'general'],
+                },
                 observations: {
                   type: 'array',
                   items: { type: 'string' },
@@ -520,6 +540,11 @@ export async function handleListToolsRequest(): Promise<{ tools: Array<Record<st
               properties: {
                 name: { type: 'string', description: 'Name of the entity to update' },
                 entityType: { type: 'string', description: 'New entity type (optional)' },
+                domain: {
+                  type: 'string',
+                  description: 'Domain for namespace scoping (optional)',
+                  enum: ['medical', 'money', 'infra', 'claude', 'general'],
+                },
                 addObservations: {
                   type: 'array',
                   items: { type: 'string' },

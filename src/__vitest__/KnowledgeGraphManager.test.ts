@@ -102,7 +102,7 @@ describe('KnowledgeGraphManager with StorageProvider', () => {
     const query = 'test';
     const result = await manager.searchNodes(query);
 
-    expect(mockProvider.searchNodes).toHaveBeenCalledWith(query);
+    expect(mockProvider.searchNodes).toHaveBeenCalledWith(query, {});
     expect(result).toEqual(mockSearchResult);
   });
 

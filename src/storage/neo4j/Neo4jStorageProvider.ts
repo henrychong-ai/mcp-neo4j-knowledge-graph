@@ -295,6 +295,7 @@ export class Neo4jStorageProvider implements StorageProvider {
     return {
       name: node.name as string,
       entityType: node.entityType as string,
+      domain: (node.domain as string | null | undefined) as import('../../KnowledgeGraphManager.js').Domain | null | undefined,
       observations,
       id: node.id as string | undefined,
       version: this.convertNeo4jInt(node.version) as number | undefined,
@@ -451,6 +452,7 @@ export class Neo4jStorageProvider implements StorageProvider {
               id: extendedEntity.id || uuidv4(),
               name: entity.name,
               entityType: entity.entityType,
+              domain: (entity as any).domain || null,
               observations: JSON.stringify(entity.observations || []),
               version: extendedEntity.version || 1,
               createdAt: extendedEntity.createdAt || Date.now(),
@@ -467,6 +469,7 @@ export class Neo4jStorageProvider implements StorageProvider {
                 id: $id,
                 name: $name,
                 entityType: $entityType,
+                domain: $domain,
                 observations: $observations,
                 version: $version,
                 createdAt: $createdAt,
@@ -569,11 +572,19 @@ export class Neo4jStorageProvider implements StorageProvider {
         parameters.entityTypes = options.entityTypes;
       }
 
+      // Add domain filter if provided
+      let domainFilter = '';
+      if (options.domain) {
+        domainFilter = 'AND e.domain = $domain';
+        parameters.domain = options.domain;
+      }
+
       // Build the search query
       const searchQuery = `
         MATCH (e:Entity)
         WHERE (e.name =~ $query OR e.entityType =~ $query OR e.observations =~ $query)
         ${entityTypeFilter}
+        ${domainFilter}
         AND e.validTo IS NULL
         RETURN e
         LIMIT $limit
@@ -778,6 +789,7 @@ export class Neo4jStorageProvider implements StorageProvider {
               id: entityId,
               name: entity.name,
               entityType: entity.entityType,
+              domain: entity.domain || null,
               observations: JSON.stringify(entity.observations || []),
               version: 1,
               createdAt: entity.createdAt || now,
@@ -794,6 +806,7 @@ export class Neo4jStorageProvider implements StorageProvider {
                 id: $id,
                 name: $name,
                 entityType: $entityType,
+                domain: $domain,
                 observations: $observations,
                 version: $version,
                 createdAt: $createdAt,
@@ -2741,6 +2754,7 @@ export class Neo4jStorageProvider implements StorageProvider {
               id: uuidv4(),
               name: entity.name,
               entityType: entity.entityType,
+              domain: entity.domain || null,
               observations: JSON.stringify(entity.observations || []),
               version: 1,
               createdAt: entity.createdAt || now,
@@ -2765,6 +2779,7 @@ export class Neo4jStorageProvider implements StorageProvider {
                 id: entity.id,
                 name: entity.name,
                 entityType: entity.entityType,
+                domain: entity.domain,
                 observations: entity.observations,
                 version: entity.version,
                 createdAt: entity.createdAt,
@@ -3211,6 +3226,38 @@ export class Neo4jStorageProvider implements StorageProvider {
         } catch (error) {
           // Mark entityType updates as failed
           for (const update of entityTypeUpdates) {
+            failed.push({
+              item: update,
+              error: error instanceof Error ? error.message : String(error),
+            });
+          }
+        } finally {
+          await session.close();
+        }
+      }
+
+      // Batch process domain updates using UNWIND
+      const domainUpdates = updates.filter(u => u.domain !== undefined);
+      if (domainUpdates.length > 0) {
+        const session = await this.connectionManager.getSession();
+        try {
+          const now = Date.now();
+          const updateData = domainUpdates.map(u => ({
+            name: u.name,
+            domain: u.domain,
+            now: now
+          }));
+
+          await session.run(`
+            UNWIND $updates AS upd
+            MATCH (e:Entity {name: upd.name})
+            WHERE e.validTo IS NULL
+            SET e.domain = upd.domain,
+                e.updatedAt = upd.now
+          `, { updates: updateData });
+        } catch (error) {
+          // Mark domain updates as failed
+          for (const update of domainUpdates) {
             failed.push({
               item: update,
               error: error instanceof Error ? error.message : String(error),

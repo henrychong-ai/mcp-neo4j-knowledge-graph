@@ -54,10 +54,15 @@ function hasUpdateRelation(provider: StorageProvider): boolean {
   );
 }
 
+// Valid domains for namespace scoping
+export const VALID_DOMAINS = ['medical', 'money', 'infra', 'claude', 'general'] as const;
+export type Domain = (typeof VALID_DOMAINS)[number];
+
 // We are storing our memory using entities, relations, and observations in a graph structure
 export interface Entity {
   name: string;
   entityType: string;
+  domain?: Domain | null; // Optional domain for namespace scoping (null = uncategorized)
   observations: string[];
   embedding?: EntityEmbedding;
 }
@@ -679,19 +684,21 @@ export class KnowledgeGraphManager {
     }
   }
 
-  async searchNodes(query: string): Promise<KnowledgeGraph> {
+  async searchNodes(query: string, options: { domain?: string } = {}): Promise<KnowledgeGraph> {
     if (this.storageProvider) {
-      return this.storageProvider.searchNodes(query);
+      return this.storageProvider.searchNodes(query, options);
     }
 
     // Fallback to file-based implementation
     const graph = await this.loadGraph();
     const lowercaseQuery = query.toLowerCase();
 
-    // Filter entities based on name match
-    const filteredEntities = graph.entities.filter((e) =>
-      e.name.toLowerCase().includes(lowercaseQuery)
-    );
+    // Filter entities based on name match and optional domain
+    const filteredEntities = graph.entities.filter((e) => {
+      const nameMatch = e.name.toLowerCase().includes(lowercaseQuery);
+      const domainMatch = !options.domain || (e as any).domain === options.domain;
+      return nameMatch && domainMatch;
+    });
 
     // Get relations where either the source or target entity matches the query
     const filteredRelations = graph.relations.filter(
@@ -911,6 +918,7 @@ export class KnowledgeGraphManager {
       entityTypes?: string[];
       facets?: string[];
       offset?: number;
+      domain?: string;
     } = {}
   ): Promise<KnowledgeGraph> {
     // If hybridSearch is true, always set semanticSearch to true as well
@@ -936,14 +944,14 @@ export class KnowledgeGraphManager {
           }
 
           // Fall back to text search if no embedding service
-          return this.storageProvider.searchNodes(query);
+          return this.storageProvider.searchNodes(query, { domain: options.domain });
         } catch (error) {
           logger.error('Provider semanticSearch failed, falling back to basic search', error);
-          return this.storageProvider.searchNodes(query);
+          return this.storageProvider.searchNodes(query, { domain: options.domain });
         }
       } else if (this.storageProvider) {
         // Fall back to searchNodes if semanticSearch is not available in the provider
-        return this.storageProvider.searchNodes(query);
+        return this.storageProvider.searchNodes(query, { domain: options.domain });
       }
 
       // If no storage provider or its semanticSearch is not available, try internal semantic search

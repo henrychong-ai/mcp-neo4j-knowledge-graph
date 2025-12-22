@@ -85,7 +85,7 @@ export async function handleCallToolRequest(
           content: [
             {
               type: 'text',
-              text: JSON.stringify(await knowledgeGraphManager.searchNodes(args.query), null, 2),
+              text: JSON.stringify(await knowledgeGraphManager.searchNodes(args.query, { domain: args.domain }), null, 2),
             },
           ],
         };
@@ -395,6 +395,7 @@ export async function handleCallToolRequest(
             semanticSearch: true,
             hybridConfig,
             enableHybridRetrieval: args.enable_hybrid_retrieval !== false,
+            domain: args.domain,
           };
 
           // Call the search method with semantic search options
