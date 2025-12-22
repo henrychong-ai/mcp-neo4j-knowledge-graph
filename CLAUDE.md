@@ -100,7 +100,7 @@ npx vitest run --grep "temporal versioning"
 {
   name: string;           // Unique identifier
   entityType: string;     // Category/classification (lowercase-kebab-case)
-  domain?: Domain | null; // Optional namespace: 'medical' | 'money' | 'infra' | 'claude' | 'general'
+  domain?: string | null; // Optional user-defined namespace for organization
   observations: string[]; // Knowledge fragments
   embedding?: EntityEmbedding;
 }
@@ -108,9 +108,9 @@ npx vitest run --grep "temporal versioning"
 
 **EntityType Convention**: Use `lowercase-kebab-case` format (e.g., `person`, `medical-condition`, `claude-code-skill`). No uppercase, spaces, or underscores.
 
-**Domain Property**: Optional namespace for logical organization of entities:
-- **Valid values**: `medical`, `money`, `infra`, `claude`, `general`
-- **Default**: `null` (uncategorized) - different from `general` (explicitly general-purpose)
+**Domain Property**: Optional user-defined string for logical organization of entities:
+- **Type**: Any string value (user-defined, e.g., `medical`, `work`, `personal`)
+- **Default**: `null` (uncategorized)
 - **Query behavior**: Omit domain parameter to query across all domains; specify domain to filter
 - **Migration**: Existing entities without domain continue to work unchanged
 

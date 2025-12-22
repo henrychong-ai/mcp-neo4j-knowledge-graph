@@ -54,9 +54,9 @@ function hasUpdateRelation(provider: StorageProvider): boolean {
   );
 }
 
-// Valid domains for namespace scoping
-export const VALID_DOMAINS = ['medical', 'money', 'infra', 'claude', 'general'] as const;
-export type Domain = (typeof VALID_DOMAINS)[number];
+// Domain is a user-defined string for namespace scoping
+// Users can define their own domain values (e.g., 'medical', 'work', 'personal')
+export type Domain = string;
 
 // We are storing our memory using entities, relations, and observations in a graph structure
 export interface Entity {

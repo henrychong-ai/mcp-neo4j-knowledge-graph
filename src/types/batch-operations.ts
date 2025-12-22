@@ -139,8 +139,7 @@ export interface EntityUpdate {
   entityType?: string;
 
   /**
-   * Domain for namespace scoping (optional)
-   * Valid values: 'medical', 'money', 'infra', 'claude', 'general'
+   * Domain for namespace scoping (user-defined, optional)
    */
   domain?: string;
 

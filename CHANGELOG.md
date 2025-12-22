@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.8.4] - 2025-12-22
+
+### Changed
+
+- **Domain is now user-defined** - Removed hardcoded domain enum values
+  - Domain field is now a free-form string, not restricted to preset values
+  - Users define their own domain taxonomy per deployment (e.g., `medical`, `work`, `personal`)
+  - Existing entities with any domain value continue to work unchanged
+  - More flexible namespace organization without code changes
+
+### Documentation
+
+- Updated all domain documentation to reflect user-defined strings
+
 ## [1.8.3] - 2025-12-22
 
 ### Fixed

@@ -26,8 +26,7 @@ export async function handleListToolsRequest(): Promise<{ tools: Array<Record<st
                 },
                 domain: {
                   type: 'string',
-                  description: 'Optional domain for namespace scoping',
-                  enum: ['medical', 'money', 'infra', 'claude', 'general'],
+                  description: 'Optional domain for namespace scoping (user-defined)',
                 },
                 observations: {
                   type: 'array',
@@ -337,8 +336,7 @@ export async function handleListToolsRequest(): Promise<{ tools: Array<Record<st
           },
           domain: {
             type: 'string',
-            description: 'Filter results by domain',
-            enum: ['medical', 'money', 'infra', 'claude', 'general'],
+            description: 'Filter results by domain (user-defined string)',
           },
           include_null_domain: {
             type: 'boolean',
@@ -399,8 +397,7 @@ export async function handleListToolsRequest(): Promise<{ tools: Array<Record<st
           },
           domain: {
             type: 'string',
-            description: 'Filter results by domain',
-            enum: ['medical', 'money', 'infra', 'claude', 'general'],
+            description: 'Filter results by domain (user-defined string)',
           },
           include_null_domain: {
             type: 'boolean',
@@ -441,8 +438,7 @@ export async function handleListToolsRequest(): Promise<{ tools: Array<Record<st
                 entityType: { type: 'string', description: 'The type of the entity' },
                 domain: {
                   type: 'string',
-                  description: 'Domain for namespace scoping',
-                  enum: ['medical', 'money', 'infra', 'claude', 'general'],
+                  description: 'Domain for namespace scoping (user-defined)',
                 },
                 observations: {
                   type: 'array',
@@ -552,8 +548,7 @@ export async function handleListToolsRequest(): Promise<{ tools: Array<Record<st
                 entityType: { type: 'string', description: 'New entity type (optional)' },
                 domain: {
                   type: 'string',
-                  description: 'Domain for namespace scoping (optional)',
-                  enum: ['medical', 'money', 'infra', 'claude', 'general'],
+                  description: 'Domain for namespace scoping (user-defined, optional)',
                 },
                 addObservations: {
                   type: 'array',
