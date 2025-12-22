@@ -34,13 +34,27 @@ describe('handleAddObservations', () => {
     const responseObj = JSON.parse(response.content[0].text);
 
     // Verify response contains correct result data
+    expect(responseObj.success).toBe(true);
+    expect(responseObj.count).toBe(1);
     expect(responseObj.result).toEqual(mockResult);
+  });
 
-    // Verify debug information is present
-    expect(responseObj.debug).toBeDefined();
-    expect(responseObj.debug.timestamp).toBeDefined();
-    expect(responseObj.debug.input_args).toBeDefined();
-    expect(responseObj.debug.processed_observations).toBeInstanceOf(Array);
-    expect(responseObj.debug.tool_version).toBeDefined();
+  test('should throw error for invalid observations', async () => {
+    // Arrange
+    const args = {
+      observations: 'not-an-array',
+    };
+
+    const mockKnowledgeGraphManager = {
+      addObservations: vi.fn(),
+    };
+
+    // Act
+    const response = await handleAddObservations(args, mockKnowledgeGraphManager);
+
+    // Assert - should return error response
+    const responseObj = JSON.parse(response.content[0].text);
+    expect(responseObj.error).toBeDefined();
+    expect(responseObj.error).toContain('must be an array');
   });
 });

@@ -340,6 +340,11 @@ export async function handleListToolsRequest(): Promise<{ tools: Array<Record<st
             description: 'Filter results by domain',
             enum: ['medical', 'money', 'infra', 'claude', 'general'],
           },
+          include_null_domain: {
+            type: 'boolean',
+            description:
+              'When true, only return entities with null domain (uncategorized). Mutually exclusive with domain parameter.',
+          },
         },
         required: ['query'],
       },
@@ -396,6 +401,11 @@ export async function handleListToolsRequest(): Promise<{ tools: Array<Record<st
             type: 'string',
             description: 'Filter results by domain',
             enum: ['medical', 'money', 'infra', 'claude', 'general'],
+          },
+          include_null_domain: {
+            type: 'boolean',
+            description:
+              'When true, only return entities with null domain (uncategorized). Mutually exclusive with domain parameter.',
           },
         },
         required: ['query'],

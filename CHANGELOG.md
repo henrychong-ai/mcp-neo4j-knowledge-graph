@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.8.2] - 2025-12-22
+
+### Added
+
+- **Null domain filtering**: New `include_null_domain` parameter on `search_nodes` and `semantic_search` tools
+  - When `true`, returns only entities with null domain (uncategorized)
+  - Mutually exclusive with `domain` parameter
+  - Enables discovery of entities not yet assigned to a domain
+  - Use case: Systematic categorization of uncategorized entities
+
+### Fixed
+
+- **P0: Test memory exhaustion** - Fixed critical issue causing iTerm/terminal memory exhaustion during test runs
+  - Removed 30+ unconditional `process.stderr.write()` debug statements from production code
+  - Updated `logger.ts` with LOG_LEVEL environment variable support (debug/info/warn/error/silent)
+  - Logger defaults to silent during tests (NODE_ENV=test), warn level in production
+  - Converted remaining stderr calls to use logger with conditional output
+  - Test duration reduced from 10+ seconds to ~7.5 seconds
+
+### Changed
+
+- **Simplified addObservations response** - Response now returns clean `{success, count, result}` instead of verbose debug info
+- **vitest.config.ts** - Added `NODE_ENV=test` environment setting for clean test output
+
 ## [1.8.1] - 2025-12-22
 
 ### Fixed

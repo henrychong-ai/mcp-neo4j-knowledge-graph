@@ -2,6 +2,11 @@ import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   test: {
+    // Set NODE_ENV to test for silent logging
+    env: {
+      NODE_ENV: 'test',
+    },
+
     // Global setup file for cleanup and resource management
     setupFiles: ['./vitest.setup.ts'],
 

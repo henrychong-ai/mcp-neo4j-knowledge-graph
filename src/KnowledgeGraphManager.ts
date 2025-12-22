@@ -684,7 +684,7 @@ export class KnowledgeGraphManager {
     }
   }
 
-  async searchNodes(query: string, options: { domain?: string } = {}): Promise<KnowledgeGraph> {
+  async searchNodes(query: string, options: { domain?: string; includeNullDomain?: boolean } = {}): Promise<KnowledgeGraph> {
     if (this.storageProvider) {
       return this.storageProvider.searchNodes(query, options);
     }
@@ -696,7 +696,13 @@ export class KnowledgeGraphManager {
     // Filter entities based on name match and optional domain
     const filteredEntities = graph.entities.filter((e) => {
       const nameMatch = e.name.toLowerCase().includes(lowercaseQuery);
-      const domainMatch = !options.domain || (e as any).domain === options.domain;
+      // Domain filtering: includeNullDomain returns only null domains, domain filters to specific domain
+      let domainMatch = true;
+      if (options.includeNullDomain) {
+        domainMatch = (e as any).domain === null || (e as any).domain === undefined;
+      } else if (options.domain) {
+        domainMatch = (e as any).domain === options.domain;
+      }
       return nameMatch && domainMatch;
     });
 
@@ -919,6 +925,7 @@ export class KnowledgeGraphManager {
       facets?: string[];
       offset?: number;
       domain?: string;
+      includeNullDomain?: boolean;
     } = {}
   ): Promise<KnowledgeGraph> {
     // If hybridSearch is true, always set semanticSearch to true as well
@@ -944,14 +951,14 @@ export class KnowledgeGraphManager {
           }
 
           // Fall back to text search if no embedding service
-          return this.storageProvider.searchNodes(query, { domain: options.domain });
+          return this.storageProvider.searchNodes(query, { domain: options.domain, includeNullDomain: options.includeNullDomain });
         } catch (error) {
           logger.error('Provider semanticSearch failed, falling back to basic search', error);
-          return this.storageProvider.searchNodes(query, { domain: options.domain });
+          return this.storageProvider.searchNodes(query, { domain: options.domain, includeNullDomain: options.includeNullDomain });
         }
       } else if (this.storageProvider) {
         // Fall back to searchNodes if semanticSearch is not available in the provider
-        return this.storageProvider.searchNodes(query, { domain: options.domain });
+        return this.storageProvider.searchNodes(query, { domain: options.domain, includeNullDomain: options.includeNullDomain });
       }
 
       // If no storage provider or its semanticSearch is not available, try internal semantic search
@@ -966,6 +973,7 @@ export class KnowledgeGraphManager {
             facets: options.facets || [],
             offset: options.offset || 0,
             domain: options.domain,
+            includeNullDomain: options.includeNullDomain,
           });
 
           return results;
@@ -975,7 +983,7 @@ export class KnowledgeGraphManager {
 
           // Explicitly call searchNodes if available in the provider
           if (this.storageProvider) {
-            return (this.storageProvider as StorageProvider).searchNodes(query, { domain: options.domain });
+            return (this.storageProvider as StorageProvider).searchNodes(query, { domain: options.domain, includeNullDomain: options.includeNullDomain });
           }
         }
       } else {
@@ -984,7 +992,7 @@ export class KnowledgeGraphManager {
     }
 
     // Use basic search
-    return this.searchNodes(query, { domain: options.domain });
+    return this.searchNodes(query, { domain: options.domain, includeNullDomain: options.includeNullDomain });
   }
 
   /**
@@ -1004,6 +1012,7 @@ export class KnowledgeGraphManager {
       facets?: string[];
       offset?: number;
       domain?: string;
+      includeNullDomain?: boolean;
     } = {}
   ): Promise<KnowledgeGraph> {
     // Find similar entities using vector similarity

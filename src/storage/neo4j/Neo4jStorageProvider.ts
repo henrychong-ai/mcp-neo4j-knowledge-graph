@@ -575,7 +575,10 @@ export class Neo4jStorageProvider implements StorageProvider {
 
       // Add domain filter if provided
       let domainFilter = '';
-      if (options.domain) {
+      if (options.includeNullDomain) {
+        // Filter to only entities with null domain (uncategorized)
+        domainFilter = 'AND e.domain IS NULL';
+      } else if (options.domain) {
         domainFilter = 'AND e.domain = $domain';
         parameters.domain = options.domain;
       }
@@ -2340,13 +2343,18 @@ export class Neo4jStorageProvider implements StorageProvider {
 
           try {
             // Build domain filter if provided
-            const domainFilter = options.domain ? 'AND node.domain = $domain' : '';
+            let domainFilter = '';
+            if (options.includeNullDomain) {
+              domainFilter = 'AND node.domain IS NULL';
+            } else if (options.domain) {
+              domainFilter = 'AND node.domain = $domain';
+            }
             const queryParams: Record<string, unknown> = {
               limit: neo4j.int(searchLimit),
               embedding: options.queryVector,
               minScore: minSimilarity,
             };
-            if (options.domain) {
+            if (options.domain && !options.includeNullDomain) {
               queryParams.domain = options.domain;
             }
 

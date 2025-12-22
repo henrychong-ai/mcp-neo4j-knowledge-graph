@@ -198,14 +198,9 @@ describe('handleCallToolRequest', () => {
     const responseObj = JSON.parse(result.content[0].text);
 
     // Verify response contains correct result data
+    expect(responseObj.success).toBe(true);
+    expect(responseObj.count).toBe(1);
     expect(responseObj.result).toEqual(addResult);
-
-    // Verify debug information is present
-    expect(responseObj.debug).toBeDefined();
-    expect(responseObj.debug.timestamp).toBeDefined();
-    expect(responseObj.debug.input_args).toBeDefined();
-    expect(responseObj.debug.processed_observations).toBeInstanceOf(Array);
-    expect(responseObj.debug.tool_version).toBeDefined();
   });
 
   test('should call deleteObservations and return success message for delete_observations tool', async () => {

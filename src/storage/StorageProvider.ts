@@ -27,6 +27,12 @@ export interface SearchOptions {
    * Valid values: 'medical', 'money', 'infra', 'claude', 'general'
    */
   domain?: string;
+
+  /**
+   * When true, only return entities with null domain (uncategorized)
+   * Mutually exclusive with domain parameter
+   */
+  includeNullDomain?: boolean;
 }
 
 /**
