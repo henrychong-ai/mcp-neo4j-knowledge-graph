@@ -581,8 +581,9 @@ MEMORY_STORAGE_TYPE=neo4j
 OPENAI_API_KEY=your-openai-api-key
 OPENAI_EMBEDDING_MODEL=text-embedding-3-small
 
-# Debug Settings
-DEBUG=true
+# Logging Configuration
+LOG_LEVEL=warn              # Log level: debug, info, warn, error, silent (default: warn)
+DEBUG=true                  # Enable debug mode (enables additional diagnostic tools)
 
 # Prometheus Metrics (Optional - Production Monitoring)
 ENABLE_PROMETHEUS_METRICS=true  # Enable metrics collection and HTTP endpoint
