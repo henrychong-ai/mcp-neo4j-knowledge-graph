@@ -16,15 +16,11 @@ export function setupServer(knowledgeGraphManager: any): Server {
     {
       name: 'mcp-neo4j-knowledge-graph',
       version: '1.0.0',
-      description: 'Neo4j Knowledge Graph: Your persistent knowledge graph memory system',
-      publisher: 'henrychong-ai',
     },
     {
       capabilities: {
         tools: {},
-        serverInfo: {}, // Add this capability to fix the error
-        notifications: {}, // Add this capability for complete support
-        logging: {}, // Add this capability for complete support
+        logging: {},
       },
     }
   );

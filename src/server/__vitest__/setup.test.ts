@@ -107,14 +107,10 @@ describe('setupServer', () => {
       {
         name: 'mcp-neo4j-knowledge-graph',
         version: '1.0.0',
-        description: 'Neo4j Knowledge Graph: Your persistent knowledge graph memory system',
-        publisher: 'henrychong-ai',
       },
       {
         capabilities: {
           tools: {},
-          serverInfo: {},
-          notifications: {},
           logging: {},
         },
       }
