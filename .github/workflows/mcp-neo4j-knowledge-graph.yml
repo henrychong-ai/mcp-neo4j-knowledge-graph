@@ -124,26 +124,23 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Install pnpm
-      uses: pnpm/action-setup@v4
-      with:
-        version: 10
-
     - name: Use Node.js 20.x
       uses: actions/setup-node@v4
       with:
         node-version: 20.x
         registry-url: 'https://registry.npmjs.org'
-        cache: 'pnpm'
 
     - name: Update npm to latest (required for OIDC ≥11.5.1)
       run: npm install -g npm@latest
 
     - name: Install dependencies
-      run: pnpm install
+      run: |
+        rm -rf node_modules
+        rm -f package-lock.json
+        npm install
 
     - name: Build package
-      run: pnpm run build
+      run: npm run build
 
     - name: Set executable permissions
       run: chmod +x dist/*.js
