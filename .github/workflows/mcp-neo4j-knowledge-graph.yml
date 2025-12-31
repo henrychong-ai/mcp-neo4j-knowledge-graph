@@ -39,25 +39,24 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-      
+
+    - name: Install pnpm
+      uses: pnpm/action-setup@v4
+      with:
+        version: 10
+
     - name: Use Node.js ${{ matrix.node-version }}
       uses: actions/setup-node@v4
       with:
         node-version: ${{ matrix.node-version }}
-        cache: 'npm'
-        
-    # Fix for rollup optional dependencies issue
-    - name: Clean npm cache
-      run: |
-        rm -rf node_modules
-        rm -f package-lock.json
-      
+        cache: 'pnpm'
+
     - name: Install dependencies
-      run: npm install
-      
+      run: pnpm install
+
     - name: Build project
-      run: npm run build --if-present
-      
+      run: pnpm run build
+
     - name: Create mock .env file for tests
       run: |
         echo "# Mock environment for CI testing" >> .env
@@ -69,9 +68,9 @@ jobs:
         echo "MOCK_EMBEDDINGS=true" >> .env
         echo "ENV_FILE_CREATED=true" >> .env
         cat .env
-      
+
     - name: Initialize Neo4j Schema
-      run: npm run neo4j:init
+      run: pnpm run neo4j:init
       env:
         NEO4J_URI: bolt://localhost:7687
         NEO4J_USERNAME: neo4j
@@ -80,9 +79,9 @@ jobs:
         NEO4J_VECTOR_INDEX: entity_embeddings
         NEO4J_VECTOR_DIMENSIONS: 1536
         NEO4J_SIMILARITY_FUNCTION: cosine
-      
+
     - name: Run tests
-      run: npm test
+      run: pnpm test
       env:
         MEMORY_STORAGE_TYPE: neo4j
         NEO4J_URI: bolt://localhost:7687
@@ -95,9 +94,9 @@ jobs:
         OPENAI_API_KEY: sk-mock-api-key-for-tests
         OPENAI_EMBEDDING_MODEL: text-embedding-3-small
         MOCK_EMBEDDINGS: true
-      
+
     - name: Run test coverage
-      run: npm run test:coverage
+      run: pnpm run test:coverage
       env:
         MEMORY_STORAGE_TYPE: neo4j
         NEO4J_URI: bolt://localhost:7687
@@ -124,43 +123,43 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-      
+
+    - name: Install pnpm
+      uses: pnpm/action-setup@v4
+      with:
+        version: 10
+
     - name: Use Node.js 20.x
       uses: actions/setup-node@v4
       with:
         node-version: 20.x
         registry-url: 'https://registry.npmjs.org'
-
-    - name: Update npm to latest (required for OIDC ≥11.5.1)
-      run: npm install -g npm@latest
+        cache: 'pnpm'
 
     - name: Install dependencies
-      run: |
-        rm -rf node_modules
-        rm -f package-lock.json
-        npm install
-      
+      run: pnpm install
+
     - name: Build package
-      run: npm run build
-      
+      run: pnpm run build
+
     - name: Set executable permissions
       run: chmod +x dist/*.js
-      
+
     - name: Check version and determine if publish is needed
       id: check_version
       run: |
         # Get current version from package.json
         CURRENT_VERSION=$(node -p "require('./package.json').version")
         echo "Current version in package.json: $CURRENT_VERSION"
-        
+
         # Get latest version from npm (if it exists)
         if LATEST_VERSION=$(npm view @henrychong-ai/mcp-neo4j-knowledge-graph version 2>/dev/null); then
           echo "Latest published version: $LATEST_VERSION"
-          
+
           # Compare versions using node
           IS_HIGHER=$(node -e "const semver = require('semver'); console.log(semver.gt('$CURRENT_VERSION', '$LATEST_VERSION') ? 'true' : 'false')")
           echo "is_higher=$IS_HIGHER" >> $GITHUB_OUTPUT
-          
+
           if [ "$IS_HIGHER" = "true" ]; then
             echo "Current version is higher than latest published version. Proceeding with publish."
           else
@@ -170,11 +169,11 @@ jobs:
           echo "No published version found. This appears to be the first publish."
           echo "is_higher=true" >> $GITHUB_OUTPUT
         fi
-      
+
     - name: Publish to npm
       if: steps.check_version.outputs.is_higher == 'true'
-      run: npm publish --access public
-        
+      run: pnpm publish --access public --no-git-checks
+
     - name: Skip publish - version not higher
       if: steps.check_version.outputs.is_higher != 'true'
       run: echo "✅ Build successful but publish skipped - current version is not higher than the latest published version."
