@@ -7,15 +7,33 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 **@henrychong-ai/mcp-neo4j-knowledge-graph** is a Model Context Protocol (MCP) server implementing a Neo4j-based knowledge graph with temporal versioning and semantic search capabilities. Maintained by Henry Chong, built on foundational work by Gannon Hall.
 
 **Key Features:**
+
 - Temporal versioning for entities and relations (track historical changes)
 - Neo4j graph database as primary storage backend
 - Vector embeddings and semantic search via OpenAI
 - MCP server for Claude Desktop and Claude Code integration
 - Full test coverage with Vitest
 
+## Tech Stack
+
+| Layer           | Technology                         |
+| --------------- | ---------------------------------- |
+| Runtime         | Node.js >=20                       |
+| Language        | TypeScript 5.x                     |
+| Package Manager | pnpm                               |
+| Database        | Neo4j 5.13+ (Community/Enterprise) |
+| Protocol        | MCP SDK 1.x                        |
+| Embeddings      | OpenAI text-embedding-3-small      |
+| Testing         | Vitest                             |
+| Coverage        | @vitest/coverage-v8                |
+| Linting         | ESLint + typescript-eslint         |
+| Formatting      | Prettier                           |
+| Git Hooks       | Husky + lint-staged                |
+
 ## Getting Started
 
 **First time setup?** See **[SETUP.md](SETUP.md)** for complete step-by-step instructions covering:
+
 - Prerequisites (Node.js, Neo4j, Docker)
 - Environment configuration
 - MCP server installation
@@ -28,6 +46,7 @@ This guide ensures new users can get the MCP server running in 10-15 minutes.
 ## Development Commands
 
 ### Build & Development
+
 ```bash
 npm run build              # TypeScript compilation + executable permissions
 npm run dev               # Watch mode for development
@@ -35,6 +54,7 @@ npm run prepare           # Pre-publish build (runs automatically)
 ```
 
 ### Testing
+
 ```bash
 npm test                  # Run all tests
 npm run test:watch        # Watch mode
@@ -44,6 +64,7 @@ npm run test:integration  # Integration tests (requires Neo4j)
 ```
 
 ### Code Quality
+
 ```bash
 npm run lint              # ESLint check
 npm run lint:fix          # Auto-fix linting issues
@@ -52,12 +73,14 @@ npm run fix               # lint:fix + format
 ```
 
 ### Neo4j Setup
+
 ```bash
 npm run neo4j:init        # Initialize Neo4j schema
 npm run neo4j:test        # Test Neo4j connection
 ```
 
 ### Running Single Tests
+
 ```bash
 # Run specific test file
 npx vitest run src/storage/__vitest__/Neo4jStorageProvider.test.ts
@@ -71,12 +94,14 @@ npx vitest run --grep "temporal versioning"
 ### Core Components
 
 **KnowledgeGraphManager** (`src/KnowledgeGraphManager.ts`)
+
 - Central orchestrator for all graph operations
 - Manages entities, relations, and observations
 - Coordinates between storage provider, vector store, and embedding service
 - Handles both file-based (deprecated) and database storage
 
 **Neo4j Storage Layer** (`src/storage/neo4j/`)
+
 - **Neo4jStorageProvider**: Main storage implementation with temporal versioning
 - **Neo4jConnectionManager**: Connection pooling and session management
 - **Neo4jSchemaManager**: Constraint and index management
@@ -84,11 +109,13 @@ npx vitest run --grep "temporal versioning"
 - **Neo4jConfig**: Configuration defaults and types
 
 **MCP Server** (`src/server/`)
+
 - **setup.ts**: Server initialization and tool registration
 - **handlers/**: Tool handlers for MCP protocol (create_entities, add_observations, etc.)
 - Standard input/output transport for Claude integration
 
 **Embedding System** (`src/embeddings/`)
+
 - **EmbeddingServiceFactory**: Creates OpenAI or mock embedding services
 - **EmbeddingJobManager**: Async job queue for entity embedding generation
 - **EmbeddingRateLimiter**: Token bucket rate limiting for OpenAI API
@@ -96,6 +123,7 @@ npx vitest run --grep "temporal versioning"
 ### Data Model
 
 **Entities**: Nodes with name, type, domain, observations, and optional embeddings
+
 ```typescript
 {
   name: string;           // Unique identifier
@@ -109,12 +137,14 @@ npx vitest run --grep "temporal versioning"
 **EntityType Convention**: Use `lowercase-kebab-case` format (e.g., `person`, `medical-condition`, `claude-code-skill`). No uppercase, spaces, or underscores.
 
 **Domain Property**: Optional user-defined string for logical organization of entities:
+
 - **Type**: Any string value (user-defined, e.g., `medical`, `work`, `personal`)
 - **Default**: `null` (uncategorized)
 - **Query behavior**: Omit domain parameter to query across all domains; specify domain to filter
 - **Migration**: Existing entities without domain continue to work unchanged
 
 **Relations**: Directed edges between entities with temporal metadata
+
 ```typescript
 {
   from: string;
@@ -127,14 +157,15 @@ npx vitest run --grep "temporal versioning"
 ```
 
 **Temporal Versioning**: All entities and relations have temporal fields
+
 ```typescript
 {
-  id: string;             // UUID for version
-  version: number;        // Incrementing version number
-  validFrom: number;      // Timestamp when version became active
+  id: string; // UUID for version
+  version: number; // Incrementing version number
+  validFrom: number; // Timestamp when version became active
   validTo: number | null; // Timestamp when version was superseded (NULL = current)
-  createdAt: number;      // Original creation timestamp
-  updatedAt: number;      // Last modification timestamp
+  createdAt: number; // Original creation timestamp
+  updatedAt: number; // Last modification timestamp
   changedBy: string | null;
 }
 ```
@@ -143,6 +174,7 @@ npx vitest run --grep "temporal versioning"
 
 **BigInt Conversion (v1.0.5 Fix)**
 Neo4j driver returns integers as BigInt. Always convert before arithmetic:
+
 ```typescript
 // CORRECT
 const newVersion = (currentNode.version ? Number(currentNode.version) : 0) + 1;
@@ -152,12 +184,14 @@ const newVersion = (currentNode.version || 0) + 1;
 ```
 
 **Affected locations:**
+
 - `Neo4jStorageProvider.ts:902` - addObservations entity versioning
 - `Neo4jStorageProvider.ts:1211` - deleteObservations entity versioning
 - `Neo4jStorageProvider.ts:1432` - updateRelation relation versioning
 
 **Temporal Versioning Workflow**
 When updating an entity/relation:
+
 1. Query current version (WHERE validTo IS NULL)
 2. Calculate newVersion with BigInt conversion
 3. Mark old version as invalid (SET validTo = now)
@@ -166,6 +200,7 @@ When updating an entity/relation:
 
 **Schema Constraint Requirement**
 Neo4j database MUST have composite constraint for temporal versioning:
+
 ```cypher
 CREATE CONSTRAINT entity_name
 FOR (e:Entity)
@@ -177,15 +212,19 @@ If database has old single-field constraint on `name` only, temporal versioning 
 ## Known Issues & Solutions
 
 ### Schema Constraint Issue
+
 **Symptom**: `Node(X) already exists with label 'Entity' and property 'name' = '...'`
 **Cause**: Database has single-field `Entity.name` constraint instead of composite `(name, validTo)`
 **Fix**: See `docs/SCHEMA_CONSTRAINT_FIX.md` for complete instructions
 
 ### Integration Tests Require Neo4j
+
 Tests in `src/storage/__vitest__/Neo4jIntegration.test.ts` require running Neo4j instance. These are skipped by default unless `TEST_INTEGRATION=true`.
 
 ### Environment Variables
+
 Required for full functionality:
+
 ```bash
 NEO4J_URI=bolt://localhost:7687
 NEO4J_USERNAME=neo4j
@@ -201,6 +240,7 @@ OPENAI_EMBEDDING_MODEL=text-embedding-3-small  # Optional
 **Test Location**: `src/**/__vitest__/*.test.ts`
 
 Test files use Vitest with comprehensive mocking:
+
 - Storage providers can be mocked or use real Neo4j
 - Embedding service has mock implementation for testing
 - File system operations mocked via `src/utils/fs.ts`
@@ -214,11 +254,13 @@ Test files use Vitest with comprehensive mocking:
 **Root Cause**: Neo4j driver returns integer fields (`version`, `createdAt`, `updatedAt`, `validFrom`, `validTo`) as JavaScript BigInt, not Number. Arithmetic operations like `(version || 0) + 1` fail because `||` doesn't convert BigInt to Number.
 
 **Solution**: Applied explicit `Number()` conversion before arithmetic in 3 locations:
+
 1. `Neo4jStorageProvider.ts:902` - `addObservations` entity version increment
 2. `Neo4jStorageProvider.ts:1211` - `deleteObservations` entity version increment
 3. `Neo4jStorageProvider.ts:1432` - `updateRelation` relation version increment
 
 **Pattern Used**:
+
 ```typescript
 // CORRECT - converts BigInt before arithmetic
 const newVersion = (currentNode.version ? Number(currentNode.version) : 0) + 1;
@@ -236,6 +278,7 @@ const newVersion = (currentNode.version || 0) + 1;
 **Problem**: Same BigInt conversion error, but only affecting `createdAt` field assignments.
 
 **Solution**: Applied `Number()` conversion to 3 `createdAt` assignments:
+
 1. Line 985: Entity creation with existing createdAt
 2. Line 1026: Outgoing relation recreation during entity update
 3. Line 1065: Incoming relation recreation during entity update
@@ -245,6 +288,7 @@ const newVersion = (currentNode.version || 0) + 1;
 ### Known Issue: Neo4j Schema Constraint
 
 **Problem**: After fixing v1.0.5 BigInt issues, discovered separate schema constraint problem:
+
 ```
 Neo4jError: Node(636) already exists with label 'Entity' and property 'name' = '...'
 ```
@@ -252,17 +296,20 @@ Neo4jError: Node(636) already exists with label 'Entity' and property 'name' = '
 **Root Cause**: Database has old **single-field UNIQUE constraint** on `Entity.name` instead of required **composite constraint** on `(name, validTo)`.
 
 **Why This Matters**:
+
 - Temporal versioning creates multiple entity nodes with same name but different validTo timestamps
 - Single-field constraint: Blocks all duplicate names (prevents temporal versioning)
 - Composite constraint: Allows same name with different validTo values (enables temporal versioning)
 
 **Example Valid State with Composite Constraint**:
+
 ```
 Entity 1: name="Framework", validTo=NULL,        version=2  ← Current
 Entity 2: name="Framework", validTo=1760713600,  version=1  ← Historical
 ```
 
 **Solution**: Database-level constraint fix (NOT a code issue):
+
 ```cypher
 DROP CONSTRAINT entity_name IF EXISTS;
 CREATE CONSTRAINT entity_name
@@ -279,6 +326,7 @@ REQUIRE (e.name, e.validTo) IS UNIQUE;
 **Original Implementation Issues**: Earlier versions of the codebase had JSON parsing errors and subprocess-based Neo4j operations causing failures.
 
 **Key Improvements Made**:
+
 - ✅ Direct `neo4j-driver` usage (no subprocess)
 - ✅ Proper transaction management
 - ✅ Parameterized queries
@@ -292,6 +340,7 @@ See `INVESTIGATION.md` for detailed technical analysis.
 ### Neo4j Docker Configuration (vps-2)
 
 **Current Production Setup:**
+
 - Host: vps-2 (Singapore VPS, 4C/12GB RAM)
 - Container: neo4j-kg
 - Neo4j Version: 5.26.13 LTS (community edition)
@@ -299,6 +348,7 @@ See `INVESTIGATION.md` for detailed technical analysis.
 - Database: 686 entities, 934 relations (as of 2025-10-20)
 
 **Production Docker Run Command:**
+
 ```bash
 docker run -d \
   --name neo4j-kg \
@@ -319,12 +369,14 @@ docker run -d \
 ```
 
 **Configuration Notes:**
+
 - Environment variables use Neo4j 5.26 naming convention (updated 2025-10-20)
-- Old deprecated settings (NEO4J_dbms_*) replaced with new format (NEO4J_db_*, NEO4J_server_*)
+- Old deprecated settings (NEO4J*dbms*_) replaced with new format (NEO4J*db*_, NEO4J*server*\*)
 - Zero deprecation warnings in logs after configuration update
 - Volumes preserve data across container recreations
 
 **For upgrade procedures**, see [docs/UPGRADE.md](docs/UPGRADE.md) which covers:
+
 - When and why to upgrade Neo4j versions
 - Complete 5-phase upgrade procedure with go/no-go checkpoints
 - Configuration management and deprecated settings migration
@@ -334,6 +386,7 @@ docker run -d \
 ### Vector Embeddings Status
 
 **Production Embeddings:**
+
 - Generated: 2025-10-20
 - Total entities embedded: 630 entities (99.8% of database)
 - Failed: 1 entity (VECTOR KO - deleted, empty observations)
@@ -342,6 +395,7 @@ docker run -d \
 - Status: ✅ Operational
 
 **Semantic Search:**
+
 - Method: `mcp__kg__semantic_search`
 - Configuration: `limit=10`, `min_similarity=0.6` (default)
 - Performance: Sub-second query responses
@@ -349,12 +403,14 @@ docker run -d \
 - Fallback: Standard property search when vector index unavailable
 
 **Usage Guidelines:**
+
 - **Default**: Use `semantic_search` for exploration, discovery, natural language queries
 - **Precision**: Use `search_nodes` for exact term lookups
 - **Hybrid**: Start semantic → refine with keywords
 - See AXIS.md v3.10.1 for complete KG Search Protocol
 
 **Automated Maintenance (v1.3.0+):**
+
 - **Daily Cron**: Automatic incremental embedding generation at 3 AM Singapore time (19:00 UTC)
 - **Method**: `EmbeddingJobManager.scheduleIncrementalRegeneration()`
 - **Behavior**: Checks all entities, schedules jobs only for those missing embeddings
@@ -364,6 +420,7 @@ docker run -d \
 - **Status**: Active since 2025-10-29
 
 **Manual Maintenance:**
+
 - On-demand generation: `npm run embeddings:generate`
 - Test subset: `npm run embeddings:test` (processes 5 entities)
 - Regenerate all: `npm run embeddings:generate -- --force`
@@ -374,6 +431,7 @@ docker run -d \
 ### BigInt Handling in Neo4j Operations
 
 **All temporal fields from Neo4j are BigInt and require conversion**:
+
 ```typescript
 // Temporal fields that are BigInt from Neo4j:
 // - version, createdAt, updatedAt, validFrom, validTo
@@ -385,6 +443,7 @@ const validFrom = props.validFrom ? Number(props.validFrom) : null;
 ```
 
 **Where to Apply Conversions**:
+
 - Before arithmetic: `(value ? Number(value) : default) + 1`
 - In assignments: `createdAt: Number(node.createdAt)`
 - In comparisons: `timestamp > Number(node.validFrom)`
@@ -406,6 +465,7 @@ See `CHANGELOG.md` for complete history.
 ## Publishing
 
 Package is published to npm as `@henrychong-ai/mcp-neo4j-knowledge-graph`:
+
 ```bash
 npm run build              # Build first
 npm version patch          # Bump version
@@ -414,6 +474,7 @@ git push && git push --tags
 ```
 
 **Pre-publish checklist:**
+
 1. All tests passing
 2. BigInt conversions verified
 3. Schema constraints documented
