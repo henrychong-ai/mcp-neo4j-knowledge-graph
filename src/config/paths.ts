@@ -1,5 +1,5 @@
-import path from 'path';
-import * as fs from 'fs';
+import * as fs from 'node:fs';
+import path from 'node:path';
 
 /**
  * Get the absolute path to the data directory

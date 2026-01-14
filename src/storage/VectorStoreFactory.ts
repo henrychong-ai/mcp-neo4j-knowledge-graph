@@ -1,8 +1,9 @@
 import type { VectorStore } from '../types/vector-store.js';
-import { Neo4jVectorStore } from './neo4j/Neo4jVectorStore.js';
-import { Neo4jConnectionManager } from './neo4j/Neo4jConnectionManager.js';
-import type { Neo4jConfig } from './neo4j/Neo4jConfig.js';
 import { logger } from '../utils/logger.js';
+
+import type { Neo4jConfig } from './neo4j/Neo4jConfig.js';
+import { Neo4jConnectionManager } from './neo4j/Neo4jConnectionManager.js';
+import { Neo4jVectorStore } from './neo4j/Neo4jVectorStore.js';
 
 export type VectorStoreType = 'neo4j';
 
@@ -46,11 +47,11 @@ export interface VectorStoreFactoryOptions {
 /**
  * Factory class for creating VectorStore instances
  */
-export class VectorStoreFactory {
+export const VectorStoreFactory = {
   /**
    * Create a new VectorStore instance based on configuration
    */
-  static async createVectorStore(options: VectorStoreFactoryOptions = {}): Promise<VectorStore> {
+  async createVectorStore(options: VectorStoreFactoryOptions = {}): Promise<VectorStore> {
     const storeType = options.type || 'neo4j';
     const initializeImmediately = options.initializeImmediately ?? false;
 
@@ -84,5 +85,5 @@ export class VectorStoreFactory {
     }
 
     return vectorStore;
-  }
-}
+  },
+};

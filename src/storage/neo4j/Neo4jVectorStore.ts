@@ -1,8 +1,10 @@
+import neo4j from 'neo4j-driver';
+
 import type { VectorStore, VectorSearchResult } from '../../types/vector-store.js';
+import { logger } from '../../utils/logger.js';
+
 import type { Neo4jConnectionManager } from './Neo4jConnectionManager.js';
 import { Neo4jSchemaManager } from './Neo4jSchemaManager.js';
-import { logger } from '../../utils/logger.js';
-import neo4j from 'neo4j-driver';
 
 export interface Neo4jVectorStoreOptions {
   connectionManager: Neo4jConnectionManager;
@@ -22,7 +24,7 @@ export class Neo4jVectorStore implements VectorStore {
   private readonly dimensions: number;
   private readonly similarityFunction: 'cosine' | 'euclidean';
   private readonly entityNodeLabel: string;
-  private initialized = false;
+  public initialized = false;
   private schemaManager: Neo4jSchemaManager;
 
   constructor(options: Neo4jVectorStoreOptions) {
@@ -50,7 +52,9 @@ export class Neo4jVectorStore implements VectorStore {
       }
 
       // Create vector index if it doesn't exist
-      if (!indexExists) {
+      if (indexExists) {
+        logger.info(`Using existing Neo4j vector index: ${this.indexName}`);
+      } else {
         logger.info(`Creating Neo4j vector index: ${this.indexName}`);
         if (typeof this.schemaManager.createVectorIndex === 'function') {
           await this.schemaManager.createVectorIndex(
@@ -65,8 +69,6 @@ export class Neo4jVectorStore implements VectorStore {
             'createVectorIndex method not available on schemaManager - this may be a test environment'
           );
         }
-      } else {
-        logger.info(`Using existing Neo4j vector index: ${this.indexName}`);
       }
 
       this.initialized = true;
@@ -337,7 +339,10 @@ export class Neo4jVectorStore implements VectorStore {
   /**
    * Fallback search method using pattern matching when vector search fails
    */
-  private async searchByPatternFallback(limit: number, domain?: string): Promise<VectorSearchResult[]> {
+  private async searchByPatternFallback(
+    limit: number,
+    domain?: string
+  ): Promise<VectorSearchResult[]> {
     logger.debug(`Neo4jVectorStore: Using fallback query with domain=${domain || 'all'}`);
 
     const session = await this.connectionManager.getSession();
@@ -359,7 +364,10 @@ export class Neo4jVectorStore implements VectorStore {
         LIMIT $limit
       `;
 
-      const fallbackResult = await session.run(fallbackQuery, { limit: neo4j.int(limit), domain: domain || null });
+      const fallbackResult = await session.run(fallbackQuery, {
+        limit: neo4j.int(limit),
+        domain: domain || null,
+      });
       logger.debug(
         `Neo4jVectorStore: Fallback search returned ${fallbackResult.records.length} results`
       );

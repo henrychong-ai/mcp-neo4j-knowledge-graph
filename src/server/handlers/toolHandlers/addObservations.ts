@@ -9,7 +9,7 @@ export async function handleAddObservations(
   args: Record<string, unknown>,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   knowledgeGraphManager: any
-): Promise<{ content: Array<{ type: string; text: string }> }> {
+): Promise<{ content: { type: string; text: string }[] }> {
   try {
     // Validate the observations array
     if (!args.observations || !Array.isArray(args.observations)) {
@@ -37,7 +37,7 @@ export async function handleAddObservations(
       }
 
       // Always set strength value
-      const obsStrength = obs.strength !== undefined ? obs.strength : args.strength;
+      const obsStrength = obs.strength === undefined ? args.strength : obs.strength;
 
       // Set defaults for each observation
       return {
@@ -45,7 +45,7 @@ export async function handleAddObservations(
         contents: obs.contents,
         strength: obsStrength,
         confidence:
-          obs.confidence !== undefined ? obs.confidence : args.confidence || defaultConfidence,
+          obs.confidence === undefined ? args.confidence || defaultConfidence : obs.confidence,
         metadata: obs.metadata || args.metadata || { source: 'API call' },
       };
     });
@@ -57,7 +57,11 @@ export async function handleAddObservations(
       content: [
         {
           type: 'text',
-          text: JSON.stringify({ success: true, count: processedObservations.length, result }, null, 2),
+          text: JSON.stringify(
+            { success: true, count: processedObservations.length, result },
+            null,
+            2
+          ),
         },
       ],
     };

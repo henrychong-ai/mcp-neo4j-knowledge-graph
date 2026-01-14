@@ -9,6 +9,7 @@
 ## Current Schema Issue
 
 The codebase expects a **composite constraint** on `(name, validTo)`:
+
 ```cypher
 CREATE CONSTRAINT entity_name IF NOT EXISTS
 FOR (e:Entity)
@@ -16,6 +17,7 @@ REQUIRE (e.name, e.validTo) IS UNIQUE
 ```
 
 However, if an old single-field constraint exists, the `IF NOT EXISTS` clause prevents replacement:
+
 ```cypher
 -- OLD (blocks temporal versioning)
 CREATE CONSTRAINT entity_name
@@ -33,11 +35,13 @@ REQUIRE (e.name, e.validTo) IS UNIQUE
 ### 1. Check Current Constraints
 
 Run in Neo4j Browser:
+
 ```cypher
 SHOW CONSTRAINTS;
 ```
 
 Look for `entity_name` constraint and check if it's:
+
 - ✅ Composite: `(e.name, e.validTo)` - Correct
 - ❌ Single-field: `e.name` - Needs fix
 
@@ -50,6 +54,7 @@ ORDER BY e.validFrom;
 ```
 
 Expected:
+
 - Multiple entities with same name
 - Different `validTo` values (NULL for current, timestamp for old)
 
@@ -58,6 +63,7 @@ Expected:
 ### Option A: Automated Fix (Recommended)
 
 1. **Create fix script**:
+
 ```bash
 cd /path/to/mcp-neo4j-knowledge-graph
 cat << 'EOF' > fix_constraints.cypher
@@ -80,6 +86,7 @@ EOF
    - Execute
 
 3. **Verify fix**:
+
 ```cypher
 // Should show composite constraint
 SHOW CONSTRAINTS WHERE name = 'entity_name';
@@ -88,11 +95,13 @@ SHOW CONSTRAINTS WHERE name = 'entity_name';
 ### Option B: Manual Fix
 
 1. **Drop old constraint**:
+
 ```cypher
 DROP CONSTRAINT entity_name IF EXISTS;
 ```
 
 2. **Create composite constraint**:
+
 ```cypher
 CREATE CONSTRAINT entity_name
 FOR (e:Entity)
@@ -100,6 +109,7 @@ REQUIRE (e.name, e.validTo) IS UNIQUE;
 ```
 
 3. **Verify**:
+
 ```cypher
 SHOW CONSTRAINTS WHERE name = 'entity_name';
 ```
@@ -121,6 +131,7 @@ mcp__kg__add_observations({
 **Expected Result**: Success - should create new entity version
 
 **Error Result**: If still failing, check:
+
 1. Constraint is actually composite (run `SHOW CONSTRAINTS`)
 2. No duplicate entities with `validTo=NULL` (run entity check query above)
 
@@ -129,14 +140,16 @@ mcp__kg__add_observations({
 To prevent this issue when initializing new databases:
 
 1. **Use `createEntityConstraints(recreate=true)`**:
+
 ```typescript
 await schemaManager.createEntityConstraints(true);
 ```
 
 2. **Or manually recreate during init**:
+
 ```typescript
 // In Neo4jSchemaManager.ts initializeSchema()
-await this.createEntityConstraints(recreate);  // Pass recreate param
+await this.createEntityConstraints(recreate); // Pass recreate param
 ```
 
 ## Technical Details
@@ -144,16 +157,19 @@ await this.createEntityConstraints(recreate);  // Pass recreate param
 ### Why Composite Constraint?
 
 Temporal versioning creates multiple entity nodes with:
+
 - Same `name` (e.g., "Dietary Framework")
 - Different `id` (UUID for each version)
 - Different `validFrom/validTo` (version validity period)
 - Different `version` (1, 2, 3, ...)
 
 **Single-field constraint** (`name` only):
+
 - ❌ Blocks: Can't have multiple entities with same name
 - ❌ Prevents temporal versioning entirely
 
 **Composite constraint** (`name, validTo`):
+
 - ✅ Allows: Multiple entities with same name
 - ✅ Requires: Each (name, validTo) combo is unique
 - ✅ Enables: Temporal versioning with history
@@ -161,6 +177,7 @@ Temporal versioning creates multiple entity nodes with:
 ### Example Valid State
 
 With composite constraint:
+
 ```
 Entity 1: name="Dietary Framework", validTo=NULL,        version=2  ← Current
 Entity 2: name="Dietary Framework", validTo=1760713600,  version=1  ← Historical

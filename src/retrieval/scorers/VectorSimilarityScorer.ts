@@ -3,8 +3,8 @@
  * Uses cosine similarity from vector embeddings
  */
 
-import type { Scorer, ScoringContext } from '../types.js';
 import { logger } from '../../utils/logger.js';
+import type { Scorer, ScoringContext } from '../types.js';
 
 export class VectorSimilarityScorer implements Scorer {
   getName(): string {
@@ -67,9 +67,9 @@ export class VectorSimilarityScorer implements Scorer {
     let normA = 0;
     let normB = 0;
 
-    for (let i = 0; i < a.length; i++) {
-      dotProduct += a[i] * b[i];
-      normA += a[i] * a[i];
+    for (const [i, element] of a.entries()) {
+      dotProduct += element * b[i];
+      normA += element * element;
       normB += b[i] * b[i];
     }
 

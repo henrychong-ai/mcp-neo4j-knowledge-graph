@@ -1,18 +1,19 @@
-#!/usr/bin/env node
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { KnowledgeGraphManager } from './KnowledgeGraphManager.js';
+import cron from 'node-cron';
+
 import { initializeStorageProvider } from './config/storage.js';
-import { setupServer } from './server/setup.js';
 import { EmbeddingJobManager } from './embeddings/EmbeddingJobManager.js';
 import { EmbeddingServiceFactory } from './embeddings/EmbeddingServiceFactory.js';
+import { KnowledgeGraphManager } from './KnowledgeGraphManager.js';
 import { PrometheusMetrics } from './metrics/PrometheusMetrics.js';
+import { setupServer } from './server/setup.js';
 import { logger } from './utils/logger.js';
-import cron from 'node-cron';
 
 // Re-export the types and classes for use in other modules
 export * from './KnowledgeGraphManager.js';
 // Export the Relation type
-export { RelationMetadata, Relation } from './types/relation.js';
+export type { RelationMetadata } from './types/relation.js';
+export { Relation } from './types/relation.js';
 
 // Initialize storage and create KnowledgeGraphManager
 const storageProvider = initializeStorageProvider();
@@ -21,7 +22,7 @@ const storageProvider = initializeStorageProvider();
 let prometheusMetrics: PrometheusMetrics | null = null;
 
 // Initialize embedding job manager only if storage provider supports it
-let embeddingJobManager: EmbeddingJobManager | undefined = undefined;
+let embeddingJobManager: EmbeddingJobManager | undefined;
 try {
   // Force debug logging to help troubleshoot
   logger.debug(`OpenAI API key exists: ${!!process.env.OPENAI_API_KEY}`);
@@ -29,12 +30,12 @@ try {
   logger.debug(`Storage provider type: ${process.env.MEMORY_STORAGE_TYPE || 'default'}`);
 
   // Ensure OPENAI_API_KEY is defined for embedding generation
-  if (!process.env.OPENAI_API_KEY) {
+  if (process.env.OPENAI_API_KEY) {
+    logger.info('OpenAI API key found, will use for generating embeddings');
+  } else {
     logger.warn(
       'OPENAI_API_KEY environment variable is not set. Semantic search will use random embeddings.'
     );
-  } else {
-    logger.info('OpenAI API key found, will use for generating embeddings');
   }
 
   // Initialize the embedding service
@@ -44,10 +45,10 @@ try {
   // Configure rate limiting options - stricter limits to prevent OpenAI API abuse
   const rateLimiterOptions = {
     tokensPerInterval: process.env.EMBEDDING_RATE_LIMIT_TOKENS
-      ? parseInt(process.env.EMBEDDING_RATE_LIMIT_TOKENS, 10)
+      ? Number.parseInt(process.env.EMBEDDING_RATE_LIMIT_TOKENS, 10)
       : 20, // Default: 20 requests per minute
     interval: process.env.EMBEDDING_RATE_LIMIT_INTERVAL
-      ? parseInt(process.env.EMBEDDING_RATE_LIMIT_INTERVAL, 10)
+      ? Number.parseInt(process.env.EMBEDDING_RATE_LIMIT_INTERVAL, 10)
       : 60 * 1000, // Default: 1 minute
   };
 
@@ -245,7 +246,7 @@ if (!process.env.VITEST && !process.env.NODE_ENV?.includes('test')) {
 
   // Schedule periodic processing for embedding jobs (production only)
   if (embeddingJobManager) {
-    const EMBEDDING_PROCESS_INTERVAL = 10000; // 10 seconds - more frequent processing
+    const EMBEDDING_PROCESS_INTERVAL = 10_000; // 10 seconds - more frequent processing
     setInterval(async () => {
       try {
         // Process pending embedding jobs

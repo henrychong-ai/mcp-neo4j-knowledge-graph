@@ -1,6 +1,8 @@
 import axios from 'axios';
-import { EmbeddingService, type EmbeddingModelInfo } from './EmbeddingService.js';
+
 import { logger } from '../utils/logger.js';
+
+import { EmbeddingService, type EmbeddingModelInfo } from './EmbeddingService.js';
 
 /**
  * Configuration for OpenAI embedding service
@@ -35,11 +37,11 @@ export interface OpenAIEmbeddingConfig {
  * OpenAI API response structure
  */
 interface OpenAIEmbeddingResponse {
-  data: Array<{
+  data: {
     embedding: number[];
     index: number;
     object: string;
-  }>;
+  }[];
   model: string;
   object: string;
   usage: {
@@ -94,7 +96,7 @@ export class OpenAIEmbeddingService extends EmbeddingService {
     }
 
     logger.debug('Generating embedding', {
-      text: text.substring(0, 50) + '...',
+      text: text.slice(0, 50) + '...',
       model: this.model,
       apiEndpoint: this.apiEndpoint,
     });
@@ -111,13 +113,13 @@ export class OpenAIEmbeddingService extends EmbeddingService {
             Authorization: `Bearer ${this.apiKey}`,
             'Content-Type': 'application/json',
           },
-          timeout: 10000, // 10 second timeout
+          timeout: 10_000, // 10 second timeout
         }
       );
 
       logger.debug('Received response from OpenAI API');
 
-      if (!response.data || !response.data.data || !response.data.data[0]) {
+      if (!response.data?.data?.[0]) {
         logger.error('Invalid response from OpenAI API', { response: response.data });
         throw new Error('Invalid response from OpenAI API - missing embedding data');
       }
@@ -179,9 +181,7 @@ export class OpenAIEmbeddingService extends EmbeddingService {
         }
 
         // Include response data in error if available
-        const errorDetails = responseData
-          ? `: ${JSON.stringify(responseData).substring(0, 200)}`
-          : '';
+        const errorDetails = responseData ? `: ${JSON.stringify(responseData).slice(0, 200)}` : '';
 
         throw new Error(`OpenAI API error (${statusCode || 'unknown'})${errorDetails}`);
       }
@@ -218,9 +218,9 @@ export class OpenAIEmbeddingService extends EmbeddingService {
       const embeddings = response.data.data.map((item) => item.embedding);
 
       // Normalize each embedding vector
-      embeddings.forEach((embedding) => {
+      for (const embedding of embeddings) {
         this._normalizeVector(embedding);
-      });
+      }
 
       return embeddings;
     } catch (error: unknown) {
@@ -265,8 +265,8 @@ export class OpenAIEmbeddingService extends EmbeddingService {
   private _normalizeVector(vector: number[]): void {
     // Calculate magnitude (Euclidean norm / L2 norm)
     let magnitude = 0;
-    for (let i = 0; i < vector.length; i++) {
-      magnitude += vector[i] * vector[i];
+    for (const element of vector) {
+      magnitude += element * element;
     }
     magnitude = Math.sqrt(magnitude);
 

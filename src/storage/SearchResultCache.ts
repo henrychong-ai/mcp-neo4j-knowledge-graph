@@ -66,18 +66,18 @@ export interface CacheStats {
  * A memory-efficient cache for search results
  */
 export class SearchResultCache<T> {
-  private cache: Map<string, CacheEntry<T>> = new Map();
+  private cache = new Map<string, CacheEntry<T>>();
   private maxSize: number;
-  private currentSize: number = 0;
+  private currentSize = 0;
   private defaultTtl: number;
   private enableStats: boolean;
 
   // Statistics
-  private hits: number = 0;
-  private misses: number = 0;
-  private evictions: number = 0;
-  private totalLookupTime: number = 0;
-  private totalLookups: number = 0;
+  private hits = 0;
+  private misses = 0;
+  private evictions = 0;
+  private totalLookupTime = 0;
+  private totalLookups = 0;
 
   /**
    * Create a new SearchResultCache
@@ -163,7 +163,7 @@ export class SearchResultCache<T> {
 
     // Create an array of entries sorted by "value"
     // Value is determined by how recently they were created
-    const entries = Array.from(this.cache.entries()).sort((a, b) => a[1].created - b[1].created);
+    const entries = [...this.cache.entries()].sort((a, b) => a[1].created - b[1].created);
 
     let freedSpace = 0;
     let evictionCount = 0;

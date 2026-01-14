@@ -9,6 +9,7 @@
 You are helping a user set up the Neo4j Knowledge Graph MCP server from scratch. This automation assumes **NO prior setup** - not even Node.js or Docker.
 
 **Your Tasks:**
+
 1. Check prerequisites and guide installation if needed
 2. Set up Neo4j database (Docker or local)
 3. Generate configuration files
@@ -36,11 +37,13 @@ Let's start by checking your system prerequisites.
 ### 1.2 Check Node.js
 
 **RUN:**
+
 ```bash
 node --version
 ```
 
 **EVALUATE:**
+
 - **If version >= 20.0.0**: ✅ "Great! You have Node.js v[X.X.X] installed."
 - **If version < 20.0.0**: ⚠️ "You have Node.js v[X.X.X], but we need v20.0.0 or higher."
   - **ACTION**: Provide upgrade instructions for their OS
@@ -55,6 +58,7 @@ node --version
 ### 1.3 Check Docker (for Neo4j)
 
 **ASK USER:**
+
 ```
 For Neo4j database, do you want to use:
 1. Docker (Recommended - easiest setup, works everywhere)
@@ -66,11 +70,13 @@ Which do you prefer? (1 or 2)
 **IF ANSWER = 1 (Docker):**
 
 **RUN:**
+
 ```bash
 docker --version && docker compose version
 ```
 
 **EVALUATE:**
+
 - **If both found**: ✅ "Docker and Docker Compose are installed."
 - **If not found**: ❌ "Docker is not installed."
   - **ACTION**: Provide installation instructions:
@@ -81,6 +87,7 @@ docker --version && docker compose version
 **STOP HERE** if Docker installation is needed. Ask user to install and run this automation again.
 
 **IF ANSWER = 2 (Local installation):**
+
 - Proceed to Section 2B (Local Neo4j)
 
 ---
@@ -90,6 +97,7 @@ docker --version && docker compose version
 ### 2.1 Detect Operating System
 
 **RUN:**
+
 ```bash
 uname -s
 ```
@@ -99,6 +107,7 @@ This tells you the OS: `Darwin` (macOS), `Linux`, or check for Windows.
 ### 2.2 Ask for Neo4j Password
 
 **ASK USER:**
+
 ```
 Choose a password for your Neo4j database.
 (Or press Enter to use the default: 'your_secure_password_here')
@@ -111,6 +120,7 @@ Password:
 ### 2.3 Create docker-compose.yml
 
 **TELL USER:**
+
 ```
 I'm creating a docker-compose.yml file to run Neo4j...
 ```
@@ -125,8 +135,8 @@ services:
     container_name: neo4j-kg
     restart: unless-stopped
     ports:
-      - "7474:7474"  # Browser UI
-      - "7687:7687"  # Bolt protocol
+      - '7474:7474' # Browser UI
+      - '7687:7687' # Bolt protocol
     volumes:
       - neo4j_data:/data
       - neo4j_logs:/logs
@@ -147,36 +157,43 @@ volumes:
 ### 2.4 Start Neo4j
 
 **RUN:**
+
 ```bash
 docker compose up -d
 ```
 
 **WAIT** 10 seconds, then **CHECK:**
+
 ```bash
 docker compose ps
 ```
 
 **EVALUATE:**
+
 - **If shows "running"**: ✅ "Neo4j is running!"
 - **If not running**: ❌ Show logs: `docker compose logs neo4j`
 
 ### 2.5 Verify Neo4j Access
 
 **TELL USER:**
+
 ```
 Neo4j is starting up... Let me check if it's accessible.
 ```
 
 **RUN:**
+
 ```bash
 curl -s http://localhost:7474 > /dev/null && echo "Neo4j Browser accessible" || echo "Not yet accessible"
 ```
 
 **IF NOT ACCESSIBLE:**
+
 - Wait 10 more seconds and try again
 - After 3 attempts, show troubleshooting: `docker compose logs neo4j`
 
 **WHEN ACCESSIBLE:**
+
 ```
 ✅ Neo4j is running! You can access the browser at: http://localhost:7474
    Username: neo4j
@@ -192,6 +209,7 @@ curl -s http://localhost:7474 > /dev/null && echo "Neo4j Browser accessible" || 
 ### 2.1 Provide OS-Specific Instructions
 
 **FOR macOS:**
+
 ```bash
 brew install neo4j
 neo4j start
@@ -199,12 +217,14 @@ neo4j-admin set-initial-password [PASSWORD]
 ```
 
 **FOR Linux:**
+
 ```
 Follow the official guide at:
 https://neo4j.com/docs/operations-manual/current/installation/linux/
 ```
 
 **FOR Windows:**
+
 ```
 Download Neo4j Desktop from:
 https://neo4j.com/download/
@@ -218,11 +238,13 @@ https://neo4j.com/download/
 ### 2.2 Verify Local Neo4j
 
 **RUN:**
+
 ```bash
 neo4j status
 ```
 
 **OR TRY:**
+
 ```bash
 curl -s http://localhost:7474
 ```
@@ -236,6 +258,7 @@ curl -s http://localhost:7474
 ### 3.1 Ask for OpenAI API Key (Optional)
 
 **ASK USER:**
+
 ```
 Do you have an OpenAI API key for semantic search?
 This enables vector embeddings and semantic similarity.
@@ -250,6 +273,7 @@ Enter your OpenAI API key (or press Enter to skip):
 ### 3.2 Create .env File (Optional)
 
 **TELL USER:**
+
 ```
 I'm creating a .env file for your configuration...
 ```
@@ -277,6 +301,7 @@ OPENAI_EMBEDDING_MODEL=text-embedding-3-small
 ### 4.1 Explain What's Happening
 
 **TELL USER:**
+
 ```
 Now I'm going to configure Claude Code to use this MCP server.
 I'll modify your ~/.claude.json file to add the Neo4j Knowledge Graph server.
@@ -285,12 +310,14 @@ I'll modify your ~/.claude.json file to add the Neo4j Knowledge Graph server.
 ### 4.2 Check if ~/.claude.json Exists
 
 **RUN:**
+
 ```bash
 [ -f ~/.claude.json ] && echo "exists" || echo "not found"
 ```
 
 **IF NOT FOUND:**
 **CREATE FILE** `~/.claude.json`:
+
 ```json
 {
   "mcpServers": {}
@@ -300,6 +327,7 @@ I'll modify your ~/.claude.json file to add the Neo4j Knowledge Graph server.
 ### 4.3 Backup Existing Config
 
 **IF FILE EXISTS:**
+
 ```bash
 cp ~/.claude.json ~/.claude.json.backup-$(date +%Y%m%d-%H%M%S)
 ```
@@ -332,12 +360,14 @@ cp ~/.claude.json ~/.claude.json.backup-$(date +%Y%m%d-%H%M%S)
 ```
 
 **REPLACE:**
+
 - `[NEO4J_PASSWORD]` with user's password
 - `[OPENAI_API_KEY]` with user's API key (or remove line if not provided)
 
 **WRITE** updated config back to `~/.claude.json`
 
 **TELL USER:**
+
 ```
 ✅ Claude Code is now configured to use the Neo4j Knowledge Graph!
 ```
@@ -349,6 +379,7 @@ cp ~/.claude.json ~/.claude.json.backup-$(date +%Y%m%d-%H%M%S)
 ### 5.1 Ask User
 
 **ASK:**
+
 ```
 Would you also like to configure Claude Desktop to use this MCP server?
 (yes/no)
@@ -361,16 +392,19 @@ Would you also like to configure Claude Desktop to use this MCP server?
 ### 5.2 Locate Claude Desktop Config
 
 **FOR macOS:**
+
 ```
 ~/Library/Application Support/Claude/claude_desktop_config.json
 ```
 
 **FOR Linux:**
+
 ```
 ~/.config/Claude/claude_desktop_config.json
 ```
 
 **FOR Windows:**
+
 ```
 %APPDATA%\Claude\claude_desktop_config.json
 ```
@@ -380,6 +414,7 @@ Would you also like to configure Claude Desktop to use this MCP server?
 **SAME PROCESS** as Section 4.3-4.4, but for Claude Desktop config file.
 
 **TELL USER:**
+
 ```
 ✅ Claude Desktop is now configured!
 You'll need to restart Claude Desktop for changes to take effect.
@@ -392,11 +427,13 @@ You'll need to restart Claude Desktop for changes to take effect.
 ### 6.1 Test Neo4j Connection
 
 **TELL USER:**
+
 ```
 Let's verify the setup by testing the Neo4j connection...
 ```
 
 **RUN:**
+
 ```bash
 npx -y @henrychong-ai/mcp-neo4j-knowledge-graph --version
 ```
@@ -406,6 +443,7 @@ npx -y @henrychong-ai/mcp-neo4j-knowledge-graph --version
 ### 6.2 Explain Next Steps
 
 **TELL USER:**
+
 ```
 Great! Your setup is complete. Here's how to test it:
 
@@ -428,6 +466,7 @@ Would you like me to test it now by creating a sample entity?
 **USE MCP TOOL:** `mcp__kg__create_entities`
 
 **CREATE:**
+
 ```json
 {
   "entities": [
@@ -441,6 +480,7 @@ Would you like me to test it now by creating a sample entity?
 ```
 
 **IF SUCCESSFUL:**
+
 ```
 🎉 Success! I just created a test entity in your knowledge graph!
 
@@ -457,16 +497,19 @@ Show error and provide troubleshooting steps.
 ### Common Issues
 
 **Issue: "Cannot connect to Neo4j"**
+
 - Check Neo4j is running: `docker compose ps` or `neo4j status`
 - Check port 7687 is accessible: `telnet localhost 7687`
 - View Neo4j logs: `docker compose logs neo4j`
 
 **Issue: "MCP tools not available in Claude Code"**
+
 - Restart Claude Code session
 - Check ~/.claude.json syntax is valid JSON
 - Verify npx can run the package: `npx -y @henrychong-ai/mcp-neo4j-knowledge-graph --version`
 
 **Issue: "Node already exists" error**
+
 - This is a Neo4j schema constraint issue
 - See: https://github.com/henrychong-ai/mcp-neo4j-knowledge-graph#troubleshooting
 
@@ -477,6 +520,7 @@ Show error and provide troubleshooting steps.
 ### 8.1 Important: Restart Claude Code
 
 **TELL USER:**
+
 ```
 🎉 Setup is complete! However, there's one critical step:
 
@@ -497,6 +541,7 @@ When user returns and says they're back, proceed to Section 8.2
 ### 8.2 Test MCP Tools (After Restart)
 
 **TELL USER:**
+
 ```
 Welcome back! Now let's verify the MCP tools are working.
 
@@ -506,17 +551,20 @@ Let me check what tools are available...
 **TRY TO USE MCP TOOL:** Check if MCP tools are available by attempting to list them or use one.
 
 **IF MCP TOOLS ARE AVAILABLE:**
+
 ```
 ✅ Perfect! The MCP tools are loaded. Let's test them:
 ```
 
 **SUGGEST TESTS:**
+
 1. List available tools: "I can see [X] tools available including create_entities, search_nodes, semantic_search..."
 2. Create a test entity if not already done
 3. Search for the entity
 4. View it in Neo4j Browser
 
 **IF MCP TOOLS NOT AVAILABLE:**
+
 ```
 Hmm, the tools aren't showing up yet. Let's troubleshoot:
 
@@ -534,6 +582,7 @@ Would you like me to verify your configuration?
 Now that your MCP server is working, you can optionally add Knowledge Graph usage instructions to your Claude user preferences file (~/.claude/CLAUDE.md). This helps Claude Code understand how to best use your knowledge graph.
 
 **ASK USER:**
+
 ```
 Would you like to add Knowledge Graph (KG) usage instructions to your Claude user preferences?
 
@@ -546,6 +595,7 @@ Add instructions? (yes/no)
 ```
 
 **IF NO:**
+
 ```
 No problem! You can always add these instructions later by asking a future Claude Code session to:
 
@@ -561,22 +611,26 @@ The setup guide contains the full instructions ready to add whenever you need th
 #### Check if CLAUDE.md Exists
 
 **RUN:**
+
 ```bash
 [ -f ~/.claude/CLAUDE.md ] && echo "exists" || echo "not found"
 ```
 
 **IF NOT FOUND:**
+
 ```
 I'll create a new ~/.claude/CLAUDE.md file with the KG instructions.
 ```
 
 **IF EXISTS:**
+
 ```
 I'll add the KG instructions to your existing ~/.claude/CLAUDE.md file.
 First, let me create a backup...
 ```
 
 **RUN:**
+
 ```bash
 cp ~/.claude/CLAUDE.md ~/.claude/CLAUDE.md.backup-$(date +%Y%m%d-%H%M%S)
 ```
@@ -591,6 +645,7 @@ Check if user provided OpenAI API key during Section 3 setup.
 Create full instructions including semantic_search:
 
 **RUN:**
+
 ```bash
 cat >> ~/.claude/CLAUDE.md << 'EOF'
 
@@ -622,9 +677,11 @@ Use `semantic_search` for concept exploration, discovery, and natural language q
 
 **Example queries:**
 ```
-semantic_search("software architecture patterns")     → Finds design patterns, architectural concepts
-semantic_search("database optimization techniques")   → Finds performance tuning, indexing strategies
-semantic_search("project management methodologies")   → Finds Agile, Scrum, workflow approaches
+
+semantic_search("software architecture patterns") → Finds design patterns, architectural concepts
+semantic_search("database optimization techniques") → Finds performance tuning, indexing strategies
+semantic_search("project management methodologies") → Finds Agile, Scrum, workflow approaches
+
 ```
 
 **Benefits:**
@@ -648,9 +705,11 @@ Use `search_nodes` for exact term matching:
 
 **Example queries:**
 ```
-search_nodes("Docker")          → Finds entities mentioning Docker
-search_nodes("React")           → Finds React-related entities
-search_nodes("PostgreSQL")      → Finds PostgreSQL entities
+
+search_nodes("Docker") → Finds entities mentioning Docker
+search_nodes("React") → Finds React-related entities
+search_nodes("PostgreSQL") → Finds PostgreSQL entities
+
 ```
 
 **Limitations:**
@@ -690,6 +749,7 @@ EOF
 **IF OPENAI KEY NOT PROVIDED (Semantic search disabled):**
 
 **ASK USER:**
+
 ```
 You didn't set up an OpenAI API key, so semantic search isn't currently enabled.
 
@@ -703,6 +763,7 @@ Include semantic_search instructions as comments? (yes/no)
 **IF YES (include commented):**
 
 **RUN:**
+
 ```bash
 cat >> ~/.claude/CLAUDE.md << 'EOF'
 
@@ -728,9 +789,11 @@ Use `search_nodes` for exact term matching:
 
 **Example queries:**
 ```
-search_nodes("Docker")          → Finds entities mentioning Docker
-search_nodes("React")           → Finds React-related entities
-search_nodes("PostgreSQL")      → Finds PostgreSQL entities
+
+search_nodes("Docker") → Finds entities mentioning Docker
+search_nodes("React") → Finds React-related entities
+search_nodes("PostgreSQL") → Finds PostgreSQL entities
+
 ```
 
 <!--
@@ -751,8 +814,10 @@ Use `semantic_search` for concept exploration and natural language queries:
 
 **Example queries:**
 ```
-semantic_search("software architecture patterns")     → Finds design patterns, architectural concepts
-semantic_search("database optimization techniques")   → Finds performance tuning, indexing strategies
+
+semantic_search("software architecture patterns") → Finds design patterns, architectural concepts
+semantic_search("database optimization techniques") → Finds performance tuning, indexing strategies
+
 ```
 
 To enable: Add OPENAI_API_KEY to your ~/.claude.json MCP server config, then uncomment this section.
@@ -772,6 +837,7 @@ EOF
 **IF NO (omit semantic search):**
 
 **RUN:**
+
 ```bash
 cat >> ~/.claude/CLAUDE.md << 'EOF'
 
@@ -797,9 +863,11 @@ Use `search_nodes` for exact term matching:
 
 **Example queries:**
 ```
-search_nodes("Docker")          → Finds entities mentioning Docker
-search_nodes("React")           → Finds React-related entities
-search_nodes("PostgreSQL")      → Finds PostgreSQL entities
+
+search_nodes("Docker") → Finds entities mentioning Docker
+search_nodes("React") → Finds React-related entities
+search_nodes("PostgreSQL") → Finds PostgreSQL entities
+
 ```
 
 ## Critical Constraints
@@ -816,11 +884,13 @@ EOF
 #### Verify Addition
 
 **RUN:**
+
 ```bash
 tail -20 ~/.claude/CLAUDE.md
 ```
 
 **TELL USER:**
+
 ```
 ✅ Knowledge Graph usage instructions added to ~/.claude/CLAUDE.md!
 
@@ -835,6 +905,7 @@ These instructions will help Claude Code use your knowledge graph more effective
 **AFTER SUCCESSFUL MCP TOOL TEST:**
 
 **TELL USER:**
+
 ```
 🎉 Congratulations! Your Neo4j Knowledge Graph MCP server is fully working!
 

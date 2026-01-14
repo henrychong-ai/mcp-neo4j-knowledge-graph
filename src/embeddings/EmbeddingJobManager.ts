@@ -1,10 +1,13 @@
-import { v4 as uuidv4 } from 'uuid';
+import crypto from 'node:crypto';
+
 import { LRUCache } from 'lru-cache';
-import type { StorageProvider } from '../storage/StorageProvider.js';
-import type { EmbeddingService } from './EmbeddingService.js';
+import { v4 as uuidv4 } from 'uuid';
+
 import type { Entity } from '../KnowledgeGraphManager.js';
+import type { StorageProvider } from '../storage/StorageProvider.js';
 import type { EntityEmbedding } from '../types/entity-embedding.js';
-import crypto from 'crypto';
+
+import type { EmbeddingService } from './EmbeddingService.js';
 
 /**
  * Job status type
@@ -136,15 +139,16 @@ const nullLogger: Logger = {
  */
 export class EmbeddingJobManager {
   private storageProvider: EmbeddingStorageProvider;
-  private embeddingService: EmbeddingService;
+  public readonly embeddingService: EmbeddingService;
   public rateLimiter: {
     tokens: number;
     lastRefill: number;
     tokensPerInterval: number;
     interval: number;
   };
+
   public cache: LRUCache<string, CachedEmbedding>;
-  private cacheOptions: CacheOptions = { size: 1000, ttl: 3600000 };
+  private cacheOptions: CacheOptions = { size: 1000, ttl: 3_600_000 };
   private logger: Logger;
 
   /**
@@ -189,7 +193,7 @@ export class EmbeddingJobManager {
         size: cacheOptions.size || cacheOptions.maxItems || 1000,
         ttl:
           cacheOptions.ttl ||
-          (cacheOptions.ttlHours ? Math.round(cacheOptions.ttlHours * 60 * 60 * 1000) : 3600000),
+          (cacheOptions.ttlHours ? Math.round(cacheOptions.ttlHours * 60 * 60 * 1000) : 3_600_000),
       };
     }
 
@@ -653,13 +657,13 @@ export class EmbeddingJobManager {
 
     if (cachedValue) {
       this.logger.debug('Cache hit', {
-        textHash: cacheKey.substring(0, 8),
+        textHash: cacheKey.slice(0, 8),
         age: Date.now() - cachedValue.timestamp,
       });
       return cachedValue.embedding;
     }
 
-    this.logger.debug('Cache miss', { textHash: cacheKey.substring(0, 8) });
+    this.logger.debug('Cache miss', { textHash: cacheKey.slice(0, 8) });
 
     try {
       // Generate new embedding
@@ -696,7 +700,7 @@ export class EmbeddingJobManager {
     });
 
     this.logger.debug('Cached embedding', {
-      textHash: cacheKey.substring(0, 8),
+      textHash: cacheKey.slice(0, 8),
       model: modelInfo.name,
       dimensions: embedding.length,
     });
@@ -791,16 +795,16 @@ export class EmbeddingJobManager {
       const allEntities = await this._getAllEntitiesFromStorage();
 
       this.logger.debug('Retrieved entities for embedding check', {
-        totalCount: allEntities.length
+        totalCount: allEntities.length,
       });
 
       // Filter for entities without embeddings
-      const entitiesWithoutEmbeddings = allEntities.filter(entity => !entity.embedding);
+      const entitiesWithoutEmbeddings = allEntities.filter((entity) => !entity.embedding);
 
       this.logger.info('Found entities without embeddings', {
         count: entitiesWithoutEmbeddings.length,
         totalEntities: allEntities.length,
-        coverage: `${Math.round((allEntities.length - entitiesWithoutEmbeddings.length) / allEntities.length * 100)}%`
+        coverage: `${Math.round(((allEntities.length - entitiesWithoutEmbeddings.length) / allEntities.length) * 100)}%`,
       });
 
       // Schedule embedding jobs for entities without embeddings
@@ -812,21 +816,21 @@ export class EmbeddingJobManager {
         } catch (error) {
           this.logger.warn('Failed to schedule embedding for entity', {
             entityName: entity.name,
-            error: error instanceof Error ? error.message : String(error)
+            error: error instanceof Error ? error.message : String(error),
           });
         }
       }
 
       this.logger.info('Incremental regeneration scheduling complete', {
         scheduled: scheduledCount,
-        missing: entitiesWithoutEmbeddings.length
+        missing: entitiesWithoutEmbeddings.length,
       });
 
       return scheduledCount;
     } catch (error) {
       this.logger.error('Failed during incremental regeneration', {
         error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined
+        stack: error instanceof Error ? error.stack : undefined,
       });
       throw error;
     }

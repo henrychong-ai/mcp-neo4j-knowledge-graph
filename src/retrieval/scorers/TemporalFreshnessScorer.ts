@@ -3,9 +3,9 @@
  * Scores entities based on how recently they were updated
  */
 
-import type { Scorer, ScoringContext } from '../types.js';
 import type { TemporalEntity } from '../../types/temporalEntity.js';
 import { logger } from '../../utils/logger.js';
+import type { Scorer, ScoringContext } from '../types.js';
 
 export class TemporalFreshnessScorer implements Scorer {
   getName(): string {
@@ -30,7 +30,11 @@ export class TemporalFreshnessScorer implements Scorer {
       const validityScore = this.calculateValidityScore(entity, referenceTime);
 
       // Calculate recency score with exponential decay
-      const recencyScore = this.calculateRecencyScore(entity, referenceTime, config.temporalHalfLife || 30);
+      const recencyScore = this.calculateRecencyScore(
+        entity,
+        referenceTime,
+        config.temporalHalfLife || 30
+      );
 
       // Combine validity and recency (validity is more important)
       const finalScore = validityScore * 0.4 + recencyScore * 0.6;
@@ -70,7 +74,7 @@ export class TemporalFreshnessScorer implements Scorer {
       (entity.validFrom === undefined || referenceTime >= entity.validFrom) &&
       (entity.validTo === undefined || entity.validTo === null || referenceTime <= entity.validTo);
 
-    return isValid ? 1.0 : 0.3;
+    return isValid ? 1 : 0.3;
   }
 
   /**

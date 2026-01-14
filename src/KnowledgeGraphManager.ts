@@ -1,14 +1,14 @@
-import { fs } from './utils/fs.js';
 // import path from 'path';
-import type { StorageProvider } from './storage/StorageProvider.js';
-import type { Relation } from './types/relation.js';
-import type { EntityEmbedding } from './types/entity-embedding.js';
 import type { EmbeddingJobManager } from './embeddings/EmbeddingJobManager.js';
-import type { VectorStore } from './types/vector-store.js';
+import type { StorageProvider } from './storage/StorageProvider.js';
 import {
   VectorStoreFactory,
   type VectorStoreFactoryOptions,
 } from './storage/VectorStoreFactory.js';
+import type { EntityEmbedding } from './types/entity-embedding.js';
+import type { Relation } from './types/relation.js';
+import type { VectorStore } from './types/vector-store.js';
+import { fs } from './utils/fs.js';
 import { logger } from './utils/logger.js';
 
 // Extended storage provider interfaces for optional methods
@@ -17,7 +17,7 @@ interface StorageProviderWithSearchVectors extends StorageProvider {
     embedding: number[],
     limit: number,
     threshold: number
-  ): Promise<Array<{ name: string; score: number }>>;
+  ): Promise<{ name: string; score: number }[]>;
 }
 
 interface StorageProviderWithSemanticSearch extends StorageProvider {
@@ -69,7 +69,7 @@ export interface Entity {
 
 // Re-export the Relation interface for backward compatibility
 export { Relation } from './types/relation.js';
-export { SemanticSearchOptions } from './types/entity-embedding.js';
+export type { SemanticSearchOptions } from './types/entity-embedding.js';
 
 // Export the KnowledgeGraph shape
 export interface KnowledgeGraph {
@@ -84,15 +84,15 @@ export interface KnowledgeGraph {
 export interface SearchResult {
   entity: Entity;
   score: number;
-  matches?: Array<{
+  matches?: {
     field: string;
     score: number;
-    textMatches?: Array<{
+    textMatches?: {
       start: number;
       end: number;
       text: string;
-    }>;
-  }>;
+    }[];
+  }[];
   explanation?: unknown;
 }
 
@@ -117,7 +117,7 @@ interface KnowledgeGraphManagerOptions {
 
 // The KnowledgeGraphManager class contains all operations to interact with the knowledge graph
 export class KnowledgeGraphManager {
-  private memoryFilePath: string = '';
+  private memoryFilePath = '';
   private storageProvider?: StorageProvider;
   private embeddingJobManager?: EmbeddingJobManager;
   private vectorStore?: VectorStore;
@@ -144,9 +144,9 @@ export class KnowledgeGraphManager {
 
     // Initialize vector store if options provided
     if (options?.vectorStoreOptions) {
-      this.initializeVectorStore(options.vectorStoreOptions).catch((err) =>
-        logger.error('Failed to initialize vector store during construction', err)
-      );
+      this.initializeVectorStore(options.vectorStoreOptions).catch((error) => {
+        logger.error('Failed to initialize vector store during construction', error);
+      });
     }
   }
 
@@ -269,7 +269,7 @@ export class KnowledgeGraphManager {
         return { entities: [], relations: [] };
       }
 
-      const fileContents = await this.fsModule.readFile(this.memoryFilePath, 'utf-8');
+      const fileContents = await this.fsModule.readFile(this.memoryFilePath, 'utf8');
       if (!fileContents || fileContents.trim() === '') {
         return { entities: [], relations: [] };
       }
@@ -301,8 +301,8 @@ export class KnowledgeGraphManager {
             relations: parsedItem.relations || [],
           };
         }
-      } catch (e) {
-        logger.error('Error parsing complete file content', e);
+      } catch (error) {
+        logger.error('Error parsing complete file content', error);
       }
 
       // Try to parse it as newline-delimited JSON
@@ -320,8 +320,8 @@ export class KnowledgeGraphManager {
             const { type: _, ...relation } = item; // Remove the type property
             relations.push(relation as Relation);
           }
-        } catch (e) {
-          logger.error('Error parsing line', { line, error: e });
+        } catch (error) {
+          logger.error('Error parsing line', { line, error: error });
         }
       }
 
@@ -413,7 +413,7 @@ export class KnowledgeGraphManager {
           ...entity.observations,
         ]);
 
-        existingEntity.observations = Array.from(updatedObservations);
+        existingEntity.observations = [...updatedObservations];
 
         // Update the entity in our map and array
         entitiesMap.set(entity.name, existingEntity);
@@ -447,9 +447,9 @@ export class KnowledgeGraphManager {
 
       // Add entities with existing embeddings to vector store
       for (const entity of createdEntities) {
-        if (entity.embedding && entity.embedding.vector) {
+        if (entity.embedding?.vector) {
           try {
-            const vectorStore = await this.ensureVectorStore().catch(() => undefined);
+            const vectorStore = await this.ensureVectorStore().catch(() => {});
             if (vectorStore) {
               // Add metadata for filtering
               const metadata = {
@@ -477,9 +477,9 @@ export class KnowledgeGraphManager {
       // No storage provider, so use the entities we've already added to the graph
       // Add entities with existing embeddings to vector store
       for (const entity of newEntities) {
-        if (entity.embedding && entity.embedding.vector) {
+        if (entity.embedding?.vector) {
           try {
-            const vectorStore = await this.ensureVectorStore().catch(() => undefined);
+            const vectorStore = await this.ensureVectorStore().catch(() => {});
             if (vectorStore) {
               // Add metadata for filtering
               const metadata = {
@@ -597,7 +597,7 @@ export class KnowledgeGraphManager {
     // Remove entities from vector store if available
     try {
       // Ensure vector store is available
-      const vectorStore = await this.ensureVectorStore().catch(() => undefined);
+      const vectorStore = await this.ensureVectorStore().catch(() => {});
 
       if (vectorStore) {
         for (const entityName of entityNames) {
@@ -684,7 +684,10 @@ export class KnowledgeGraphManager {
     }
   }
 
-  async searchNodes(query: string, options: { domain?: string; includeNullDomain?: boolean } = {}): Promise<KnowledgeGraph> {
+  async searchNodes(
+    query: string,
+    options: { domain?: string; includeNullDomain?: boolean } = {}
+  ): Promise<KnowledgeGraph> {
     if (this.storageProvider) {
       return this.storageProvider.searchNodes(query, options);
     }
@@ -746,7 +749,7 @@ export class KnowledgeGraphManager {
    * @returns Promise resolving to array of added observations
    */
   async addObservations(
-    observations: Array<{
+    observations: {
       entityName: string;
       contents: string[];
       // Additional parameters that may be present in the MCP schema but ignored by storage providers
@@ -754,7 +757,7 @@ export class KnowledgeGraphManager {
       confidence?: number;
       metadata?: Record<string, unknown>;
       [key: string]: unknown; // Allow any other properties
-    }>
+    }[]
   ): Promise<{ entityName: string; addedObservations: string[] }[]> {
     if (!observations || observations.length === 0) {
       return [];
@@ -844,12 +847,12 @@ export class KnowledgeGraphManager {
   async findSimilarEntities(
     query: string,
     options: { limit?: number; threshold?: number } = {}
-  ): Promise<Array<{ name: string; score: number }>> {
+  ): Promise<{ name: string; score: number }[]> {
     if (!this.embeddingJobManager) {
       throw new Error('Embedding job manager is required for semantic search');
     }
 
-    const embeddingService = this.embeddingJobManager['embeddingService'];
+    const embeddingService = this.embeddingJobManager.embeddingService;
     if (!embeddingService) {
       throw new Error('Embedding service not available');
     }
@@ -860,7 +863,7 @@ export class KnowledgeGraphManager {
     // If we have a vector store, use it directly
     try {
       // Ensure vector store is available
-      const vectorStore = await this.ensureVectorStore().catch(() => undefined);
+      const vectorStore = await this.ensureVectorStore().catch(() => {});
 
       if (vectorStore) {
         const limit = options.limit || 10;
@@ -940,7 +943,7 @@ export class KnowledgeGraphManager {
         try {
           // Generate query vector if we have an embedding service
           if (this.embeddingJobManager) {
-            const embeddingService = this.embeddingJobManager['embeddingService'];
+            const embeddingService = this.embeddingJobManager.embeddingService;
             if (embeddingService) {
               const queryVector = await embeddingService.generateEmbedding(query);
               return this.storageProvider.semanticSearch(query, {
@@ -951,14 +954,23 @@ export class KnowledgeGraphManager {
           }
 
           // Fall back to text search if no embedding service
-          return this.storageProvider.searchNodes(query, { domain: options.domain, includeNullDomain: options.includeNullDomain });
+          return this.storageProvider.searchNodes(query, {
+            domain: options.domain,
+            includeNullDomain: options.includeNullDomain,
+          });
         } catch (error) {
           logger.error('Provider semanticSearch failed, falling back to basic search', error);
-          return this.storageProvider.searchNodes(query, { domain: options.domain, includeNullDomain: options.includeNullDomain });
+          return this.storageProvider.searchNodes(query, {
+            domain: options.domain,
+            includeNullDomain: options.includeNullDomain,
+          });
         }
       } else if (this.storageProvider) {
         // Fall back to searchNodes if semanticSearch is not available in the provider
-        return this.storageProvider.searchNodes(query, { domain: options.domain, includeNullDomain: options.includeNullDomain });
+        return this.storageProvider.searchNodes(query, {
+          domain: options.domain,
+          includeNullDomain: options.includeNullDomain,
+        });
       }
 
       // If no storage provider or its semanticSearch is not available, try internal semantic search
@@ -983,7 +995,10 @@ export class KnowledgeGraphManager {
 
           // Explicitly call searchNodes if available in the provider
           if (this.storageProvider) {
-            return (this.storageProvider as StorageProvider).searchNodes(query, { domain: options.domain, includeNullDomain: options.includeNullDomain });
+            return (this.storageProvider as StorageProvider).searchNodes(query, {
+              domain: options.domain,
+              includeNullDomain: options.includeNullDomain,
+            });
           }
         }
       } else {
@@ -992,7 +1007,10 @@ export class KnowledgeGraphManager {
     }
 
     // Use basic search
-    return this.searchNodes(query, { domain: options.domain, includeNullDomain: options.includeNullDomain });
+    return this.searchNodes(query, {
+      domain: options.domain,
+      includeNullDomain: options.includeNullDomain,
+    });
   }
 
   /**
@@ -1021,7 +1039,7 @@ export class KnowledgeGraphManager {
       threshold: options.threshold || 0.5,
     });
 
-    if (!similarEntities.length) {
+    if (similarEntities.length === 0) {
       return { entities: [], relations: [] };
     }
 
@@ -1253,7 +1271,7 @@ export class KnowledgeGraphManager {
     // Check for duplicates within batch (UNWIND edge case #4)
     const names = new Set<string>();
     const duplicates: string[] = [];
-    entities.forEach((entity, idx) => {
+    for (const [idx, entity] of entities.entries()) {
       if (!entity.name) {
         throw new Error(`Entity at index ${idx} is missing required 'name' field`);
       }
@@ -1261,14 +1279,14 @@ export class KnowledgeGraphManager {
         duplicates.push(entity.name);
       }
       names.add(entity.name);
-    });
+    }
 
     if (duplicates.length > 0) {
       throw new Error(`Duplicate entity names within batch: ${duplicates.join(', ')}`);
     }
 
     // Validate required fields (UNWIND edge case #3)
-    entities.forEach((entity, idx) => {
+    for (const [idx, entity] of entities.entries()) {
       if (!entity.name || typeof entity.name !== 'string') {
         throw new Error(`Entity at index ${idx} has invalid 'name' field`);
       }
@@ -1276,14 +1294,16 @@ export class KnowledgeGraphManager {
         throw new Error(`Entity at index ${idx} has invalid 'entityType' field`);
       }
       if (!Array.isArray(entity.observations)) {
-        throw new Error(`Entity at index ${idx} has invalid 'observations' field (must be array)`);
+        throw new TypeError(
+          `Entity at index ${idx} has invalid 'observations' field (must be array)`
+        );
       }
-    });
+    }
 
     // Call storage provider's batch method
     const createEntitiesBatch = (this.storageProvider as any).createEntitiesBatch;
     if (typeof createEntitiesBatch !== 'function') {
-      throw new Error('Storage provider does not support batch entity creation');
+      throw new TypeError('Storage provider does not support batch entity creation');
     }
 
     const result = await createEntitiesBatch.call(this.storageProvider, entities, config);
@@ -1323,23 +1343,23 @@ export class KnowledgeGraphManager {
     // Check for duplicates within batch
     const relationKeys = new Set<string>();
     const duplicates: string[] = [];
-    relations.forEach((relation, idx) => {
+    for (const [_idx, relation] of relations.entries()) {
       if (!relation.from || !relation.to || !relation.relationType) {
-        return; // Will be caught by field validation below
+        continue; // Will be caught by field validation below
       }
       const key = `${relation.from}->${relation.relationType}->${relation.to}`;
       if (relationKeys.has(key)) {
         duplicates.push(key);
       }
       relationKeys.add(key);
-    });
+    }
 
     if (duplicates.length > 0) {
       throw new Error(`Duplicate relations within batch: ${duplicates.join(', ')}`);
     }
 
     // Validate required fields
-    relations.forEach((relation, idx) => {
+    for (const [idx, relation] of relations.entries()) {
       if (!relation.from || typeof relation.from !== 'string') {
         throw new Error(`Relation at index ${idx} has invalid 'from' field`);
       }
@@ -1349,12 +1369,12 @@ export class KnowledgeGraphManager {
       if (!relation.relationType || typeof relation.relationType !== 'string') {
         throw new Error(`Relation at index ${idx} has invalid 'relationType' field`);
       }
-    });
+    }
 
     // Call storage provider's batch method
     const createRelationsBatch = (this.storageProvider as any).createRelationsBatch;
     if (typeof createRelationsBatch !== 'function') {
-      throw new Error('Storage provider does not support batch relation creation');
+      throw new TypeError('Storage provider does not support batch relation creation');
     }
 
     return createRelationsBatch.call(this.storageProvider, relations, config);
@@ -1368,7 +1388,7 @@ export class KnowledgeGraphManager {
    * @returns Batch result with successful and failed batches
    */
   async addObservationsBatch(
-    batches: Array<{ entityName: string; observations: string[] }>,
+    batches: { entityName: string; observations: string[] }[],
     config?: import('./types/batch-operations.js').BatchConfig
   ): Promise<import('./types/batch-operations.js').BatchResult<any>> {
     // Validate batches
@@ -1383,24 +1403,24 @@ export class KnowledgeGraphManager {
     }
 
     // Validate required fields
-    batches.forEach((batch, idx) => {
+    for (const [idx, batch] of batches.entries()) {
       if (!batch.entityName || typeof batch.entityName !== 'string') {
         throw new Error(`Observation batch at index ${idx} has invalid 'entityName' field`);
       }
       if (!Array.isArray(batch.observations)) {
-        throw new Error(
+        throw new TypeError(
           `Observation batch at index ${idx} has invalid 'observations' field (must be array)`
         );
       }
       if (batch.observations.length === 0) {
         throw new Error(`Observation batch at index ${idx} has empty observations array`);
       }
-    });
+    }
 
     // Call storage provider's batch method
     const addObservationsBatch = (this.storageProvider as any).addObservationsBatch;
     if (typeof addObservationsBatch !== 'function') {
-      throw new Error('Storage provider does not support batch observation addition');
+      throw new TypeError('Storage provider does not support batch observation addition');
     }
 
     const result = await addObservationsBatch.call(this.storageProvider, batches, config);
@@ -1425,7 +1445,11 @@ export class KnowledgeGraphManager {
   async updateEntitiesBatch(
     updates: import('./types/batch-operations.js').EntityUpdate[],
     config?: import('./types/batch-operations.js').BatchConfig
-  ): Promise<import('./types/batch-operations.js').BatchResult<import('./types/batch-operations.js').EntityUpdate>> {
+  ): Promise<
+    import('./types/batch-operations.js').BatchResult<
+      import('./types/batch-operations.js').EntityUpdate
+    >
+  > {
     // Validate updates
     if (!Array.isArray(updates) || updates.length === 0) {
       throw new Error('Entity updates must be a non-empty array');
@@ -1438,26 +1462,29 @@ export class KnowledgeGraphManager {
     }
 
     // Validate required fields
-    updates.forEach((update, idx) => {
+    for (const [idx, update] of updates.entries()) {
       if (!update.name || typeof update.name !== 'string') {
         throw new Error(`Entity update at index ${idx} has invalid 'name' field`);
       }
-      if (!update.entityType && !update.domain && !update.addObservations && !update.removeObservations) {
-        throw new Error(
-          `Entity update at index ${idx} must specify at least one field to update`
-        );
+      if (
+        !update.entityType &&
+        !update.domain &&
+        !update.addObservations &&
+        !update.removeObservations
+      ) {
+        throw new Error(`Entity update at index ${idx} must specify at least one field to update`);
       }
-    });
+    }
 
     // Check for duplicate entity names within batch
     const names = new Set<string>();
     const duplicates: string[] = [];
-    updates.forEach((update) => {
+    for (const update of updates) {
       if (names.has(update.name)) {
         duplicates.push(update.name);
       }
       names.add(update.name);
-    });
+    }
 
     if (duplicates.length > 0) {
       throw new Error(`Duplicate entity names in updates batch: ${duplicates.join(', ')}`);
@@ -1466,7 +1493,7 @@ export class KnowledgeGraphManager {
     // Call storage provider's batch method
     const updateEntitiesBatch = (this.storageProvider as any).updateEntitiesBatch;
     if (typeof updateEntitiesBatch !== 'function') {
-      throw new Error('Storage provider does not support batch entity updates');
+      throw new TypeError('Storage provider does not support batch entity updates');
     }
 
     const result = await updateEntitiesBatch.call(this.storageProvider, updates, config);

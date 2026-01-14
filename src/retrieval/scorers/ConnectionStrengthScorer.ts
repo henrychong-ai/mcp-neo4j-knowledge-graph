@@ -3,9 +3,9 @@
  * Scores entities based on the quality and strength of their connections
  */
 
-import type { Scorer, ScoringContext } from '../types.js';
 import type { Relation } from '../../types/relation.js';
 import { logger } from '../../utils/logger.js';
+import type { Scorer, ScoringContext } from '../types.js';
 
 export class ConnectionStrengthScorer implements Scorer {
   getName(): string {

@@ -1,5 +1,6 @@
-import * as toolHandlers from './toolHandlers/index.js';
 import { logger } from '../../utils/logger.js';
+
+import * as toolHandlers from './toolHandlers/index.js';
 
 /**
  * Handles the CallTool request.
@@ -15,7 +16,7 @@ export async function handleCallToolRequest(
   request: { params?: { name?: string; arguments?: Record<string, unknown> } },
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   knowledgeGraphManager: any
-): Promise<{ content: Array<{ type: string; text: string }> }> {
+): Promise<{ content: { type: string; text: string }[] }> {
   if (!request) {
     throw new Error('Invalid request: request is null or undefined');
   }
@@ -36,30 +37,37 @@ export async function handleCallToolRequest(
 
   try {
     switch (name) {
-      case 'create_entities':
+      case 'create_entities': {
         return await toolHandlers.handleCreateEntities(args, knowledgeGraphManager);
+      }
 
-      case 'read_graph':
+      case 'read_graph': {
         return await toolHandlers.handleReadGraph(args, knowledgeGraphManager);
+      }
 
-      case 'create_relations':
+      case 'create_relations': {
         return await toolHandlers.handleCreateRelations(args, knowledgeGraphManager);
+      }
 
-      case 'add_observations':
+      case 'add_observations': {
         return await toolHandlers.handleAddObservations(args, knowledgeGraphManager);
+      }
 
-      case 'delete_entities':
+      case 'delete_entities': {
         return await toolHandlers.handleDeleteEntities(args, knowledgeGraphManager);
+      }
 
-      case 'delete_observations':
+      case 'delete_observations': {
         await knowledgeGraphManager.deleteObservations(args.deletions);
         return { content: [{ type: 'text', text: 'Observations deleted successfully' }] };
+      }
 
-      case 'delete_relations':
+      case 'delete_relations': {
         await knowledgeGraphManager.deleteRelations(args.relations);
         return { content: [{ type: 'text', text: 'Relations deleted successfully' }] };
+      }
 
-      case 'get_relation':
+      case 'get_relation': {
         const relation = await knowledgeGraphManager.getRelation(
           args.from,
           args.to,
@@ -76,22 +84,32 @@ export async function handleCallToolRequest(
           };
         }
         return { content: [{ type: 'text', text: JSON.stringify(relation, null, 2) }] };
+      }
 
-      case 'update_relation':
+      case 'update_relation': {
         await knowledgeGraphManager.updateRelation(args.relation);
         return { content: [{ type: 'text', text: 'Relation updated successfully' }] };
+      }
 
-      case 'search_nodes':
+      case 'search_nodes': {
         return {
           content: [
             {
               type: 'text',
-              text: JSON.stringify(await knowledgeGraphManager.searchNodes(args.query, { domain: args.domain, includeNullDomain: args.include_null_domain }), null, 2),
+              text: JSON.stringify(
+                await knowledgeGraphManager.searchNodes(args.query, {
+                  domain: args.domain,
+                  includeNullDomain: args.include_null_domain,
+                }),
+                null,
+                2
+              ),
             },
           ],
         };
+      }
 
-      case 'open_nodes':
+      case 'open_nodes': {
         return {
           content: [
             {
@@ -100,8 +118,9 @@ export async function handleCallToolRequest(
             },
           ],
         };
+      }
 
-      case 'get_entity_history':
+      case 'get_entity_history': {
         try {
           const history = await knowledgeGraphManager.getEntityHistory(args.entityName);
           return { content: [{ type: 'text', text: JSON.stringify(history, null, 2) }] };
@@ -111,8 +130,9 @@ export async function handleCallToolRequest(
             content: [{ type: 'text', text: `Error retrieving entity history: ${errorMessage}` }],
           };
         }
+      }
 
-      case 'get_relation_history':
+      case 'get_relation_history': {
         try {
           const history = await knowledgeGraphManager.getRelationHistory(
             args.from,
@@ -126,8 +146,9 @@ export async function handleCallToolRequest(
             content: [{ type: 'text', text: `Error retrieving relation history: ${errorMessage}` }],
           };
         }
+      }
 
-      case 'get_graph_at_time':
+      case 'get_graph_at_time': {
         try {
           const graph = await knowledgeGraphManager.getGraphAtTime(args.timestamp);
           return { content: [{ type: 'text', text: JSON.stringify(graph, null, 2) }] };
@@ -137,8 +158,9 @@ export async function handleCallToolRequest(
             content: [{ type: 'text', text: `Error retrieving graph at time: ${errorMessage}` }],
           };
         }
+      }
 
-      case 'get_decayed_graph':
+      case 'get_decayed_graph': {
         try {
           // Extract optional parameters if provided by client
           const options: {
@@ -167,8 +189,9 @@ export async function handleCallToolRequest(
             content: [{ type: 'text', text: `Error retrieving decayed graph: ${errorMessage}` }],
           };
         }
+      }
 
-      case 'force_generate_embedding':
+      case 'force_generate_embedding': {
         // Validate arguments
         if (!args.entity_name) {
           throw new Error('Missing required parameter: entity_name');
@@ -184,7 +207,7 @@ export async function handleCallToolRequest(
 
           let entity = null;
 
-          if (allEntities && allEntities.entities && allEntities.entities.length > 0) {
+          if (allEntities?.entities && allEntities.entities.length > 0) {
             // Try different methods to find the entity
             // 1. Direct match by name
             entity = allEntities.entities.find(
@@ -194,8 +217,7 @@ export async function handleCallToolRequest(
             // 2. If not found and input is UUID, try matching by ID
             if (!entity && isUUID) {
               entity = allEntities.entities.find(
-                (e: Record<string, unknown>) =>
-                  'id' in e && e.id === args.entity_name
+                (e: Record<string, unknown>) => 'id' in e && e.id === args.entity_name
               );
             }
           }
@@ -206,7 +228,7 @@ export async function handleCallToolRequest(
               String(args.entity_name),
             ]);
 
-            if (openedEntities && openedEntities.entities && openedEntities.entities.length > 0) {
+            if (openedEntities?.entities && openedEntities.entities.length > 0) {
               entity = openedEntities.entities[0];
             }
           }
@@ -290,8 +312,9 @@ export async function handleCallToolRequest(
             content: [{ type: 'text', text: `Failed to generate embedding: ${error.message}` }],
           };
         }
+      }
 
-      case 'semantic_search':
+      case 'semantic_search': {
         try {
           // Extract hybrid search configuration if provided
           const hybridConfigRaw = args.hybrid_config as
@@ -323,7 +346,7 @@ export async function handleCallToolRequest(
             limit: args.limit || 10,
             minSimilarity: args.min_similarity || 0.6,
             entityTypes: args.entity_types || [],
-            hybridSearch: args.hybrid_search !== undefined ? args.hybrid_search : true,
+            hybridSearch: args.hybrid_search === undefined ? true : args.hybrid_search,
             semanticWeight: args.semantic_weight || 0.6,
             semanticSearch: true,
             hybridConfig,
@@ -342,8 +365,9 @@ export async function handleCallToolRequest(
             content: [{ type: 'text', text: `Error performing semantic search: ${errorMessage}` }],
           };
         }
+      }
 
-      case 'get_entity_embedding':
+      case 'get_entity_embedding': {
         try {
           // Check if entity exists
           const entity = await knowledgeGraphManager.openNodes([String(args.entity_name)]);
@@ -357,11 +381,11 @@ export async function handleCallToolRequest(
             typeof (knowledgeGraphManager.storageProvider as Record<string, unknown>)
               .getEntityEmbedding === 'function'
           ) {
-            type EntityEmbedding = {
+            interface EntityEmbedding {
               vector: number[];
               model?: string;
               lastUpdated?: number;
-            };
+            }
 
             const embedding = await (
               knowledgeGraphManager.storageProvider as Record<
@@ -412,8 +436,9 @@ export async function handleCallToolRequest(
             content: [{ type: 'text', text: `Error retrieving entity embedding: ${errorMessage}` }],
           };
         }
+      }
 
-      case 'debug_embedding_config':
+      case 'debug_embedding_config': {
         // Diagnostic tool to check embedding configuration
         try {
           // Check for OpenAI API key
@@ -455,11 +480,9 @@ export async function handleCallToolRequest(
                 neo4jInfo.connectionStatus = 'available';
 
                 // Check if vector store is initialized
-                if (storageProvider.vectorStore) {
-                  neo4jInfo.vectorStoreStatus = 'available';
-                } else {
-                  neo4jInfo.vectorStoreStatus = 'not initialized';
-                }
+                neo4jInfo.vectorStoreStatus = storageProvider.vectorStore
+                  ? 'available'
+                  : 'not initialized';
               }
             } catch (error: Error | unknown) {
               const errorMessage = error instanceof Error ? error.message : String(error);
@@ -469,7 +492,7 @@ export async function handleCallToolRequest(
 
           // Count entities with embeddings via Neo4j vector store
           let entitiesWithEmbeddings = 0;
-          if (storageProvider && storageProvider.countEntitiesWithEmbeddings) {
+          if (storageProvider?.countEntitiesWithEmbeddings) {
             try {
               entitiesWithEmbeddings = await storageProvider.countEntitiesWithEmbeddings();
             } catch (error) {
@@ -498,7 +521,7 @@ export async function handleCallToolRequest(
 
           // Get embedding service provider info if available
           let embeddingProviderInfo = null;
-          if (storageProvider && storageProvider.embeddingService) {
+          if (storageProvider?.embeddingService) {
             try {
               embeddingProviderInfo = (
                 storageProvider as Record<string, Record<string, () => unknown>>
@@ -514,7 +537,7 @@ export async function handleCallToolRequest(
           if (hasEmbeddingJobManager && knowledgeGraphManager.embeddingJobManager.getPendingJobs) {
             try {
               pendingJobs = (
-                knowledgeGraphManager.embeddingJobManager as Record<string, () => Array<unknown>>
+                knowledgeGraphManager.embeddingJobManager as Record<string, () => unknown[]>
               ).getPendingJobs().length;
             } catch (error: Error | unknown) {
               const errorMessage = error instanceof Error ? error.message : String(error);
@@ -569,59 +592,65 @@ export async function handleCallToolRequest(
             ],
           };
         }
+      }
 
-      case 'diagnose_vector_search':
-        if (
-          knowledgeGraphManager.storageProvider &&
+      case 'diagnose_vector_search': {
+        return knowledgeGraphManager.storageProvider &&
           typeof (knowledgeGraphManager.storageProvider as Record<string, unknown>)
             .diagnoseVectorSearch === 'function'
-        ) {
-          return {
-            content: [
-              {
-                type: 'text',
-                text: JSON.stringify(
-                  await (
-                    knowledgeGraphManager.storageProvider as Record<string, () => Promise<unknown>>
-                  ).diagnoseVectorSearch()
-                ),
-              },
-            ],
-          };
-        } else {
-          return {
-            content: [
-              {
-                type: 'text',
-                text: JSON.stringify(
-                  {
-                    error: 'Diagnostic method not available',
-                    storageType: knowledgeGraphManager.storageProvider
-                      ? knowledgeGraphManager.storageProvider.constructor.name
-                      : 'unknown',
-                  },
-                  null,
-                  2
-                ),
-              },
-            ],
-          };
-        }
+          ? {
+              content: [
+                {
+                  type: 'text',
+                  text: JSON.stringify(
+                    await (
+                      knowledgeGraphManager.storageProvider as Record<
+                        string,
+                        () => Promise<unknown>
+                      >
+                    ).diagnoseVectorSearch()
+                  ),
+                },
+              ],
+            }
+          : {
+              content: [
+                {
+                  type: 'text',
+                  text: JSON.stringify(
+                    {
+                      error: 'Diagnostic method not available',
+                      storageType: knowledgeGraphManager.storageProvider
+                        ? knowledgeGraphManager.storageProvider.constructor.name
+                        : 'unknown',
+                    },
+                    null,
+                    2
+                  ),
+                },
+              ],
+            };
+      }
 
-      case 'create_entities_batch':
+      case 'create_entities_batch': {
         return await toolHandlers.handleCreateEntitiesBatch(args, knowledgeGraphManager);
+      }
 
-      case 'create_relations_batch':
+      case 'create_relations_batch': {
         return await toolHandlers.handleCreateRelationsBatch(args, knowledgeGraphManager);
+      }
 
-      case 'add_observations_batch':
+      case 'add_observations_batch': {
         return await toolHandlers.handleAddObservationsBatch(args, knowledgeGraphManager);
+      }
 
-      case 'update_entities_batch':
+      case 'update_entities_batch': {
         return await toolHandlers.handleUpdateEntitiesBatch(args, knowledgeGraphManager);
+      }
 
-      default:
+      default: {
         throw new Error(`Unknown tool: ${name}`);
+      }
     }
   } catch (error: Error | unknown) {
     throw error;

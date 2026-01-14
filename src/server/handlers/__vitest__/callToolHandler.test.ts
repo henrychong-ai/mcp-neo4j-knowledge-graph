@@ -385,7 +385,9 @@ describe('handleCallToolRequest', () => {
     const result = await handleCallToolRequest(request, mockKnowledgeGraphManager);
 
     // Assert
-    expect(mockKnowledgeGraphManager.searchNodes).toHaveBeenCalledWith(query, { domain: undefined });
+    expect(mockKnowledgeGraphManager.searchNodes).toHaveBeenCalledWith(query, {
+      domain: undefined,
+    });
     expect(result).toEqual({
       content: [
         {

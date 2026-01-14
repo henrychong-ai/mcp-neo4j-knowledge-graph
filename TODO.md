@@ -2,7 +2,7 @@
 
 ## 🚨 Critical Priority
 
-*(No critical priority items - all clear!)*
+_(No critical priority items - all clear!)_
 
 ---
 
@@ -10,7 +10,7 @@
 
 ## 🚨 Critical Priority
 
-*(No critical priority items - all clear!)*
+_(No critical priority items - all clear!)_
 
 ---
 
@@ -25,6 +25,7 @@
 **Priority**: 🔥 **MERGE IMMEDIATELY** - Tested and production-ready
 
 **Implementation Complete**:
+
 - ✅ LRU cache for semantic search query results
 - ✅ 500 unique queries cached with 5-minute TTL
 - ✅ 10K entity limit across all cached results
@@ -38,12 +39,14 @@
 **PR URL**: https://github.com/henrychong-ai/mcp-neo4j-knowledge-graph/compare/main...claude/check-published-version-011CUq7WxEjcEqQsurmGap5j
 
 **Files Changed**:
+
 - `src/storage/neo4j/Neo4jStorageProvider.ts` (+150/-21 lines)
 - `README.md` (+193/-7 lines) - Comprehensive "What's New" section
 - `CHANGELOG.md` (+57 lines)
 - `package.json` (version bump to 1.5.0)
 
 **Action Required**:
+
 1. Create PR on GitHub
 2. Merge to main → triggers automated npm publish
 3. Verify GitHub Actions CI passes
@@ -60,6 +63,7 @@
 **Priority**: 🔥 **MERGE AFTER v1.5.0** - Ready for testing and merge
 
 **Implementation Complete**:
+
 - ✅ Created comprehensive 545-line setup guide
 - ✅ Self-contained for public npm users (no private repo references)
 - ✅ Included in npm package via `package.json` files array
@@ -70,6 +74,7 @@
 **PR URL**: https://github.com/henrychong-ai/mcp-neo4j-knowledge-graph/compare/main...claude/cc-automatic-setup-011CUq7WxEjcEqQsurmGap5j
 
 **Pre-Merge Testing Checklist**:
+
 1. **NPM Package Accessibility Test**:
    - [ ] Install package: `npm install -g @henrychong-ai/mcp-neo4j-knowledge-graph`
    - [ ] Access SETUP.md: `cat $(npm root -g)/@henrychong-ai/mcp-neo4j-knowledge-graph/SETUP.md`
@@ -109,6 +114,7 @@
 **Progress**: 60% Complete (3 of 5 phases done)
 
 **Completed**:
+
 - ✅ Phase 1: Batch API interfaces and types (`src/types/batch-operations.ts`)
 - ✅ Phase 2: Storage methods with transaction management
   - `createEntitiesBatch` - UNWIND + parallel embedding generation
@@ -121,6 +127,7 @@
 - ✅ Code compiles successfully
 
 **Remaining** (Phases 3-5):
+
 - [ ] Phase 3: MCP tool handlers
   - Add handlers to `src/server/handlers/callToolHandler.ts`
   - Register tools in `src/server/handlers/listToolsHandler.ts`
@@ -135,6 +142,7 @@
 **Problem**: Creating/updating many entities requires multiple MCP tool calls with individual transactions. This is slow for AI workflows that need to ingest large context dumps or process document batches.
 
 **Solution**:
+
 - New MCP tools for batch operations:
   - `create_entities_batch(entities: Entity[], config?: BatchConfig)`
   - `create_relations_batch(relations: Relation[], config?: BatchConfig)`
@@ -145,11 +153,13 @@
 - Configurable batch size limits (default: 100 items)
 
 **Impact**:
+
 - **User Value**: 10-100x faster bulk operations, enables new use cases (document ingestion, context migration)
 - **Technical Complexity**: Medium (storage complete, handlers remaining)
 - **Estimated Remaining Time**: 2-3 hours
 
 **Success Metrics**:
+
 - ✅ < 5ms per entity for batches of 100+ entities (ACHIEVED)
 - ✅ Graceful partial failure handling with detailed error reports (IMPLEMENTED)
 - ✅ Zero transaction leaks or orphaned data (IMPLEMENTED)
@@ -190,6 +200,7 @@
    - [ ] Dependency security audit
 
 **Implementation Phases**:
+
 1. Add `.github/workflows/pull-request.yml` workflow
 2. Configure test reporting and status checks
 3. Optional: Add preview package publishing
@@ -204,6 +215,7 @@
 **Status**: ⏳ **NOT STARTED** - Needed for comprehensive testing
 
 **Problem**: Current testing limited to local Neo4j. Need cloud environments to test:
+
 - Claude Code web (browser-based, different networking)
 - Codex web (different authentication, environment)
 - Public internet accessibility
@@ -230,6 +242,7 @@
    - Cost: ~$5-10/month per instance
 
 **Testing Matrix**:
+
 ```
 Environment          | Neo4j Location    | Test Type
 ---------------------|-------------------|---------------------------
@@ -241,6 +254,7 @@ CI/CD Pipeline      | GitHub Actions    | Automated ⏳
 ```
 
 **Implementation Steps**:
+
 1. Set up Neo4j Aura free instance
 2. Document connection configuration
 3. Test from Claude Code web environment
@@ -249,6 +263,7 @@ CI/CD Pipeline      | GitHub Actions    | Automated ⏳
 6. Add cloud testing to SETUP.md
 
 **Configuration Example**:
+
 ```bash
 # Cloud Neo4j Aura
 NEO4J_URI=neo4j+s://xxxxx.databases.neo4j.io
@@ -268,6 +283,7 @@ OPENAI_API_KEY=sk-proj-...
 **Status**: ✅ **COMPLETE** - Ready for PR merge
 
 **Implementation**:
+
 - LRU cache for semantic search query results
 - 500 unique queries cached with 5-minute TTL
 - Sub-millisecond response for repeated queries
@@ -275,6 +291,7 @@ OPENAI_API_KEY=sk-proj-...
 - Prometheus metrics integration
 
 **Documentation**:
+
 - README.md updated with v1.2.0-v1.5.0 features
 - Added "What's New" section with all recent releases
 - Comprehensive Hybrid Retrieval System documentation
@@ -283,6 +300,7 @@ OPENAI_API_KEY=sk-proj-...
 - Updated semantic_search tool parameters
 
 **Files Changed**:
+
 - `src/storage/neo4j/Neo4jStorageProvider.ts` (+150/-21)
 - `README.md` (+193/-7)
 - `CHANGELOG.md` (+57 lines)
@@ -299,6 +317,7 @@ OPENAI_API_KEY=sk-proj-...
 **Status**: ✅ **MERGED TO MAIN** - Feature branch archived
 
 **Implementation**:
+
 - Production-grade observability for MCP server
 - HTTP metrics endpoint on port 9091
 - Query performance tracking (loadGraph, searchNodes, semanticSearch)
@@ -316,26 +335,31 @@ OPENAI_API_KEY=sk-proj-...
 **Goal**: Fix v1.2.0 technical debt blocking GitHub Actions CI and npm publishing
 
 **Problem**: Starting with v1.2.0 (hybrid retrieval system), 5 tests began failing in CI:
+
 - 1 failure in ConnectionStrengthScorer.test.ts
 - 4 failures in TemporalFreshnessScorer.test.ts
 - Blocked 3 versions from publishing: v1.2.0, v1.2.1, v1.3.0
 - Last successful publish was v1.1.7 (9 days ago)
 
 **Root Causes**:
+
 1. **ConnectionStrengthScorer**: Test expected "2/3 strong" but all 3 relations (0.9, 0.8, 0.7) met >= 0.7 threshold
 2. **TemporalFreshnessScorer**: Test expectations didn't match actual scoring formula: `validityScore * 0.4 + recencyScore * 0.6`
 
 **Solution**: Fixed test expectations (no functional code changes):
+
 - ConnectionStrengthScorer.test.ts:115 - Changed "2/3 strong" → "3/3 strong"
 - TemporalFreshnessScorer.test.ts - Fixed 4 floating-point precision assertions
 
 **Impact**:
+
 - ✅ All 340 unit tests passing (up from 335)
 - ✅ GitHub Actions CI unblocked
 - ✅ npm publishing restored (v1.3.1 successfully published)
 - ✅ Jumped from v1.1.7 → v1.3.1 (first publish in 9 days)
 
 **Files Modified**:
+
 - `src/retrieval/__vitest__/ConnectionStrengthScorer.test.ts`
 - `src/retrieval/__vitest__/TemporalFreshnessScorer.test.ts`
 - `package.json` (version bump)
@@ -350,6 +374,7 @@ OPENAI_API_KEY=sk-proj-...
 **Goal**: Automated incremental vector embedding regeneration to keep semantic search accuracy high without manual intervention
 
 **Solution Implemented**:
+
 - **Daily Cron Schedule**: Runs at 3 AM Singapore time (19:00 UTC)
 - **Incremental Regeneration**: `EmbeddingJobManager.scheduleIncrementalRegeneration()`
 - **Smart Processing**: Checks all entities, schedules jobs only for those missing embeddings
@@ -357,12 +382,14 @@ OPENAI_API_KEY=sk-proj-...
 - **Production Deployment**: Running on vps-2 via systemd service `mcp-neo4j-kg.service`
 
 **Implementation**:
+
 - `src/index.ts:140-166` - Cron schedule setup
 - `src/embeddings/EmbeddingJobManager.ts:780-857` - Incremental regeneration method
 - Dependencies: node-cron@^3.0.3, @types/node-cron@^3.0.11
 - Logging: Comprehensive info/debug logs via `journalctl -u mcp-neo4j-kg -f`
 
 **Impact**:
+
 - ✅ Automatic embedding for new entities
 - ✅ No manual intervention needed
 - ✅ Maintains >95% embedding coverage
@@ -379,6 +406,7 @@ OPENAI_API_KEY=sk-proj-...
 **Goal**: Improve context relevance by combining vector similarity with graph structure and metadata
 
 **What Was Delivered**:
+
 - **Four Specialized Scorers** (`src/retrieval/scorers/`):
   - VectorSimilarityScorer: Cosine similarity from embeddings
   - GraphTraversalScorer: Graph centrality and connectivity analysis
@@ -403,6 +431,7 @@ OPENAI_API_KEY=sk-proj-...
   - Optional debug mode for score breakdowns
 
 **Testing**: 57 comprehensive unit tests across 6 test files
+
 - VectorSimilarityScorer.test.ts (12 tests)
 - GraphTraversalScorer.test.ts (10 tests)
 - TemporalFreshnessScorer.test.ts (12 tests)
@@ -411,6 +440,7 @@ OPENAI_API_KEY=sk-proj-...
 - HybridRetrieval.integration.test.ts (4 tests)
 
 **Documentation**: Complete guide at `docs/HYBRID_RETRIEVAL.md`
+
 - Architecture overview with detailed explanations
 - Scoring formula breakdowns with examples
 - Configuration options and use case profiles
@@ -418,6 +448,7 @@ OPENAI_API_KEY=sk-proj-...
 - Troubleshooting guide
 
 **Impact**:
+
 - Dramatically improved AI response accuracy by combining semantic similarity with graph structure, temporal freshness, and connection quality
 - 16 new files, 2,319 lines of code
 - ~100-300ms per query overhead
@@ -426,7 +457,6 @@ OPENAI_API_KEY=sk-proj-...
 **Branch**: `claude/hybrid-retrieval-system-011CULBPoNLTTXub5UgHf4Up`
 
 ---
-
 
 ### Pre-Public Repository Cleanup (2025-10-20, v1.1.6)
 
@@ -443,10 +473,12 @@ OPENAI_API_KEY=sk-proj-...
 Keeping the original MIT license with dual copyright for your enhancements.
 
 **MUST KEEP** (Legal Requirement):
+
 - `LICENSE` file with Gannon Hall's copyright notice (line 3)
 - This is **non-negotiable** under MIT license terms
 
 **MUST ADD** (Dual Copyright):
+
 - Add Henry Chong copyright to LICENSE for modifications:
   ```
   Copyright (c) 2025 Gannon Hall
@@ -454,6 +486,7 @@ Keeping the original MIT license with dual copyright for your enhancements.
   ```
 
 **Benefits:**
+
 - ✅ Maximum adoption in npm ecosystem
 - ✅ Clear MIT license compliance
 - ✅ Simple legal framework
@@ -474,6 +507,7 @@ Keeping the original MIT license with dual copyright for your enhancements.
    - ✅ Update: All URLs from `gannonh/memento-mcp` to `henrychong-ai/mcp-neo4j-knowledge-graph`
 
    **Suggested Opening**:
+
    ```markdown
    # Neo4j Knowledge Graph MCP Server
 
@@ -512,6 +546,7 @@ Keeping the original MIT license with dual copyright for your enhancements.
 **Source Code Files**:
 
 7. **src/server/setup.ts** (lines 17, 20)
+
    ```typescript
    // Change from:
    name: 'memento-mcp',
@@ -522,10 +557,11 @@ Keeping the original MIT license with dual copyright for your enhancements.
    publisher: 'henrychong-ai',
    ```
 
-8. **src/server/__vitest__/setup.test.ts** (lines 13, 16, 108, 111)
+8. **src/server/**vitest**/setup.test.ts** (lines 13, 16, 108, 111)
    - Update test assertions to match new metadata
 
 9. **src/embeddings/DefaultEmbeddingService.ts** (line 24)
+
    ```typescript
    // Change from:
    modelName = 'memento-mcp-mock',
@@ -552,6 +588,7 @@ Keeping the original MIT license with dual copyright for your enhancements.
 **Testing & Verification**:
 
 12. **Before Publishing v1.0.7**:
+
     ```bash
     # Verify all tests pass
     npm test
@@ -583,16 +620,16 @@ Keeping the original MIT license with dual copyright for your enhancements.
 
 **Files Summary**:
 
-| File | Action | MIT Compliance |
-|------|--------|----------------|
-| LICENSE | Add Henry's copyright | Required: Keep Gannon's |
-| README.md | Remove fork narrative | Optional: Credit in acknowledgments |
-| CLAUDE.md | Reframe identity | Optional |
-| package.json | Update metadata | Optional: Add contributors field |
-| setup.ts | Update server name/publisher | Optional |
-| setup.test.ts | Update test assertions | Optional |
-| DefaultEmbeddingService.ts | Update mock model name | Optional |
-| assets/* | Remove/replace logos | Optional (not copyrighted) |
+| File                       | Action                       | MIT Compliance                      |
+| -------------------------- | ---------------------------- | ----------------------------------- |
+| LICENSE                    | Add Henry's copyright        | Required: Keep Gannon's             |
+| README.md                  | Remove fork narrative        | Optional: Credit in acknowledgments |
+| CLAUDE.md                  | Reframe identity             | Optional                            |
+| package.json               | Update metadata              | Optional: Add contributors field    |
+| setup.ts                   | Update server name/publisher | Optional                            |
+| setup.test.ts              | Update test assertions       | Optional                            |
+| DefaultEmbeddingService.ts | Update mock model name       | Optional                            |
+| assets/\*                  | Remove/replace logos         | Optional (not copyrighted)          |
 
 **Expected Outcome**:
 Professional standalone project identity with proper attribution to original work, full MIT license compliance, and clean public repository suitable for open-source community.
@@ -601,13 +638,14 @@ Professional standalone project identity with proper attribution to original wor
 
 ## 🔧 Medium Priority
 
-*(No pending medium priority items)*
+_(No pending medium priority items)_
 
 ---
 
 ## ✅ Completed
 
 ### Neo4j Vector Index Compatibility Enhancement (2025-10-20, v1.1.5)
+
 - ✅ **Intelligent version and edition detection** for vector index compatibility
   - Added `getServerVersion()` method querying Neo4j Kernel component specifically
   - Filters for 'Neo4j Kernel' to avoid reading APOC or plugin versions
@@ -626,6 +664,7 @@ Professional standalone project identity with proper attribution to original wor
 - ✅ **Tests**: All 293 unit tests passing
 
 ### OIDC npm Publishing (2025-10-19)
+
 - ✅ **GitHub Actions workflow configured** for automated npm publishing
   - Fixed package name in version comparison
   - Added `--access public` flag for scoped package
@@ -638,6 +677,7 @@ Professional standalone project identity with proper attribution to original wor
   - **Status**: Publishing successfully via OIDC authentication
 
 ### Schema Constraint Detection (2025-10-20, v1.1.3)
+
 - ✅ **Automatic conflict detection** in `Neo4jSchemaManager.ts`
   - Checks for conflicting Entity constraints on 'name' property
   - Warns about single-field constraints that block temporal versioning
@@ -647,6 +687,7 @@ Professional standalone project identity with proper attribution to original wor
 - ✅ Handles both 'labelsOrTypes' and 'entityType' field names (Neo4j version compatibility)
 
 ### Schema Constraint Fix (2025-10-17)
+
 - ✅ Identified conflicting constraints blocking temporal versioning
 - ✅ Dropped old single-field `entity_name_unique` constraint
 - ✅ Verified composite `(name, validTo)` constraint working
@@ -657,6 +698,7 @@ Professional standalone project identity with proper attribution to original wor
 - ✅ Created `docs/SCHEMA_CONSTRAINT_FIX.md` guide
 
 ### Vector Embeddings Generation (2025-10-20)
+
 - ✅ **Production embeddings generated** for knowledge graph
   - Created `src/cli/generate-embeddings.ts` CLI tool
   - Added npm scripts: `embeddings:generate` and `embeddings:test`
@@ -673,6 +715,7 @@ Professional standalone project identity with proper attribution to original wor
   - Synced across all platform instruction files
 
 ### Documentation Updates (2025-10-17)
+
 - ✅ `CLAUDE.md`: Added comprehensive version history and BigInt fix patterns
 - ✅ `README.md`: Updated "What's Fixed" section with v1.0.4-1.0.5 details
 - ✅ `CHANGELOG.md`: Added complete version history from v1.0.0 to v1.0.5
@@ -684,7 +727,9 @@ Professional standalone project identity with proper attribution to original wor
 ## 📝 Notes
 
 ### Version Publishing Workflow
+
 **Automated via OIDC (no tokens needed!):**
+
 ```bash
 # 1. Make changes and update CHANGELOG.md
 
@@ -703,7 +748,9 @@ git push origin main --follow-tags
 ```
 
 ### Testing GitHub Actions Locally
+
 Use `act` to test workflows locally before pushing:
+
 ```bash
 brew install act
 act push -j build  # Test build job
@@ -715,6 +762,7 @@ act push -j publish --secret NPM_TOKEN=...  # Test publish job
 **Last Updated:** 2025-11-05
 
 **Session Context:**
+
 - ✅ **v1.5.0 Query Result Caching** - Complete and ready for PR merge
 - ✅ **README.md comprehensive update** - v1.2.0-v1.5.0 features documented
 - ✅ **SETUP.md branch rebased** - Ready for merge after v1.5.0
@@ -723,12 +771,14 @@ act push -j publish --secret NPM_TOKEN=...  # Test publish job
 - ✅ **3 branches pushed** with production-ready code
 
 **Current State:**
+
 - Production-ready v1.5.0 awaiting PR creation and merge
 - High-impact batch operations 60% complete
 - Documentation fully up to date
 - All tests passing, zero known issues
 
 **Next Steps:**
+
 1. Create and merge v1.5.0 PR → triggers automated npm publish
 2. Merge SETUP.md branch for better onboarding
 3. Complete Batch Operations API (handlers + tests + docs)

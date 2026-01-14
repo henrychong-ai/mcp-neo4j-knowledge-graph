@@ -3,9 +3,9 @@
  * Scores entities based on their position and connectivity in the knowledge graph
  */
 
-import type { Scorer, ScoringContext } from '../types.js';
 import type { Relation } from '../../types/relation.js';
 import { logger } from '../../utils/logger.js';
+import type { Scorer, ScoringContext } from '../types.js';
 
 export class GraphTraversalScorer implements Scorer {
   getName(): string {
@@ -40,8 +40,7 @@ export class GraphTraversalScorer implements Scorer {
       );
 
       // Combine scores with weights
-      const finalScore =
-        degreeScore * 0.4 + qualityScore * 0.4 + bidirectionalBonus * 0.2;
+      const finalScore = degreeScore * 0.4 + qualityScore * 0.4 + bidirectionalBonus * 0.2;
 
       return Math.max(0, Math.min(1, finalScore));
     } catch (error) {
@@ -80,7 +79,10 @@ export class GraphTraversalScorer implements Scorer {
     // Find the maximum number of connections in the entire graph
     const entityConnectionCounts = new Map<string, number>();
     for (const relation of allRelations) {
-      entityConnectionCounts.set(relation.from, (entityConnectionCounts.get(relation.from) || 0) + 1);
+      entityConnectionCounts.set(
+        relation.from,
+        (entityConnectionCounts.get(relation.from) || 0) + 1
+      );
       entityConnectionCounts.set(relation.to, (entityConnectionCounts.get(relation.to) || 0) + 1);
     }
 

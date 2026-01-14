@@ -2,22 +2,22 @@
  * Hybrid retrieval system that combines multiple scoring signals
  */
 
+import type { Entity } from '../KnowledgeGraphManager.js';
+import type { Relation } from '../types/relation.js';
+import type { VectorSearchResult } from '../types/vector-store.js';
+import { logger } from '../utils/logger.js';
+
+import { ConnectionStrengthScorer } from './scorers/ConnectionStrengthScorer.js';
+import { GraphTraversalScorer } from './scorers/GraphTraversalScorer.js';
+import { TemporalFreshnessScorer } from './scorers/TemporalFreshnessScorer.js';
+import { VectorSimilarityScorer } from './scorers/VectorSimilarityScorer.js';
+import { DEFAULT_HYBRID_CONFIG } from './types.js';
 import type {
   HybridSearchConfig,
   HybridSearchResult,
   ScoreBreakdown,
   ScoringContext,
-  Scorer,
 } from './types.js';
-import { DEFAULT_HYBRID_CONFIG } from './types.js';
-import { VectorSimilarityScorer } from './scorers/VectorSimilarityScorer.js';
-import { GraphTraversalScorer } from './scorers/GraphTraversalScorer.js';
-import { TemporalFreshnessScorer } from './scorers/TemporalFreshnessScorer.js';
-import { ConnectionStrengthScorer } from './scorers/ConnectionStrengthScorer.js';
-import type { Entity } from '../KnowledgeGraphManager.js';
-import type { Relation } from '../types/relation.js';
-import type { VectorSearchResult } from '../types/vector-store.js';
-import { logger } from '../utils/logger.js';
 
 export interface HybridRetrieverOptions {
   /**
@@ -49,7 +49,7 @@ export class HybridRetriever {
       this.config.temporalWeight +
       this.config.connectionWeight;
 
-    if (Math.abs(totalWeight - 1.0) > 0.01) {
+    if (Math.abs(totalWeight - 1) > 0.01) {
       logger.warn(
         `HybridRetriever: Weights sum to ${totalWeight.toFixed(2)}, not 1.0. Results may be skewed.`
       );
@@ -94,8 +94,7 @@ export class HybridRetriever {
     // Build results with hybrid scores
     const hybridResults: HybridSearchResult[] = [];
 
-    for (let i = 0; i < vectorResults.length; i++) {
-      const vectorResult = vectorResults[i];
+    for (const [i, vectorResult] of vectorResults.entries()) {
       const entity = entities[i];
 
       if (!entity) {
@@ -202,12 +201,9 @@ export class HybridRetriever {
     connectionScore: number,
     finalScore: number
   ): string {
-    const lines: string[] = [];
+    const lines: string[] = [`Entity: ${context.entity.name}`];
 
-    lines.push(`Entity: ${context.entity.name}`);
-    lines.push(`Final Score: ${(finalScore * 100).toFixed(1)}%`);
-    lines.push('');
-    lines.push('Score Breakdown:');
+    lines.push(`Final Score: ${(finalScore * 100).toFixed(1)}%`, '', 'Score Breakdown:');
     lines.push(
       `- ${this.vectorScorer.getExplanation(context, vectorScore)} (weight: ${this.config.vectorWeight})`
     );
@@ -218,9 +214,9 @@ export class HybridRetriever {
       `- ${this.temporalScorer.getExplanation(context, temporalScore)} (weight: ${this.config.temporalWeight})`
     );
     lines.push(
-      `- ${this.connectionScorer.getExplanation(context, connectionScore)} (weight: ${this.config.connectionWeight})`
+      `- ${this.connectionScorer.getExplanation(context, connectionScore)} (weight: ${this.config.connectionWeight})`,
+      ''
     );
-    lines.push('');
     lines.push(
       `Calculation: (${vectorScore.toFixed(3)} × ${this.config.vectorWeight}) + (${graphScore.toFixed(3)} × ${this.config.graphWeight}) + (${temporalScore.toFixed(3)} × ${this.config.temporalWeight}) + (${connectionScore.toFixed(3)} × ${this.config.connectionWeight}) = ${finalScore.toFixed(3)}`
     );

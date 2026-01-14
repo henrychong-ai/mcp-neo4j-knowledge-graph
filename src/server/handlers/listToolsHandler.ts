@@ -2,7 +2,7 @@
  * Handles the ListTools request.
  * Returns a list of all available tools with their schemas.
  */
-export async function handleListToolsRequest(): Promise<{ tools: Array<Record<string, unknown>> }> {
+export async function handleListToolsRequest(): Promise<{ tools: Record<string, unknown>[] }> {
   // Define the base tools without the temporal-specific ones
   const baseTools = [
     {
@@ -107,8 +107,7 @@ export async function handleListToolsRequest(): Promise<{ tools: Array<Record<st
     },
     {
       name: 'add_observations',
-      description:
-        'Add new observations to existing entities in your knowledge graph',
+      description: 'Add new observations to existing entities in your knowledge graph',
       inputSchema: {
         type: 'object',
         properties: {
@@ -180,8 +179,7 @@ export async function handleListToolsRequest(): Promise<{ tools: Array<Record<st
     },
     {
       name: 'delete_observations',
-      description:
-        'Delete specific observations from entities in your knowledge graph',
+      description: 'Delete specific observations from entities in your knowledge graph',
       inputSchema: {
         type: 'object',
         properties: {
@@ -238,8 +236,7 @@ export async function handleListToolsRequest(): Promise<{ tools: Array<Record<st
     },
     {
       name: 'get_relation',
-      description:
-        'Get a specific relation with its enhanced properties from your knowledge graph',
+      description: 'Get a specific relation with its enhanced properties from your knowledge graph',
       inputSchema: {
         type: 'object',
         properties: {
@@ -261,8 +258,7 @@ export async function handleListToolsRequest(): Promise<{ tools: Array<Record<st
     },
     {
       name: 'update_relation',
-      description:
-        'Update an existing relation with enhanced properties in your knowledge graph',
+      description: 'Update an existing relation with enhanced properties in your knowledge graph',
       inputSchema: {
         type: 'object',
         properties: {
@@ -410,8 +406,7 @@ export async function handleListToolsRequest(): Promise<{ tools: Array<Record<st
     },
     {
       name: 'get_entity_embedding',
-      description:
-        'Get the vector embedding for a specific entity from your knowledge graph',
+      description: 'Get the vector embedding for a specific entity from your knowledge graph',
       inputSchema: {
         type: 'object',
         properties: {
@@ -425,7 +420,8 @@ export async function handleListToolsRequest(): Promise<{ tools: Array<Record<st
     },
     {
       name: 'create_entities_batch',
-      description: 'Create multiple entities in a single optimized batch operation (10-50x faster than individual creates)',
+      description:
+        'Create multiple entities in a single optimized batch operation (10-50x faster than individual creates)',
       inputSchema: {
         type: 'object',
         properties: {
@@ -443,28 +439,32 @@ export async function handleListToolsRequest(): Promise<{ tools: Array<Record<st
                 observations: {
                   type: 'array',
                   items: { type: 'string' },
-                  description: 'An array of observation contents associated with the entity'
-                }
+                  description: 'An array of observation contents associated with the entity',
+                },
               },
-              required: ['name', 'entityType', 'observations']
+              required: ['name', 'entityType', 'observations'],
             },
-            description: 'Array of entities to create'
+            description: 'Array of entities to create',
           },
           config: {
             type: 'object',
             properties: {
               maxBatchSize: { type: 'number', description: 'Maximum batch size (default: 100)' },
-              enableParallel: { type: 'boolean', description: 'Enable parallel processing where possible' }
+              enableParallel: {
+                type: 'boolean',
+                description: 'Enable parallel processing where possible',
+              },
             },
-            description: 'Optional batch configuration'
-          }
+            description: 'Optional batch configuration',
+          },
         },
-        required: ['entities']
-      }
+        required: ['entities'],
+      },
     },
     {
       name: 'create_relations_batch',
-      description: 'Create multiple relations in a single optimized batch operation (10-50x faster than individual creates)',
+      description:
+        'Create multiple relations in a single optimized batch operation (10-50x faster than individual creates)',
       inputSchema: {
         type: 'object',
         properties: {
@@ -473,32 +473,45 @@ export async function handleListToolsRequest(): Promise<{ tools: Array<Record<st
             items: {
               type: 'object',
               properties: {
-                from: { type: 'string', description: 'The name of the entity where the relation starts' },
-                to: { type: 'string', description: 'The name of the entity where the relation ends' },
+                from: {
+                  type: 'string',
+                  description: 'The name of the entity where the relation starts',
+                },
+                to: {
+                  type: 'string',
+                  description: 'The name of the entity where the relation ends',
+                },
                 relationType: { type: 'string', description: 'The type of the relation' },
-                strength: { type: 'number', description: 'Optional strength of relation (0.0-1.0)' },
+                strength: {
+                  type: 'number',
+                  description: 'Optional strength of relation (0.0-1.0)',
+                },
                 confidence: { type: 'number', description: 'Optional confidence level (0.0-1.0)' },
-                metadata: { type: 'object', description: 'Optional metadata about the relation' }
+                metadata: { type: 'object', description: 'Optional metadata about the relation' },
               },
-              required: ['from', 'to', 'relationType']
+              required: ['from', 'to', 'relationType'],
             },
-            description: 'Array of relations to create'
+            description: 'Array of relations to create',
           },
           config: {
             type: 'object',
             properties: {
               maxBatchSize: { type: 'number', description: 'Maximum batch size (default: 100)' },
-              enableParallel: { type: 'boolean', description: 'Enable parallel processing where possible' }
+              enableParallel: {
+                type: 'boolean',
+                description: 'Enable parallel processing where possible',
+              },
             },
-            description: 'Optional batch configuration'
-          }
+            description: 'Optional batch configuration',
+          },
         },
-        required: ['relations']
-      }
+        required: ['relations'],
+      },
     },
     {
       name: 'add_observations_batch',
-      description: 'Add observations to multiple entities in a single optimized batch operation (10-50x faster than individual adds)',
+      description:
+        'Add observations to multiple entities in a single optimized batch operation (10-50x faster than individual adds)',
       inputSchema: {
         type: 'object',
         properties: {
@@ -507,35 +520,42 @@ export async function handleListToolsRequest(): Promise<{ tools: Array<Record<st
             items: {
               type: 'object',
               properties: {
-                entityName: { type: 'string', description: 'The name of the entity to add observations to' },
+                entityName: {
+                  type: 'string',
+                  description: 'The name of the entity to add observations to',
+                },
                 observations: {
                   type: 'array',
                   items: { type: 'string' },
-                  description: 'Observations to add to this entity'
+                  description: 'Observations to add to this entity',
                 },
                 metadata: { type: 'object', description: 'Optional metadata for the observations' },
                 confidence: { type: 'number', description: 'Optional confidence level (0.0-1.0)' },
-                strength: { type: 'number', description: 'Optional strength value (0.0-1.0)' }
+                strength: { type: 'number', description: 'Optional strength value (0.0-1.0)' },
               },
-              required: ['entityName', 'observations']
+              required: ['entityName', 'observations'],
             },
-            description: 'Array of observation batches'
+            description: 'Array of observation batches',
           },
           config: {
             type: 'object',
             properties: {
               maxBatchSize: { type: 'number', description: 'Maximum batch size (default: 100)' },
-              enableParallel: { type: 'boolean', description: 'Enable parallel processing where possible' }
+              enableParallel: {
+                type: 'boolean',
+                description: 'Enable parallel processing where possible',
+              },
             },
-            description: 'Optional batch configuration'
-          }
+            description: 'Optional batch configuration',
+          },
         },
-        required: ['observations']
-      }
+        required: ['observations'],
+      },
     },
     {
       name: 'update_entities_batch',
-      description: 'Update multiple entities in a single optimized batch operation (10-50x faster than individual updates)',
+      description:
+        'Update multiple entities in a single optimized batch operation (10-50x faster than individual updates)',
       inputSchema: {
         type: 'object',
         properties: {
@@ -553,29 +573,32 @@ export async function handleListToolsRequest(): Promise<{ tools: Array<Record<st
                 addObservations: {
                   type: 'array',
                   items: { type: 'string' },
-                  description: 'Observations to add (optional)'
+                  description: 'Observations to add (optional)',
                 },
                 removeObservations: {
                   type: 'array',
                   items: { type: 'string' },
-                  description: 'Observations to remove (optional)'
-                }
+                  description: 'Observations to remove (optional)',
+                },
               },
-              required: ['name']
+              required: ['name'],
             },
-            description: 'Array of entity updates'
+            description: 'Array of entity updates',
           },
           config: {
             type: 'object',
             properties: {
               maxBatchSize: { type: 'number', description: 'Maximum batch size (default: 100)' },
-              enableParallel: { type: 'boolean', description: 'Enable parallel processing where possible' }
+              enableParallel: {
+                type: 'boolean',
+                description: 'Enable parallel processing where possible',
+              },
             },
-            description: 'Optional batch configuration'
-          }
+            description: 'Optional batch configuration',
+          },
         },
-        required: ['updates']
-      }
+        required: ['updates'],
+      },
     },
   ];
 
@@ -583,8 +606,7 @@ export async function handleListToolsRequest(): Promise<{ tools: Array<Record<st
   const temporalTools = [
     {
       name: 'get_entity_history',
-      description:
-        'Get the version history of an entity from your knowledge graph',
+      description: 'Get the version history of an entity from your knowledge graph',
       inputSchema: {
         type: 'object',
         properties: {
@@ -598,8 +620,7 @@ export async function handleListToolsRequest(): Promise<{ tools: Array<Record<st
     },
     {
       name: 'get_relation_history',
-      description:
-        'Get the version history of a relation from your knowledge graph',
+      description: 'Get the version history of a relation from your knowledge graph',
       inputSchema: {
         type: 'object',
         properties: {
@@ -621,8 +642,7 @@ export async function handleListToolsRequest(): Promise<{ tools: Array<Record<st
     },
     {
       name: 'get_graph_at_time',
-      description:
-        'Get your knowledge graph as it existed at a specific point in time',
+      description: 'Get your knowledge graph as it existed at a specific point in time',
       inputSchema: {
         type: 'object',
         properties: {
@@ -636,8 +656,7 @@ export async function handleListToolsRequest(): Promise<{ tools: Array<Record<st
     },
     {
       name: 'get_decayed_graph',
-      description:
-        'Get your knowledge graph with confidence values decayed based on time',
+      description: 'Get your knowledge graph with confidence values decayed based on time',
       inputSchema: {
         type: 'object',
         properties: {
@@ -659,8 +678,7 @@ export async function handleListToolsRequest(): Promise<{ tools: Array<Record<st
   const debugTools = [
     {
       name: 'force_generate_embedding',
-      description:
-        'Forcibly generate and store an embedding for an entity in your knowledge graph',
+      description: 'Forcibly generate and store an embedding for an entity in your knowledge graph',
       inputSchema: {
         type: 'object',
         properties: {

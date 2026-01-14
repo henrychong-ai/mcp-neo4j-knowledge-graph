@@ -7,7 +7,7 @@ export async function handleToolCall(
   manager: KnowledgeGraphManager,
   toolCall: { name: string; args: Record<string, unknown> }
 ): Promise<unknown> {
-  if (!toolCall || !toolCall.name) {
+  if (!toolCall?.name) {
     return { error: 'Invalid tool call' };
   }
 
@@ -24,10 +24,11 @@ export async function handleToolCall(
       }
 
       // ... existing code ...
-      default:
+      default: {
         return { error: `Unknown tool call: ${toolCall.name}` };
+      }
     }
-  } catch (err) {
-    return { error: `Error handling tool call: ${err}` };
+  } catch (error) {
+    return { error: `Error handling tool call: ${error}` };
   }
 }

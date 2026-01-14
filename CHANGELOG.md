@@ -108,20 +108,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Technical Implementation
 
 **Entity Interface** (`src/KnowledgeGraphManager.ts`):
+
 - Added `VALID_DOMAINS` constant and `Domain` type
 - Extended `Entity` interface with `domain?: Domain | null`
 
 **Storage Provider** (`src/storage/neo4j/Neo4jStorageProvider.ts`):
+
 - `createEntities`: Stores domain property on Entity nodes
 - `searchNodes`: Filters by domain when provided
 - `createEntitiesBatch`: Stores domain in bulk operations
 - `updateEntitiesBatch`: Supports domain field updates
 
 **Vector Store** (`src/storage/neo4j/Neo4jVectorStore.ts`):
+
 - `search`: Added domain filter to vector similarity queries
 - `searchByPatternFallback`: Added domain filter to fallback search
 
 **Tool Handlers** (`src/server/handlers/`):
+
 - `callToolHandler.ts`: Passes domain option to search operations
 - `listToolsHandler.ts`: Updated tool schemas with domain properties
 
@@ -197,6 +201,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Technical Implementation
 
 **Storage Layer** (`src/storage/neo4j/Neo4jStorageProvider.ts`):
+
 - Implemented 4 new batch methods using Neo4j UNWIND operations
 - Automatic batch chunking to prevent memory exhaustion
 - Embedding generation integrated with embedding job queue (always generated if service available)
@@ -204,6 +209,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - ~450 lines of optimized bulk operation code with temporal versioning support
 
 **Knowledge Graph Manager** (`src/KnowledgeGraphManager.ts`):
+
 - Added 4 batch operation wrapper methods with comprehensive validation
 - Integrated embedding job scheduling for all batch operations (priority 1 for create/add, priority 2 for update)
 - Pre-execution validation prevents UNWIND silent failures:
@@ -214,6 +220,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - ~240 lines of validation, orchestration, and embedding integration code
 
 **MCP Tool Handlers** (`src/server/handlers/toolHandlers/`):
+
 - Created 4 new MCP tool handler files:
   - `createEntitiesBatch.ts`
   - `createRelationsBatch.ts`
@@ -223,12 +230,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated tool routing in `callToolHandler.ts` and `listToolsHandler.ts`
 
 **Type Definitions** (`src/types/batch-operations.ts`):
+
 - New `BatchConfig` interface for configuration options
 - New `BatchResult<T>` interface for operation results
 - New `BatchProgress` interface for progress tracking
 - New `ObservationBatch` and `EntityUpdate` interfaces
 
 **Comprehensive Test Coverage**:
+
 - Added 6 new test files with 38 test cases
 - Tests cover all 6 critical UNWIND edge cases:
   1. Transaction size limits (large batch handling)
@@ -243,12 +252,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Performance benchmark tests
 
 **Files Modified**:
+
 - `src/KnowledgeGraphManager.ts`: Added 4 batch operation methods (lines 1212-1416)
 - `src/server/handlers/toolHandlers/index.ts`: Exported batch handlers
 - `src/server/handlers/callToolHandler.ts`: Added batch tool routing
 - `src/server/handlers/listToolsHandler.ts`: Registered 4 batch tools with schemas
 
 **Files Created**:
+
 - `src/types/batch-operations.ts`: Type definitions
 - `src/server/handlers/toolHandlers/createEntitiesBatch.ts`
 - `src/server/handlers/toolHandlers/createRelationsBatch.ts`
@@ -270,7 +281,7 @@ const result = await mcp__kg__create_entities_batch({
     { name: 'Entity1', entityType: 'Person', observations: ['obs1'] },
     { name: 'Entity2', entityType: 'Place', observations: ['obs2'] },
   ],
-  config: { maxBatchSize: 100 }
+  config: { maxBatchSize: 100 },
 });
 
 // Create multiple relations
@@ -278,7 +289,7 @@ await mcp__kg__create_relations_batch({
   relations: [
     { from: 'Entity1', to: 'Entity2', relationType: 'visited' },
     { from: 'Entity2', to: 'Entity3', relationType: 'contains' },
-  ]
+  ],
 });
 
 // Add observations to multiple entities
@@ -286,7 +297,7 @@ await mcp__kg__add_observations_batch({
   batches: [
     { entityName: 'Entity1', observations: ['new obs 1', 'new obs 2'] },
     { entityName: 'Entity2', observations: ['new obs 3'] },
-  ]
+  ],
 });
 
 // Update multiple entities
@@ -294,18 +305,20 @@ await mcp__kg__update_entities_batch({
   updates: [
     { name: 'Entity1', entityType: 'UpdatedType' },
     { name: 'Entity2', addObservations: ['new obs'], removeObservations: ['old obs'] },
-  ]
+  ],
 });
 ```
 
 ### Performance Benchmarks
 
 Based on testing with the Neo4j storage provider:
+
 - **100 entities**: ~1.5s batch vs ~50s individual (33x faster)
 - **100 relations**: ~1.2s batch vs ~40s individual (33x faster)
 - **100 observation batches**: ~0.9s batch vs ~30s individual (33x faster)
 
 Actual performance will vary based on:
+
 - Neo4j server specifications
 - Network latency
 - Entity complexity and observation count
@@ -316,12 +329,14 @@ Actual performance will vary based on:
 After initial implementation, comprehensive code review identified 4 critical production blockers. Fixed via 5-phase approach:
 
 **Phase 1: Cypher WHERE NULL Pattern (Critical Bug)**
+
 - **Problem**: `MATCH (node {validTo: NULL})` never matches in Neo4j (NULL properties are dropped)
 - **Impact**: Batch operations would fail to query current entity versions
 - **Fix**: Changed to `MATCH (node) WHERE node.validTo IS NULL` pattern
 - **Files**: `Neo4jStorageProvider.ts` lines 2868-2871, 3018-3019
 
 **Phase 2: Embedding Pipeline Integration (Critical Missing Feature)**
+
 - **Problem**: Batch operations bypassed embedding generation entirely, breaking semantic search
 - **Impact**: Batch-created entities wouldn't participate in semantic search
 - **Fix 1**: Added embedding job scheduling to all batch wrappers in `KnowledgeGraphManager`
@@ -329,20 +344,23 @@ After initial implementation, comprehensive code review identified 4 critical pr
 - **Files**: `KnowledgeGraphManager.ts` lines 1270-1278, 1387-1395, 1453-1461; `Neo4jStorageProvider.ts` line 2728
 
 **Phase 3: True UNWIND Bulk Operations (Critical Performance Issue)**
+
 - **Problem**: `addObservationsBatch` and `updateEntitiesBatch` looped over individual operations (zero performance benefit)
 - **Impact**: No actual performance improvement for half the batch API
-- **Fix 1**: Complete UNWIND rewrite of `addObservationsBatch` (5 bulk queries vs N*6 individual queries)
+- **Fix 1**: Complete UNWIND rewrite of `addObservationsBatch` (5 bulk queries vs N\*6 individual queries)
 - **Fix 2**: UNWIND optimization for `updateEntitiesBatch` entityType updates, delegated addObservations to now-optimized batch method
 - **Performance**: Achieved advertised 10-50x improvement
 - **Files**: `Neo4jStorageProvider.ts` lines 2933-3124 (addObservations), 3129-3238 (update)
 
 **Phase 4: API Alignment & Type Safety**
+
 - **Problem**: `updateEntitiesBatch` return type mismatch (`BatchResult<Entity>` vs actual `BatchResult<EntityUpdate>`)
 - **Impact**: Type safety violation, misleading API contract
 - **Fix**: Corrected return type to match implementation
 - **Files**: `KnowledgeGraphManager.ts` line 1409
 
 **Phase 5: Documentation Alignment**
+
 - **Problem**: Documentation claimed features not yet fully implemented
 - **Fix**: Updated README.md and CHANGELOG.md to reflect actual implementation
 - **Files**: `README.md` line 337, `CHANGELOG.md` lines 12, 38, 44, 50, 131
@@ -361,7 +379,7 @@ for (const entity of entities) {
 
 // After (batch operation)
 await knowledgeGraph.createEntitiesBatch(entities, {
-  maxBatchSize: 100
+  maxBatchSize: 100,
 });
 ```
 
@@ -381,6 +399,7 @@ await knowledgeGraph.createEntitiesBatch(entities, {
   - **Impact**: Tests now complete cleanly without resource leaks; system remains responsive after test runs
 
 **Files Modified**:
+
 - `src/index.ts`: Lines 20-21, 242-244 - Changed PrometheusMetrics to conditional initialization inside environment check
 - `src/metrics/PrometheusMetrics.ts`:
   - Line 19: Added `defaultMetricsInterval` field to store interval reference
@@ -391,6 +410,7 @@ await knowledgeGraph.createEntitiesBatch(entities, {
 - `vitest.config.ts`: Lines 5-6, 26-27 - Added `setupFiles` and `teardownTimeout` configuration
 
 **Technical Details**:
+
 - PrometheusMetrics interval timers are created by `prom-client.collectDefaultMetrics()` for system metrics (CPU, memory, etc.)
 - These intervals run continuously and cannot be cleared without storing the cleanup function reference
 - Node.js event loop stays active as long as intervals exist, preventing process termination
@@ -409,6 +429,7 @@ await knowledgeGraph.createEntitiesBatch(entities, {
   - **Impact**: Claude Desktop now successfully connects to kg MCP server; all Prometheus log messages go to stderr; MCP JSON-RPC protocol stream remains clean
 
 **Files Modified**:
+
 - `src/metrics/PrometheusMetrics.ts`: Added logger import, replaced 4 console.log() calls with logger.info()
 
 **Why Claude Code Worked**: Claude Code may have more robust error handling or different JSON parsing logic that tolerated stdout contamination better than Claude Desktop's strict parser.
@@ -438,6 +459,7 @@ await knowledgeGraph.createEntitiesBatch(entities, {
 ### Technical Details
 
 **Implementation** (`src/storage/neo4j/Neo4jStorageProvider.ts`):
+
 - Added `searchCache` private field using `LRUCache` from `lru-cache` library
 - Cache initialization in constructor with comprehensive configuration
 - Cache hit/miss logic in `semanticSearch` method with cache key generation
@@ -445,14 +467,17 @@ await knowledgeGraph.createEntitiesBatch(entities, {
 - Integration with PrometheusMetrics for cache hit/miss/invalidation tracking
 
 **Cache Key Generation**:
+
 - Includes: query text, limit, min_similarity, entity_types, enable_hybrid_retrieval, hybrid_config
 - Ensures cache isolation for different search configurations
 - Handles optional parameters gracefully
 
 **Files Modified**:
+
 - `src/storage/neo4j/Neo4jStorageProvider.ts` (+150 lines, -21 lines)
 
 **Codex Review**:
+
 - Implementation reviewed and approved by GPT-5-Codex
 - Fixed guard clauses for undefined entities/relations in size calculation
 - Verified cache invalidation patterns across all mutation operations
@@ -490,6 +515,7 @@ await knowledgeGraph.createEntitiesBatch(entities, {
 ### Technical Details
 
 **PrometheusMetrics Module** (`src/metrics/PrometheusMetrics.ts`):
+
 - Singleton pattern for consistent metrics collection across all operations
 - Environment-gated server startup (`ENABLE_PROMETHEUS_METRICS=true` required)
 - Query timer helper for easy operation instrumentation
@@ -497,12 +523,14 @@ await knowledgeGraph.createEntitiesBatch(entities, {
 - Comprehensive metric types: Counter, Gauge, Histogram with appropriate bucketing
 
 **Neo4jStorageProvider Instrumentation**:
+
 - All main query methods instrumented with query duration tracking
 - Cache status tracking (currently 'disabled', ready for cache PR merge)
 - Try/finally pattern ensures metrics recorded even on errors
 - Zero performance impact when metrics disabled (environment check only)
 
 **Integration with vps-2 Monitoring Stack**:
+
 - Metrics designed for Prometheus scraping (existing stack: Prometheus 9090, Grafana 3000)
 - Port 9091 chosen to avoid conflicts with existing exporters (neo4j-exporter: 9099, node-exporter: 9100)
 - Ready for Prometheus configuration update: `scrape_configs` → `mcp-kg-server:9091`
@@ -521,11 +549,13 @@ await knowledgeGraph.createEntitiesBatch(entities, {
 ### Configuration
 
 To enable metrics collection:
+
 ```bash
 export ENABLE_PROMETHEUS_METRICS=true
 ```
 
 Access metrics:
+
 ```bash
 curl http://localhost:9091/metrics
 ```
@@ -545,11 +575,13 @@ curl http://localhost:9091/metrics
 ### Technical Details
 
 **Root Causes:**
+
 - ConnectionStrengthScorer: Test incorrectly expected "2/3 strong" when all 3 relations (confidence 0.9, 0.8, 0.7) meet the >= 0.7 threshold for "strong" classification
 - TemporalFreshnessScorer: Test expectations didn't account for actual scoring formula: `validityScore * 0.4 + recencyScore * 0.6`
 - Tests written before implementation details finalized, never updated to match actual behavior
 
 **Changes:**
+
 - `src/retrieval/__vitest__/ConnectionStrengthScorer.test.ts:115`: "2/3 strong" → "3/3 strong"
 - `src/retrieval/__vitest__/TemporalFreshnessScorer.test.ts:47`: > 0.9 → > 0.85
 - `src/retrieval/__vitest__/TemporalFreshnessScorer.test.ts:58`: < 0.3 → < 0.4

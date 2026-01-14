@@ -1,7 +1,8 @@
-import type { EmbeddingService } from './EmbeddingService.js';
-import { DefaultEmbeddingService } from './DefaultEmbeddingService.js';
-import { OpenAIEmbeddingService } from './OpenAIEmbeddingService.js';
 import { logger } from '../utils/logger.js';
+
+import { DefaultEmbeddingService } from './DefaultEmbeddingService.js';
+import type { EmbeddingService } from './EmbeddingService.js';
+import { OpenAIEmbeddingService } from './OpenAIEmbeddingService.js';
 
 /**
  * Configuration options for embedding services

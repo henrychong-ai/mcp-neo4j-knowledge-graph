@@ -38,7 +38,7 @@ describe('ConnectionStrengthScorer', () => {
     it('should return higher score for entities with high-quality connections', async () => {
       const highQualityRelations: Relation[] = [
         { from: 'TestEntity', to: 'Entity1', relationType: 'RELATES_TO', confidence: 0.95 },
-        { from: 'TestEntity', to: 'Entity2', relationType: 'RELATES_TO', confidence: 0.90 },
+        { from: 'TestEntity', to: 'Entity2', relationType: 'RELATES_TO', confidence: 0.9 },
         { from: 'TestEntity', to: 'Entity3', relationType: 'RELATES_TO', confidence: 0.85 },
       ];
       const context = createContext(highQualityRelations);

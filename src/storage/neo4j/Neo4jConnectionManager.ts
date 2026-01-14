@@ -1,4 +1,5 @@
 import neo4j, { type Driver, type Session, type QueryResult } from 'neo4j-driver';
+
 import { DEFAULT_NEO4J_CONFIG, type Neo4jConfig } from './Neo4jConfig.js';
 
 /**
@@ -25,17 +26,16 @@ export class Neo4jConnectionManager {
    */
   constructor(config?: Partial<Neo4jConfig> | Neo4jConnectionOptions) {
     // Handle deprecated options
-    if (config && 'uri' in config) {
-      this.config = {
-        ...DEFAULT_NEO4J_CONFIG,
-        ...config,
-      };
-    } else {
-      this.config = {
-        ...DEFAULT_NEO4J_CONFIG,
-        ...config,
-      };
-    }
+    this.config =
+      config && 'uri' in config
+        ? {
+            ...DEFAULT_NEO4J_CONFIG,
+            ...config,
+          }
+        : {
+            ...DEFAULT_NEO4J_CONFIG,
+            ...config,
+          };
 
     this.driver = neo4j.driver(
       this.config.uri,

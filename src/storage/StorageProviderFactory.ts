@@ -1,8 +1,8 @@
-import type { StorageProvider } from './StorageProvider.js';
 import { FileStorageProvider } from './FileStorageProvider.js';
-import type { VectorStoreFactoryOptions } from './VectorStoreFactory.js';
-import { Neo4jStorageProvider } from './neo4j/Neo4jStorageProvider.js';
 import type { Neo4jConfig } from './neo4j/Neo4jConfig.js';
+import { Neo4jStorageProvider } from './neo4j/Neo4jStorageProvider.js';
+import type { StorageProvider } from './StorageProvider.js';
+import type { VectorStoreFactoryOptions } from './VectorStoreFactory.js';
 
 export interface StorageProviderConfig {
   type: 'file' | 'neo4j';
@@ -92,8 +92,9 @@ export class StorageProviderFactory {
         });
         break;
       }
-      default:
+      default: {
         throw new Error(`Unsupported provider type: ${config.type}`);
+      }
     }
 
     // Track the provider as connected
@@ -146,7 +147,7 @@ export class StorageProviderFactory {
    * Cleanup all connected providers
    */
   async cleanupAllProviders(): Promise<void> {
-    const providers = Array.from(this.connectedProviders);
+    const providers = [...this.connectedProviders];
     await Promise.all(
       providers.map((provider) => this.cleanupProvider(provider as CleanableProvider))
     );

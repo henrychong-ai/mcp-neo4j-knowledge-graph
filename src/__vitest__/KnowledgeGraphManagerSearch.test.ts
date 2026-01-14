@@ -82,7 +82,10 @@ describe('KnowledgeGraphManager Search', () => {
     const result = await manager.search('test query');
 
     // Should call searchNodes with domain options
-    expect(mockStorageProvider.searchNodes).toHaveBeenCalledWith('test query', { domain: undefined, includeNullDomain: undefined });
+    expect(mockStorageProvider.searchNodes).toHaveBeenCalledWith('test query', {
+      domain: undefined,
+      includeNullDomain: undefined,
+    });
     expect(mockStorageProvider.semanticSearch).not.toHaveBeenCalled();
 
     // Result should be what searchNodes returns
@@ -136,7 +139,10 @@ describe('KnowledgeGraphManager Search', () => {
     const result = await manager.search('test query', { semanticSearch: true });
 
     // Should fall back to searchNodes
-    expect(mockStorageProvider.searchNodes).toHaveBeenCalledWith('test query', { domain: undefined, includeNullDomain: undefined });
+    expect(mockStorageProvider.searchNodes).toHaveBeenCalledWith('test query', {
+      domain: undefined,
+      includeNullDomain: undefined,
+    });
 
     // Result should be what searchNodes returns
     expect(result.entities.length).toBe(1);
@@ -159,7 +165,10 @@ describe('KnowledgeGraphManager Search', () => {
     const result = await fileBasedManager.search('test query', { semanticSearch: true });
 
     // Should call searchNodes with options
-    expect(fileBasedManager.searchNodes).toHaveBeenCalledWith('test query', { domain: undefined, includeNullDomain: undefined });
+    expect(fileBasedManager.searchNodes).toHaveBeenCalledWith('test query', {
+      domain: undefined,
+      includeNullDomain: undefined,
+    });
 
     // Result should be what searchNodes returns
     expect(result.entities.length).toBe(1);

@@ -126,11 +126,11 @@ export interface SearchMatch {
   /**
    * Text match locations
    */
-  textMatches?: Array<{
+  textMatches?: {
     start: number;
     end: number;
     text: string;
-  }>;
+  }[];
 }
 
 /**

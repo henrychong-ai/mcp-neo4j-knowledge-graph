@@ -1,5 +1,7 @@
+import http from 'node:http';
+
 import promClient from 'prom-client';
-import http from 'http';
+
 import { logger } from '../utils/logger.js';
 
 /**
@@ -89,11 +91,13 @@ export class PrometheusMetrics {
    * Start the metrics HTTP server on specified port
    * Only starts if ENABLE_PROMETHEUS_METRICS=true in environment
    */
-  public startServer(port: number = 9091): void {
+  public startServer(port = 9091): void {
     const enabled = process.env.ENABLE_PROMETHEUS_METRICS === 'true';
 
     if (!enabled) {
-      logger.info('[PrometheusMetrics] Metrics collection disabled (ENABLE_PROMETHEUS_METRICS != true)');
+      logger.info(
+        '[PrometheusMetrics] Metrics collection disabled (ENABLE_PROMETHEUS_METRICS != true)'
+      );
       return;
     }
 
@@ -114,7 +118,9 @@ export class PrometheusMetrics {
     });
 
     this.server.listen(port, () => {
-      logger.info(`[PrometheusMetrics] Metrics server listening on http://localhost:${port}/metrics`);
+      logger.info(
+        `[PrometheusMetrics] Metrics server listening on http://localhost:${port}/metrics`
+      );
     });
   }
 

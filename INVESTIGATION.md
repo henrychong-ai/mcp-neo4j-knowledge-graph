@@ -1,6 +1,7 @@
 # Neo4j MCP Codebase Investigation Report
 
 ## Investigation Objective
+
 Determine if the mcp-neo4j-knowledge-graph codebase uses subprocess (cypher-shell) or neo4j-driver directly for database operations, and identify the root cause of the `mcp__kg__add_observations` JSON parsing error encountered earlier.
 
 ## Findings Summary
@@ -12,6 +13,7 @@ The codebase **does NOT use subprocess patterns** (exec, spawn, fork, cypher-she
 ### Evidence
 
 #### 1. **Grep Search Results**
+
 - **Pattern**: `exec|spawn|fork|cypher-shell|child_process`
 - **Result**: 20 files matched, but NO actual subprocess usage found
 - **All matches were**:
@@ -21,6 +23,7 @@ The codebase **does NOT use subprocess patterns** (exec, spawn, fork, cypher-she
   - Zero imports of `child_process`
 
 #### 2. **Neo4jConnectionManager.ts** (Lines 40-44)
+
 ```typescript
 this.driver = neo4j.driver(
   this.config.uri,
@@ -28,10 +31,13 @@ this.driver = neo4j.driver(
   {}
 );
 ```
+
 **Architecture**: Direct driver initialization, not subprocess.
 
 #### 3. **Neo4jStorageProvider.ts** (Lines 852-1072)
+
 Transaction-based operations with proper commit/rollback:
+
 ```typescript
 async addObservations(observations: { entityName: string; contents: string[] }[]): Promise<...> {
   const session = await this.connectionManager.getSession();
@@ -50,9 +56,11 @@ async addObservations(observations: { entityName: string; contents: string[] }[]
   }
 }
 ```
+
 **Architecture**: Professional transaction management, not subprocess.
 
 #### 4. **package.json Dependencies**
+
 ```json
 "dependencies": {
   "@modelcontextprotocol/sdk": "1.11.0",
@@ -61,21 +69,25 @@ async addObservations(observations: { entityName: string; contents: string[] }[]
   "uuid": "^11.1.0"
 }
 ```
+
 **Evidence**: neo4j-driver is direct dependency, child_process is NOT.
 
 ## Root Cause Analysis: Original MCP Error
 
 ### Original Error
+
 ```
 SyntaxError: Unexpected token 'U', "User follo"... is not valid JSON
 ```
 
 ### What This Tells Us
+
 The JSON parsing error occurred, but since the code doesn't use subprocess:
 
 **The bug is NOT in this codebase.**
 
 Possible actual causes:
+
 1. **Version Mismatch**: The npm package `@gannonh/memento-mcp` may have different code than this GitHub repo
 2. **Environmental**: Neo4j configuration, network, or credential issue
 3. **MCP SDK Layer**: Response serialization in @modelcontextprotocol/sdk
@@ -83,6 +95,7 @@ Possible actual causes:
 5. **Encoding Issue**: Character encoding in response handling
 
 ### Evidence MCP Error ≠ Subprocess Bug
+
 - Code uses neo4j-driver exclusively
 - Proper parameterized queries throughout
 - Transaction management with rollback
@@ -92,6 +105,7 @@ Possible actual causes:
 ## Code Quality Assessment
 
 ### ✅ Strengths
+
 - **Driver Usage**: Correct use of neo4j-driver with connection pooling
 - **Transaction Safety**: Proper begin/commit/rollback patterns
 - **Parameterized Queries**: All queries use `$param` syntax (prevents injection)
@@ -99,6 +113,7 @@ Possible actual causes:
 - **Error Handling**: Comprehensive try/catch with rollback
 
 ### ⚠️ Observations (Not Issues)
+
 - Type definitions could be more specific in places
 - Test coverage exists but could be expanded
 - Configuration validation could be stricter
@@ -107,7 +122,9 @@ Possible actual causes:
 ## Recommended Next Steps
 
 ### For Testing
+
 1. **Test the MCP server locally** to verify if the error reproduces:
+
    ```bash
    cd /path/to/mcp-neo4j-knowledge-graph
    npm install
@@ -124,7 +141,9 @@ Possible actual causes:
    - Check character encoding
 
 ### For Improvement (Optional)
+
 If you want to enhance the codebase (beyond bug fixing):
+
 1. Add retry logic for transient failures
 2. Enhanced logging for debugging
 3. Response caching for read operations
@@ -136,6 +155,7 @@ If you want to enhance the codebase (beyond bug fixing):
 **No code changes are needed for the subprocess→driver migration.** The codebase already implements this correctly.
 
 The `mcp__kg__add_observations` error was likely caused by:
+
 - A different version of the published npm package
 - Environmental/configuration issues
 - MCP SDK compatibility issue

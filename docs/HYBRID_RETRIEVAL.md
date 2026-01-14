@@ -31,6 +31,7 @@ final_score = (vector_score × vector_weight) +
 ```
 
 **Default Weights**:
+
 - Vector Similarity: 0.5 (50%)
 - Graph Traversal: 0.2 (20%)
 - Temporal Freshness: 0.15 (15%)
@@ -47,6 +48,7 @@ final_score = (vector_score × vector_weight) +
 **Calculation**: Cosine similarity between query and entity embeddings
 
 **Example**:
+
 ```
 Query: "machine learning frameworks"
 Entity: "TensorFlow" with embedding close to query
@@ -58,11 +60,13 @@ Score: 0.92
 **What it measures**: Entity importance based on graph position
 
 **Factors**:
+
 - **Degree centrality**: Number of connections (normalized)
 - **Relation quality**: Average confidence/strength
 - **Bidirectional bonus**: Mutual relationships are valued higher
 
 **Example**:
+
 ```
 Entity A: 10 connections, 3 bidirectional, avg confidence 0.8
 Entity B: 2 connections, 0 bidirectional, avg confidence 0.6
@@ -75,12 +79,14 @@ Entity B Score: 0.35
 **What it measures**: How recent and valid the entity is
 
 **Factors**:
+
 - **Recency**: Exponential decay based on `updatedAt`
   - Formula: `score = 2^(-age_days / half_life)`
   - Default half-life: 30 days
 - **Validity**: Whether entity is currently valid (`validFrom`/`validTo`)
 
 **Example**:
+
 ```
 Entity updated 5 days ago (half-life = 30 days):
 Recency score: 2^(-5/30) ≈ 0.89
@@ -93,11 +99,13 @@ Combined: (1.0 × 0.4) + (0.89 × 0.6) ≈ 0.93
 **What it measures**: Quality and diversity of relationships
 
 **Factors**:
+
 - **Average quality**: Mean confidence/strength of relations
 - **High-quality ratio**: Proportion with confidence ≥ 0.7
 - **Type diversity**: Shannon entropy of relation types
 
 **Example**:
+
 ```
 3 relations with confidence [0.9, 0.8, 0.7]
 3 different relation types
@@ -212,6 +220,7 @@ Calculation: (0.920 × 0.5) + (0.750 × 0.2) + (0.880 × 0.15) + (0.780 × 0.15)
 ### Use Case Profiles
 
 **1. Research / Exploration** (emphasize graph structure):
+
 ```typescript
 {
   vectorWeight: 0.4,
@@ -222,6 +231,7 @@ Calculation: (0.920 × 0.5) + (0.750 × 0.2) + (0.880 × 0.15) + (0.780 × 0.15)
 ```
 
 **2. Recent Information** (emphasize freshness):
+
 ```typescript
 {
   vectorWeight: 0.4,
@@ -232,6 +242,7 @@ Calculation: (0.920 × 0.5) + (0.750 × 0.2) + (0.880 × 0.15) + (0.780 × 0.15)
 ```
 
 **3. High-Quality Connections** (emphasize relation quality):
+
 ```typescript
 {
   vectorWeight: 0.4,
@@ -242,6 +253,7 @@ Calculation: (0.920 × 0.5) + (0.750 × 0.2) + (0.880 × 0.15) + (0.780 × 0.15)
 ```
 
 **4. Pure Semantic** (vector-only):
+
 ```typescript
 {
   vectorWeight: 1.0,
@@ -256,6 +268,7 @@ Calculation: (0.920 × 0.5) + (0.750 × 0.2) + (0.880 × 0.15) + (0.780 × 0.15)
 ### Computational Cost
 
 Hybrid retrieval adds ~100-300ms per query depending on:
+
 - Number of results being reranked
 - Graph size (for graph scoring)
 - Number of relations per entity
@@ -339,7 +352,7 @@ Use the MCP tool with debug mode:
 ```json
 {
   "hybrid_config": {
-    "temporal_half_life": 60  // Slower decay (60 days)
+    "temporal_half_life": 60 // Slower decay (60 days)
   }
 }
 ```

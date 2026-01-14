@@ -1,6 +1,7 @@
-import type { Neo4jConnectionManager } from './Neo4jConnectionManager.js';
-import { DEFAULT_NEO4J_CONFIG, type Neo4jConfig } from './Neo4jConfig.js';
 import { logger } from '../../utils/logger.js';
+
+import { DEFAULT_NEO4J_CONFIG, type Neo4jConfig } from './Neo4jConfig.js';
+import type { Neo4jConnectionManager } from './Neo4jConnectionManager.js';
 
 /**
  * Manages Neo4j schema operations like creating constraints and indexes
@@ -130,9 +131,7 @@ export class Neo4jSchemaManager {
           this.log(`   Dropping conflicting constraint: ${constraint.name}`);
           await this.dropConstraintIfExists(constraint.name as string);
         } else {
-          this.log(
-            `   Run with recreate=true to automatically remove conflicting constraints`
-          );
+          this.log(`   Run with recreate=true to automatically remove conflicting constraints`);
         }
       }
     }
@@ -321,8 +320,8 @@ export class Neo4jSchemaManager {
     // Check Neo4j version and edition for vector index compatibility
     const { version, edition } = await this.getServerVersion();
     const versionParts = version.split('.');
-    const major = parseInt(versionParts[0], 10);
-    const minor = parseInt(versionParts[1], 10);
+    const major = Number.parseInt(versionParts[0], 10);
+    const minor = Number.parseInt(versionParts[1], 10);
 
     // Check Enterprise Edition requirement first
     if (edition.toLowerCase() === 'community') {

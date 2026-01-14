@@ -64,11 +64,11 @@ export namespace TemporalRelation {
 /**
  * TemporalRelationValidator class with validation methods
  */
-export class TemporalRelationValidator {
+export const TemporalRelationValidator = {
   /**
    * Validates if an object conforms to the TemporalRelation interface
    */
-  static isTemporalRelation(obj: unknown): boolean {
+  isTemporalRelation(obj: unknown): boolean {
     // First ensure it's a valid Relation
     if (!RelationValidator.isRelation(obj)) {
       return false;
@@ -100,12 +100,12 @@ export class TemporalRelationValidator {
     }
 
     return true;
-  }
+  },
 
   /**
    * Checks if a relation has a valid temporal range
    */
-  static hasValidTimeRange(obj: unknown): boolean {
+  hasValidTimeRange(obj: unknown): boolean {
     if (!this.isTemporalRelation(obj)) {
       return false;
     }
@@ -119,12 +119,12 @@ export class TemporalRelationValidator {
     }
 
     return true;
-  }
+  },
 
   /**
    * Checks if a relation is currently valid based on its temporal range
    */
-  static isCurrentlyValid(obj: unknown, now = Date.now()): boolean {
+  isCurrentlyValid(obj: unknown, now = Date.now()): boolean {
     if (!this.isTemporalRelation(obj)) {
       return false;
     }
@@ -142,5 +142,5 @@ export class TemporalRelationValidator {
     }
 
     return true;
-  }
-}
+  },
+};

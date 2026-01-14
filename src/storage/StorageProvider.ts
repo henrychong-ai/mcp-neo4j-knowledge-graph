@@ -1,7 +1,12 @@
 import type { KnowledgeGraph } from '../KnowledgeGraphManager.js';
-import type { Relation } from '../types/relation.js';
+import type {
+  BatchConfig,
+  BatchResult,
+  ObservationBatch,
+  EntityUpdate,
+} from '../types/batch-operations.js';
 import type { EntityEmbedding, SemanticSearchOptions } from '../types/entity-embedding.js';
-import type { BatchConfig, BatchResult, ObservationBatch, EntityUpdate } from '../types/batch-operations.js';
+import type { Relation } from '../types/relation.js';
 
 /**
  * Options for searching nodes in the knowledge graph
@@ -210,7 +215,10 @@ export interface StorageProvider {
    * @param config Optional batch configuration
    * @returns Promise resolving to batch result with successful and failed items
    */
-  createRelationsBatch?(relations: Relation[], config?: BatchConfig): Promise<BatchResult<Relation>>;
+  createRelationsBatch?(
+    relations: Relation[],
+    config?: BatchConfig
+  ): Promise<BatchResult<Relation>>;
 
   /**
    * Optimized batch addition of observations to entities
@@ -249,11 +257,11 @@ export namespace StorageProvider {
  * Validator class for StorageProvider interface
  * This exists to ensure there's a concrete export for JavaScript tests
  */
-export class StorageProviderValidator {
+export const StorageProviderValidator = {
   // No implementation - this is just to ensure the symbol exists in the compiled JS
   // JavaScript tests will use this as a type reference
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  static isStorageProvider(obj: any): boolean {
+  isStorageProvider(obj: any): boolean {
     const hasRequiredMethods =
       obj &&
       typeof obj.loadGraph === 'function' &&
@@ -281,5 +289,5 @@ export class StorageProviderValidator {
       (!obj.semanticSearch || typeof obj.semanticSearch === 'function');
 
     return hasRequiredMethods && optionalMethodsValid;
-  }
-}
+  },
+};

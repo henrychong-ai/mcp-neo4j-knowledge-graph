@@ -16,11 +16,8 @@ export async function handleCreateRelationsBatch(
   args: Record<string, unknown>,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   knowledgeGraphManager: any
-): Promise<{ content: Array<{ type: string; text: string }> }> {
-  const result = await knowledgeGraphManager.createRelationsBatch(
-    args.relations,
-    args.config
-  );
+): Promise<{ content: { type: string; text: string }[] }> {
+  const result = await knowledgeGraphManager.createRelationsBatch(args.relations, args.config);
 
   return {
     content: [

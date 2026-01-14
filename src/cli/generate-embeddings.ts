@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 /**
  * CLI tool for generating embeddings for entities in the knowledge graph
  *
@@ -12,10 +11,11 @@
  *   - Neo4j connection configured (NEO4J_URI, NEO4J_USERNAME, NEO4J_PASSWORD)
  */
 
-import { Neo4jStorageProvider } from '../storage/neo4j/Neo4jStorageProvider.js';
-import { EmbeddingServiceFactory } from '../embeddings/EmbeddingServiceFactory.js';
-import { logger } from '../utils/logger.js';
 import dotenv from 'dotenv';
+
+import { EmbeddingServiceFactory } from '../embeddings/EmbeddingServiceFactory.js';
+import { Neo4jStorageProvider } from '../storage/neo4j/Neo4jStorageProvider.js';
+// Logger available if needed: import { logger } from '../utils/logger.js';
 
 // Load environment variables
 dotenv.config();
@@ -37,18 +37,22 @@ function parseArgs(): GenerateEmbeddingsOptions {
 
   for (let i = 0; i < args.length; i++) {
     switch (args[i]) {
-      case '--limit':
-        options.limit = parseInt(args[++i], 10);
+      case '--limit': {
+        options.limit = Number.parseInt(args[++i], 10);
         break;
-      case '--force':
+      }
+      case '--force': {
         options.force = true;
         break;
-      case '--batch-size':
-        options.batchSize = parseInt(args[++i], 10);
+      }
+      case '--batch-size': {
+        options.batchSize = Number.parseInt(args[++i], 10);
         break;
-      case '--help':
+      }
+      case '--help': {
         printHelp();
         process.exit(0);
+      }
     }
   }
 

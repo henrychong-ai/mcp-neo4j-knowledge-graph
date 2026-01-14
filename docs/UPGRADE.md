@@ -34,16 +34,19 @@ This guide provides comprehensive instructions for upgrading Neo4j database vers
 ## When to Upgrade
 
 ### Required Upgrades
+
 - **Security patches**: Current version reaches End of Life (EOL)
 - **Critical bugs**: Affecting data integrity or stability
 - **Breaking dependencies**: MCP server requires newer Neo4j features
 
 ### Optional Upgrades
+
 - **Performance improvements**: 5-20% gains (varies by workload)
 - **New features**: LTS stability, enhanced vector search, improved Cypher
 - **Long-term support**: Extending security patch timeline
 
 ### When NOT to Upgrade
+
 - Knowledge graph actively in use for critical operations
 - Less than 2 hours available for monitoring
 - No tested backup and rollback plan
@@ -57,26 +60,26 @@ This guide provides comprehensive instructions for upgrading Neo4j database vers
 
 **Neo4j 5.26 LTS vs. Latest Stable (2025.x series):**
 
-| Factor | LTS (5.26) | Latest (2025.x) |
-|--------|------------|-----------------|
-| **Support Timeline** | Until June 2028 (3+ years) | Shorter support window |
-| **Stability** | Mature, fewer bugs | Bleeding-edge features |
-| **Update Frequency** | Infrequent (patch only) | Frequent minor versions |
-| **Performance Gains** | Moderate (5-10%) | Higher (10-20%) |
-| **Maintenance Burden** | Low | Higher |
-| **Recommended For** | Personal/production knowledge graphs | High-throughput services |
+| Factor                 | LTS (5.26)                           | Latest (2025.x)          |
+| ---------------------- | ------------------------------------ | ------------------------ |
+| **Support Timeline**   | Until June 2028 (3+ years)           | Shorter support window   |
+| **Stability**          | Mature, fewer bugs                   | Bleeding-edge features   |
+| **Update Frequency**   | Infrequent (patch only)              | Frequent minor versions  |
+| **Performance Gains**  | Moderate (5-10%)                     | Higher (10-20%)          |
+| **Maintenance Burden** | Low                                  | Higher                   |
+| **Recommended For**    | Personal/production knowledge graphs | High-throughput services |
 
 **Decision:** For personal knowledge graphs storing irreplaceable context data, **LTS stability > latest performance**.
 
 ### Compatibility Matrix
 
-| Component | Neo4j 5.13 | Neo4j 5.26 LTS | Neo4j 2025.x |
-|-----------|------------|----------------|--------------|
-| **neo4j-driver** | 5.x | 5.x, 6.x | 6.x required |
-| **Java Runtime** | 17 | 17, 21 | 21 required |
-| **mcp-neo4j-knowledge-graph** | v1.0.0+ | v1.0.0+ | v1.0.0+ (with driver 6.x) |
-| **APOC Plugin** | Compatible | Compatible | Compatible |
-| **Vector Indexes** | Enterprise only | Enterprise only | Enterprise only |
+| Component                     | Neo4j 5.13      | Neo4j 5.26 LTS  | Neo4j 2025.x              |
+| ----------------------------- | --------------- | --------------- | ------------------------- |
+| **neo4j-driver**              | 5.x             | 5.x, 6.x        | 6.x required              |
+| **Java Runtime**              | 17              | 17, 21          | 21 required               |
+| **mcp-neo4j-knowledge-graph** | v1.0.0+         | v1.0.0+         | v1.0.0+ (with driver 6.x) |
+| **APOC Plugin**               | Compatible      | Compatible      | Compatible                |
+| **Vector Indexes**            | Enterprise only | Enterprise only | Enterprise only           |
 
 **Key Insight:** neo4j-driver 5.x supports both Neo4j 5.13 and 5.26, no code changes required for 5.x → 5.26 upgrade.
 
@@ -85,27 +88,32 @@ This guide provides comprehensive instructions for upgrading Neo4j database vers
 ## Prerequisites
 
 ### Required Access
+
 - SSH access to Neo4j host server (via Tailscale or direct)
 - Docker runtime and sufficient permissions (`docker ps`, `docker run`)
 - Neo4j admin credentials (`NEO4J_AUTH` environment variable)
 
 ### Required Knowledge
+
 - Basic Docker operations (container lifecycle, volumes, networking)
 - Neo4j Cypher query language (for verification queries)
 - Understanding of the MCP server architecture
 - Familiarity with backup and restore procedures
 
 ### Required Time
+
 - **Minimum:** 2 hours (for upgrade + monitoring)
 - **Recommended:** 3-4 hours (including contingency)
 - **Downtime:** ~20 minutes (database unavailable during upgrade)
 
 ### Required Disk Space
+
 - **Backup:** 2-5x database size (for dump file + checksum)
 - **Docker images:** ~1GB (old + new Neo4j images during transition)
 - **Safety margin:** 10-20% additional free space
 
 ### System Requirements
+
 - **Memory:** Current Neo4j memory configuration + 20% headroom
 - **CPU:** No additional requirements (same as current deployment)
 - **Network:** Stable connection for Docker image download (~500-600MB)
@@ -159,6 +167,7 @@ docker images | grep neo4j
 ```
 
 **Expected Output:**
+
 - Container name identified and saved
 - Configuration JSON backup created (typically 10-20KB)
 - Volume names documented
@@ -197,6 +206,7 @@ docker exec $NEO4J_CONTAINER cypher-shell -u $NEO4J_USER -p "$NEO4J_PASS" \
 ```
 
 **Expected Output:**
+
 - Neo4j version displayed (e.g., "5.13.0")
 - Entity count returned (e.g., 686)
 - Relation count returned (e.g., 934)
@@ -235,6 +245,7 @@ cat /root/neo4j-upgrade-baseline-$(date +%Y%m%d).txt
 #### 1.5 Phase 1 Go/No-Go Checkpoint
 
 ✅ **PROCEED if:**
+
 - Container identified successfully
 - Configuration backed up to JSON
 - Baseline metrics captured (entity/relation counts)
@@ -242,6 +253,7 @@ cat /root/neo4j-upgrade-baseline-$(date +%Y%m%d).txt
 - All indexes showing "ONLINE" status
 
 ❌ **ABORT if:**
+
 - Cannot connect to target server
 - Neo4j container not found or not running
 - Database queries failing or timing out
@@ -309,6 +321,7 @@ ls -lh /root/neo4j-backups/neo4j.dump
 ```
 
 **Expected Output:**
+
 - File `/root/neo4j-backups/neo4j.dump` created
 - File size reasonable (typically 1-10MB per 1000 entities, varies)
 
@@ -343,6 +356,7 @@ docker exec $NEO4J_CONTAINER cypher-shell -u $NEO4J_USER -p "$NEO4J_PASS" \
 #### 2.6 Phase 2 Go/No-Go Checkpoint
 
 ✅ **PROCEED if:**
+
 - Old Docker image tagged for rollback
 - Database dump created successfully (file exists, reasonable size)
 - Checksum generated and stored
@@ -350,6 +364,7 @@ docker exec $NEO4J_CONTAINER cypher-shell -u $NEO4J_USER -p "$NEO4J_PASS" \
 - Database queries working after restart
 
 ❌ **ABORT if:**
+
 - Dump creation failed or file suspiciously small (< 100KB)
 - Cannot restart container
 - Database queries failing after restart
@@ -390,6 +405,7 @@ docker images | grep neo4j
 ```
 
 **Expected Output:**
+
 - Download complete
 - Both old and new images listed
 
@@ -404,6 +420,7 @@ docker volume ls | grep neo4j
 ```
 
 **Expected Output:**
+
 - Container removed
 - Volumes still exist (CRITICAL - contains your data)
 
@@ -453,6 +470,7 @@ docker logs --tail 50 $NEO4J_CONTAINER
 ```
 
 **Expected Output:**
+
 - Container running (status "Up")
 - Logs show "Started." message
 - No critical errors about incompatible store format
@@ -462,12 +480,14 @@ docker logs --tail 50 $NEO4J_CONTAINER
 #### 3.6 Phase 3 Go/No-Go Checkpoint
 
 ✅ **PROCEED if:**
+
 - Neo4j 5.26 image downloaded successfully
 - New container created and running
 - Logs show "Started." without compatibility errors
 - No unexpected error messages
 
 ❌ **ROLLBACK if:**
+
 - Container won't start or crashes immediately
 - Logs show store format incompatibility errors
 - Unexpected critical errors in startup logs
@@ -497,6 +517,7 @@ docker exec $NEO4J_CONTAINER cypher-shell -u $NEO4J_USER -p "$NEO4J_PASS" \
 ```
 
 **Expected Output:**
+
 - Connection successful
 - Neo4j version: 5.26.x (upgraded from 5.13.0)
 
@@ -517,6 +538,7 @@ docker exec $NEO4J_CONTAINER cypher-shell -u $NEO4J_USER -p "$NEO4J_PASS" \
 ```
 
 **Expected Output:**
+
 - Entity count **EXACTLY MATCHES** Phase 1 baseline
 - Relation count **EXACTLY MATCHES** Phase 1 baseline
 - Sample entities retrieved successfully
@@ -536,6 +558,7 @@ docker exec $NEO4J_CONTAINER cypher-shell -u $NEO4J_USER -p "$NEO4J_PASS" \
 ```
 
 **Expected Output:**
+
 - Constraint `entity_name` exists on `(name, validTo)`
 - All indexes showing "ONLINE" status
 - If vector index: may show "POPULATING" briefly, then "ONLINE"
@@ -571,6 +594,7 @@ Add observation to entity <entity-name>: "Tested after Neo4j 5.26 upgrade (2025-
 ```
 
 **Expected Output:**
+
 - MCP server reconnects successfully
 - Search queries return results
 - add_observations creates new version (increments version number)
@@ -594,6 +618,7 @@ docker stats --no-stream $NEO4J_CONTAINER
 ```
 
 **Expected Output:**
+
 - Query response time reasonable (within ±20% of pre-upgrade if measured)
 - Memory usage within configured limits (heap + pagecache)
 
@@ -631,6 +656,7 @@ cat /root/neo4j-upgrade-post-verification-$(date +%Y%m%d).txt
 #### 4.7 Phase 4 Go/No-Go Checkpoint
 
 ✅ **DECLARE SUCCESS if:**
+
 - Version confirmed as 5.26.x
 - Data counts match Phase 1 baseline **EXACTLY**
 - Schema constraints and indexes preserved
@@ -639,6 +665,7 @@ cat /root/neo4j-upgrade-post-verification-$(date +%Y%m%d).txt
 - Performance within acceptable range
 
 ⚠️ **EVALUATE ROLLBACK if:**
+
 - Data counts don't match (missing entities or relations)
 - Critical constraints missing or broken
 - Indexes failed to migrate or stuck in error state
@@ -659,12 +686,12 @@ cat /root/neo4j-upgrade-post-verification-$(date +%Y%m%d).txt
 
 #### Monitoring Schedule
 
-| Checkpoint | Time After Upgrade | Priority | Commands |
-|------------|-------------------|----------|----------|
-| **T+6h** | 6 hours | HIGH | Check logs, verify container running, count entities |
-| **T+12h** | 12 hours | MEDIUM | Check logs, memory usage, data integrity |
-| **T+24h** | 24 hours | MEDIUM | Check logs, performance, relation count |
-| **T+48h** | 48 hours | HIGH | **FINAL** verification, success declaration |
+| Checkpoint | Time After Upgrade | Priority | Commands                                             |
+| ---------- | ------------------ | -------- | ---------------------------------------------------- |
+| **T+6h**   | 6 hours            | HIGH     | Check logs, verify container running, count entities |
+| **T+12h**  | 12 hours           | MEDIUM   | Check logs, memory usage, data integrity             |
+| **T+24h**  | 24 hours           | MEDIUM   | Check logs, performance, relation count              |
+| **T+48h**  | 48 hours           | HIGH     | **FINAL** verification, success declaration          |
 
 #### Checkpoint Commands
 
@@ -685,6 +712,7 @@ docker stats --no-stream $NEO4J_CONTAINER
 ```
 
 **Expected Results at Each Checkpoint:**
+
 - ✅ No critical errors in logs
 - ✅ Container running continuously
 - ✅ Entity count stable or increased (new data added)
@@ -726,13 +754,13 @@ Neo4j 5.26 LTS renamed several configuration settings. **Old names still work** 
 
 #### Setting Name Changes
 
-| Deprecated (5.13 format) | New (5.26 format) | Purpose |
-|--------------------------|-------------------|---------|
-| `NEO4J_dbms_checkpoint_interval_time` | `NEO4J_db_checkpoint_interval_time` | Checkpoint interval |
-| `NEO4J_dbms_memory_heap_initial__size` | `NEO4J_server_memory_heap_initial__size` | Initial heap size |
-| `NEO4J_dbms_memory_heap_max__size` | `NEO4J_server_memory_heap_max__size` | Maximum heap size |
-| `NEO4J_dbms_memory_pagecache_size` | `NEO4J_server_memory_pagecache_size` | Page cache size |
-| `NEO4J_dbms_memory_transaction_max__size` | `NEO4J_db_memory_transaction_max` | Max transaction size |
+| Deprecated (5.13 format)                  | New (5.26 format)                        | Purpose              |
+| ----------------------------------------- | ---------------------------------------- | -------------------- |
+| `NEO4J_dbms_checkpoint_interval_time`     | `NEO4J_db_checkpoint_interval_time`      | Checkpoint interval  |
+| `NEO4J_dbms_memory_heap_initial__size`    | `NEO4J_server_memory_heap_initial__size` | Initial heap size    |
+| `NEO4J_dbms_memory_heap_max__size`        | `NEO4J_server_memory_heap_max__size`     | Maximum heap size    |
+| `NEO4J_dbms_memory_pagecache_size`        | `NEO4J_server_memory_pagecache_size`     | Page cache size      |
+| `NEO4J_dbms_memory_transaction_max__size` | `NEO4J_db_memory_transaction_max`        | Max transaction size |
 
 #### How to Update Settings
 
@@ -773,6 +801,7 @@ docker logs $NEO4J_CONTAINER | grep -i "deprecated"
 Recommended memory configuration for knowledge graphs:
 
 **For small graphs (<1000 entities):**
+
 ```bash
 -e NEO4J_server_memory_heap_initial__size=512M
 -e NEO4J_server_memory_heap_max__size=512M
@@ -780,6 +809,7 @@ Recommended memory configuration for knowledge graphs:
 ```
 
 **For medium graphs (1000-10000 entities):**
+
 ```bash
 -e NEO4J_server_memory_heap_initial__size=1G
 -e NEO4J_server_memory_heap_max__size=1G
@@ -787,6 +817,7 @@ Recommended memory configuration for knowledge graphs:
 ```
 
 **For large graphs (>10000 entities):**
+
 ```bash
 -e NEO4J_server_memory_heap_initial__size=2G
 -e NEO4J_server_memory_heap_max__size=2G
@@ -804,6 +835,7 @@ Recommended memory configuration for knowledge graphs:
 #### Issue 1: "Store format incompatible" Error
 
 **Symptoms:**
+
 ```
 Neo4j cannot start because the database was created with an incompatible version
 ```
@@ -811,6 +843,7 @@ Neo4j cannot start because the database was created with an incompatible version
 **Cause:** Major version jump without migration (e.g., 4.x → 5.x)
 
 **Solution:**
+
 - This should NOT occur for 5.13 → 5.26 upgrades (same major version)
 - If encountered: Execute rollback procedure immediately
 - Consider intermediate upgrade steps (4.x → 5.0 → 5.26)
@@ -818,6 +851,7 @@ Neo4j cannot start because the database was created with an incompatible version
 #### Issue 2: Schema Constraint Conflicts
 
 **Symptoms:**
+
 ```
 Node already exists with label 'Entity' and property 'name' = '...'
 ```
@@ -831,6 +865,7 @@ Node already exists with label 'Entity' and property 'name' = '...'
 #### Issue 3: Vector Index Not Working
 
 **Symptoms:**
+
 ```
 WARNING: Vector indexes require Neo4j Enterprise Edition
 ```
@@ -838,6 +873,7 @@ WARNING: Vector indexes require Neo4j Enterprise Edition
 **Cause:** Vector indexes are Enterprise-only feature
 
 **Solution:**
+
 - Expected for Community Edition installations
 - Embeddings still stored in entity properties
 - Semantic search falls back to similarity calculation (slower but functional)
@@ -846,6 +882,7 @@ WARNING: Vector indexes require Neo4j Enterprise Edition
 #### Issue 4: APOC Plugin Not Loading
 
 **Symptoms:**
+
 ```
 Failed to load APOC procedures
 ```
@@ -853,6 +890,7 @@ Failed to load APOC procedures
 **Cause:** APOC plugin not configured in environment variables
 
 **Solution:**
+
 ```bash
 # Ensure APOC specified in docker run command
 -e "NEO4J_PLUGINS=[\"apoc\"]"
@@ -867,10 +905,12 @@ docker exec $NEO4J_CONTAINER cypher-shell -u $NEO4J_USER -p "$NEO4J_PASS" \
 #### Issue 5: High Memory Usage After Upgrade
 
 **Symptoms:**
+
 - Memory usage consistently above configured heap + pagecache
 - Container approaching host memory limits
 
 **Diagnosis:**
+
 ```bash
 # Check actual memory usage
 docker stats --no-stream $NEO4J_CONTAINER
@@ -881,6 +921,7 @@ docker exec $NEO4J_CONTAINER cypher-shell -u $NEO4J_USER -p "$NEO4J_PASS" \
 ```
 
 **Solution:**
+
 - Verify heap and pagecache settings applied correctly
 - Increase transaction max size if handling large operations
 - Consider increasing host memory allocation
@@ -889,10 +930,12 @@ docker exec $NEO4J_CONTAINER cypher-shell -u $NEO4J_USER -p "$NEO4J_PASS" \
 #### Issue 6: Slow Query Performance
 
 **Symptoms:**
+
 - Queries taking significantly longer than pre-upgrade (>50% slower)
 - Timeout errors from MCP server
 
 **Diagnosis:**
+
 ```bash
 # Check index status (ensure all ONLINE)
 docker exec $NEO4J_CONTAINER cypher-shell -u $NEO4J_USER -p "$NEO4J_PASS" \
@@ -904,6 +947,7 @@ docker exec $NEO4J_CONTAINER cypher-shell -u $NEO4J_USER -p "$NEO4J_PASS" \
 ```
 
 **Solution:**
+
 - Wait for indexes to fully populate (check for "POPULATING" status)
 - Verify pagecache size sufficient for graph size
 - Consider query optimization (add indexes, rewrite Cypher)
@@ -918,6 +962,7 @@ docker exec $NEO4J_CONTAINER cypher-shell -u $NEO4J_USER -p "$NEO4J_PASS" \
 ### Rollback Decision Criteria
 
 **Execute rollback immediately if:**
+
 - ❌ Data counts don't match baseline (missing entities/relations)
 - ❌ Database corruption detected or store format errors
 - ❌ MCP server cannot connect or crashes repeatedly
@@ -925,6 +970,7 @@ docker exec $NEO4J_CONTAINER cypher-shell -u $NEO4J_USER -p "$NEO4J_PASS" \
 - ❌ Severe performance degradation (>50% slower, sustained)
 
 **Consider rollback if:**
+
 - ⚠️ Minor performance regression (20-30% slower)
 - ⚠️ Non-critical errors in logs
 - ⚠️ Vector search slower than expected (Community Edition limitation)
@@ -993,6 +1039,7 @@ docker exec $NEO4J_CONTAINER cypher-shell -u $NEO4J_USER -p "$NEO4J_PASS" \
 ```
 
 **Expected Output:**
+
 - Neo4j version matches pre-upgrade (e.g., 5.13.0)
 - Entity count matches Phase 1 baseline
 - MCP server can reconnect
@@ -1000,12 +1047,14 @@ docker exec $NEO4J_CONTAINER cypher-shell -u $NEO4J_USER -p "$NEO4J_PASS" \
 ### Post-Rollback Analysis
 
 **Document:**
+
 - Why rollback was triggered
 - Exact error messages encountered
 - Data loss (if any)
 - Lessons learned for next attempt
 
 **Next Steps:**
+
 - Investigate root cause before retry
 - Consider testing upgrade locally first (Docker on development machine)
 - Check Neo4j community forum for similar issues
@@ -1035,18 +1084,19 @@ Uptime: 13 hours before upgrade
 
 #### Upgrade Execution Summary
 
-| Phase | Duration | Result | Notes |
-|-------|----------|--------|-------|
-| **Phase 1** | 30 min | ✅ Success | Baseline: 686 entities, 934 relations |
-| **Phase 2** | 15 min | ✅ Success | Backup: 2.4MB dump, SHA256 verified |
-| **Phase 3** | 10 min | ✅ Success | Image: neo4j:5.26-community (524MB) |
-| **Phase 4** | 20 min | ✅ Success | Data: 100% match, MCP: all operations verified |
-| **Phase 5** | 48 hours | 🔄 In Progress | Checkpoints: T+6h, T+12h, T+24h, T+48h |
-| **Total** | ~75 min | ✅ Success | Downtime: ~20 minutes |
+| Phase       | Duration | Result         | Notes                                          |
+| ----------- | -------- | -------------- | ---------------------------------------------- |
+| **Phase 1** | 30 min   | ✅ Success     | Baseline: 686 entities, 934 relations          |
+| **Phase 2** | 15 min   | ✅ Success     | Backup: 2.4MB dump, SHA256 verified            |
+| **Phase 3** | 10 min   | ✅ Success     | Image: neo4j:5.26-community (524MB)            |
+| **Phase 4** | 20 min   | ✅ Success     | Data: 100% match, MCP: all operations verified |
+| **Phase 5** | 48 hours | 🔄 In Progress | Checkpoints: T+6h, T+12h, T+24h, T+48h         |
+| **Total**   | ~75 min  | ✅ Success     | Downtime: ~20 minutes                          |
 
 #### Key Findings
 
 **Success Factors:**
+
 - ✅ Comprehensive planning with go/no-go checkpoints at each phase
 - ✅ Database dump backup (2.4MB) completed successfully
 - ✅ Docker image tagging for instant rollback capability
@@ -1056,11 +1106,13 @@ Uptime: 13 hours before upgrade
 - ✅ Performance stable: ~3 second queries, 868MB memory usage
 
 **Challenges Encountered:**
-- ⚠️ Deprecation warnings for old setting names (dbms.* → db.* and server.*)
+
+- ⚠️ Deprecation warnings for old setting names (dbms._ → db._ and server.\*)
   - **Impact:** Cosmetic only, logged warnings but fully functional
   - **Resolution:** Settings updated post-upgrade (see Configuration Management)
 
 **Performance Improvements:**
+
 - Query response time: Stable (~3 seconds for full entity count)
 - Memory usage: 868MB (within 512M heap + 256M pagecache limits)
 - Semantic search: Functional (Enterprise vector indexes not available in Community Edition)
@@ -1108,12 +1160,14 @@ docker run -d \
 **Recommendation:** For personal knowledge graphs storing irreplaceable context, **choose LTS**.
 
 **Rationale:**
+
 - 3+ years of security patches (Neo4j 5.26 supported until June 2028)
 - Lower maintenance burden (infrequent version bumps)
 - Stability over performance (5-10% gain vs. 10-20%, but fewer bugs)
 - Reduced risk of breaking changes
 
 **When to choose Latest Stable:**
+
 - High-throughput production services where 10-20% performance matters
 - Organizations with dedicated DevOps managing frequent updates
 - Need for cutting-edge features unavailable in LTS
@@ -1123,12 +1177,14 @@ docker run -d \
 **Best Practice:** Always use `neo4j-admin database dump` over Docker volume snapshots.
 
 **Why:**
+
 - **Portable:** Dump files work across Neo4j versions and platforms
 - **Verified:** Neo4j validates data integrity during dump creation
 - **Compact:** Compressed format saves storage space
 - **Version-independent:** Can restore dump on any compatible Neo4j version
 
 **Volume snapshots limitations:**
+
 - Tied to specific Neo4j version and configuration
 - May not be consistent if database active during snapshot
 - Larger storage footprint (entire volume copied)
@@ -1137,10 +1193,10 @@ docker run -d \
 
 **Check driver compatibility BEFORE upgrading:**
 
-| Driver Version | Neo4j 5.13 | Neo4j 5.26 | Neo4j 2025.x |
-|----------------|------------|------------|--------------|
-| neo4j-driver 5.x | ✅ Yes | ✅ Yes | ❌ No |
-| neo4j-driver 6.x | ✅ Yes | ✅ Yes | ✅ Yes |
+| Driver Version   | Neo4j 5.13 | Neo4j 5.26 | Neo4j 2025.x |
+| ---------------- | ---------- | ---------- | ------------ |
+| neo4j-driver 5.x | ✅ Yes     | ✅ Yes     | ❌ No        |
+| neo4j-driver 6.x | ✅ Yes     | ✅ Yes     | ✅ Yes       |
 
 **Lesson:** For 5.x → 5.26 upgrade, neo4j-driver 5.x sufficient. For 5.x → 2025.x, upgrade driver first.
 
@@ -1149,11 +1205,13 @@ docker run -d \
 **Neo4j 5.26 maintains backward compatibility for deprecated setting names.**
 
 **Implication:**
+
 - Can upgrade first, update settings later
 - Reduces upgrade complexity
 - Eliminates forced configuration changes during critical upgrade window
 
 **Best practice:**
+
 - Upgrade database first with old setting names
 - Complete 48-hour monitoring period
 - Update settings in separate maintenance window
@@ -1161,6 +1219,7 @@ docker run -d \
 #### 5. Rollback Capability is Safety Net
 
 **Essential rollback components:**
+
 1. **Tagged Docker image:** Instant rollback to old version
 2. **Database dump:** Recovery from data corruption
 3. **Configuration backup:** Exact recreation of original setup
@@ -1192,6 +1251,7 @@ docker run -d \
 **Priority:** HIGH
 
 **Commands:**
+
 ```bash
 ssh root@<hostname>
 
@@ -1207,11 +1267,13 @@ docker exec $NEO4J_CONTAINER cypher-shell -u $NEO4J_USER -p "$NEO4J_PASS" \
 ```
 
 **Expected Results:**
+
 - ✅ No critical errors in logs (INFO and WARN acceptable)
 - ✅ Container status: "Up" (running continuously)
 - ✅ Entity count: Baseline or higher (new entities added = good sign)
 
 **Red Flags:**
+
 - ❌ Critical errors or stack traces in logs
 - ❌ Container restarted (check restart count)
 - ❌ Entity count lower than baseline
@@ -1223,6 +1285,7 @@ docker exec $NEO4J_CONTAINER cypher-shell -u $NEO4J_USER -p "$NEO4J_PASS" \
 **Priority:** MEDIUM
 
 **Commands:**
+
 ```bash
 ssh root@<hostname>
 
@@ -1238,12 +1301,14 @@ docker exec $NEO4J_CONTAINER cypher-shell -u $NEO4J_USER -p "$NEO4J_PASS" \
 ```
 
 **Expected Results:**
+
 - ✅ No new critical errors
 - ✅ Memory usage stable (within configured heap + pagecache + ~200MB overhead)
 - ✅ CPU usage low (<5% when idle, spikes during queries normal)
 - ✅ Data integrity maintained
 
 **Red Flags:**
+
 - ❌ Memory usage growing continuously (memory leak)
 - ❌ CPU usage sustained at >50% when idle
 - ❌ Data integrity issues
@@ -1255,6 +1320,7 @@ docker exec $NEO4J_CONTAINER cypher-shell -u $NEO4J_USER -p "$NEO4J_PASS" \
 **Priority:** MEDIUM
 
 **Commands:**
+
 ```bash
 ssh root@<hostname>
 
@@ -1271,11 +1337,13 @@ docker exec $NEO4J_CONTAINER cypher-shell -u $NEO4J_USER -p "$NEO4J_PASS" \
 ```
 
 **Expected Results:**
+
 - ✅ No errors in last 12 hours
 - ✅ Query performance consistent with Phase 4 baseline
 - ✅ Relation count stable or increased
 
 **Red Flags:**
+
 - ❌ Performance degraded significantly (>30% slower)
 - ❌ Recurring errors in logs
 
@@ -1286,6 +1354,7 @@ docker exec $NEO4J_CONTAINER cypher-shell -u $NEO4J_USER -p "$NEO4J_PASS" \
 **Priority:** HIGH
 
 **Commands:**
+
 ```bash
 ssh root@<hostname>
 
@@ -1309,6 +1378,7 @@ docker exec $NEO4J_CONTAINER cypher-shell -u $NEO4J_USER -p "$NEO4J_PASS" \
 ```
 
 **Expected Results:**
+
 - ✅ No errors in last 24 hours
 - ✅ Container running continuously (no restarts)
 - ✅ Memory usage stable
@@ -1318,6 +1388,7 @@ docker exec $NEO4J_CONTAINER cypher-shell -u $NEO4J_USER -p "$NEO4J_PASS" \
 **Success Declaration:** If all 4 checkpoints passed, upgrade is officially successful.
 
 **Next Steps After Success:**
+
 ```bash
 # Optional: Remove old backup image (keep database dump for 30 days)
 docker rmi neo4j:<old-version>-backup-$(date +%Y%m%d)
@@ -1356,9 +1427,9 @@ echo "Upgrade completed successfully: $(date -u)" >> /root/neo4j-upgrade-success
 
 ## Version History
 
-| Version | Date | Changes |
-|---------|------|---------|
-| 1.0.0 | 2025-10-20 | Initial release based on jp-vps-1 upgrade (5.13 → 5.26) |
+| Version | Date       | Changes                                                 |
+| ------- | ---------- | ------------------------------------------------------- |
+| 1.0.0   | 2025-10-20 | Initial release based on jp-vps-1 upgrade (5.13 → 5.26) |
 
 ---
 

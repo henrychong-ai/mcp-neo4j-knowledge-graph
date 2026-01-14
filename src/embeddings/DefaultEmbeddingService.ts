@@ -1,4 +1,5 @@
 import { logger } from '../utils/logger.js';
+
 import { EmbeddingService, type EmbeddingModelInfo } from './EmbeddingService.js';
 import type { EmbeddingServiceConfig } from './EmbeddingServiceFactory.js';
 
@@ -131,7 +132,7 @@ export class DefaultEmbeddingService extends EmbeddingService {
    * @returns Random value between 0 and 1
    */
   private _seededRandom(seed: number): number {
-    const x = Math.sin(seed) * 10000;
+    const x = Math.sin(seed) * 10_000;
     return x - Math.floor(x);
   }
 
@@ -144,8 +145,8 @@ export class DefaultEmbeddingService extends EmbeddingService {
   private _normalizeVector(vector: number[]): void {
     // Calculate magnitude (Euclidean norm)
     let magnitude = 0;
-    for (let i = 0; i < vector.length; i++) {
-      magnitude += vector[i] * vector[i];
+    for (const element of vector) {
+      magnitude += element * element;
     }
     magnitude = Math.sqrt(magnitude);
 

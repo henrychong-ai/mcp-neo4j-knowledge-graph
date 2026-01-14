@@ -87,12 +87,12 @@ export namespace Relation {
 }
 
 // Concrete class for JavaScript tests
-export class RelationValidator {
+export const RelationValidator = {
   /**
    * Validates if an object conforms to the Relation interface
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  static isRelation(obj: any): boolean {
+  isRelation(obj: any): boolean {
     return (
       obj &&
       typeof obj.from === 'string' &&
@@ -102,39 +102,39 @@ export class RelationValidator {
       (obj.confidence === undefined || typeof obj.confidence === 'number') &&
       (obj.metadata === undefined || typeof obj.metadata === 'object')
     );
-  }
+  },
 
   /**
    * Checks if a relation has a strength value
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  static hasStrength(obj: any): boolean {
+  hasStrength(obj: any): boolean {
     return (
       this.isRelation(obj) &&
       typeof obj.strength === 'number' &&
       obj.strength >= 0 &&
       obj.strength <= 1
     );
-  }
+  },
 
   /**
    * Checks if a relation has a confidence value
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  static hasConfidence(obj: any): boolean {
+  hasConfidence(obj: any): boolean {
     return (
       this.isRelation(obj) &&
       typeof obj.confidence === 'number' &&
       obj.confidence >= 0 &&
       obj.confidence <= 1
     );
-  }
+  },
 
   /**
    * Checks if a relation has valid metadata
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  static hasValidMetadata(obj: any): boolean {
+  hasValidMetadata(obj: any): boolean {
     if (!this.isRelation(obj) || !obj.metadata) {
       return false;
     }
@@ -165,5 +165,5 @@ export class RelationValidator {
     }
 
     return true;
-  }
-}
+  },
+};

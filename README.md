@@ -17,6 +17,7 @@ Read and execute the setup guide at henrychong.com/mcp-neo4j-kg/setup
 ```
 
 Claude Code will guide you through:
+
 - ✓ Prerequisites check (Node.js, Docker)
 - ✓ Neo4j database setup
 - ✓ Configuration and environment variables
@@ -31,6 +32,7 @@ Claude Code will guide you through:
 ### Manual Setup
 
 If you prefer manual installation, see the detailed sections below for:
+
 - [Installation](#installation) - npm/npx setup
 - [Neo4j Setup](#storage-backend) - Docker or local database
 - [Configuration](#configuration) - Environment variables
@@ -197,6 +199,7 @@ You can modify these paths in your `docker-compose.yml` file to store data in di
 For comprehensive Neo4j upgrade procedures, see **[docs/UPGRADE.md](docs/UPGRADE.md)**.
 
 This guide covers:
+
 - When and why to upgrade (LTS vs Latest)
 - Complete 5-phase upgrade procedure with go/no-go checkpoints
 - Configuration management (deprecated settings)
@@ -349,32 +352,35 @@ Optimized bulk operations providing 10-50x performance improvement over individu
 - **Transaction Safety**: Automatic rollback on failures ensures data consistency
 
 **Available Batch Tools**:
+
 - `create_entities_batch`: Create multiple entities in single operation
 - `create_relations_batch`: Create multiple relations in single operation
 - `add_observations_batch`: Add observations to multiple entities in single operation
 - `update_entities_batch`: Update multiple entities in single operation
 
 **Performance Comparison**:
+
 ```typescript
 // Individual operations: ~50 seconds for 100 entities
 for (const entity of entities) {
   await createEntities([entity]);
 }
 
-
 // Batch operation: ~1.5 seconds for 100 entities (33x faster)
 await createEntitiesBatch(entities, {
   maxBatchSize: 100,
-  enableParallel: true
+  enableParallel: true,
 });
 ```
 
 **Configuration Options**:
+
 - `maxBatchSize`: Control chunk size (default: 100)
 - `enableParallel`: Reserved for future parallel chunk processing (embeddings always generated if service available)
 - `onProgress`: Callback for progress tracking
 
 **Cost Management:**
+
 - Incremental approach minimizes API calls
 - Only processes entities without embeddings
 - Typical cost: ~$0.02 per 1M tokens
@@ -387,6 +393,7 @@ This automation ensures semantic search remains highly effective as your knowled
 Semantic search queries are automatically cached for improved performance:
 
 **Cache Configuration:**
+
 - **LRU (Least Recently Used) Strategy**: Automatically evicts oldest entries when full
 - **Capacity**: 500 unique queries cached simultaneously
 - **TTL (Time-To-Live)**: 5 minutes per cache entry
@@ -394,18 +401,21 @@ Semantic search queries are automatically cached for improved performance:
 - **Size Calculation**: Entity count + relation count
 
 **Cache Behavior:**
+
 - **Cache Hits**: Sub-millisecond response for repeated queries
 - **Automatic Invalidation**: Cache cleared on mutations (create_entities, add_observations, delete_entities, etc.)
 - **Intelligent Keying**: Considers query text, limit, similarity threshold, entity types, and hybrid config
 - **Metrics Integration**: Cache hits/misses tracked via Prometheus (when enabled)
 
 **Performance Impact:**
+
 - **First Query**: Normal latency (~100-500ms depending on graph size)
 - **Cached Query**: <1ms response time
 - **Memory Usage**: Minimal - automatically bounded by size limits
 - **Cache Miss Rate**: Typically <10% for conversational workloads
 
 **Example Scenarios:**
+
 - User asks "What programming languages do you know?" → Cache miss (~300ms)
 - User asks "What programming languages do you know?" again → Cache hit (<1ms)
 - User creates new entity → Cache cleared for consistency
@@ -420,7 +430,6 @@ The following tools are available to LLM client hosts through the Model Context 
 ### Entity Management
 
 - **create_entities**
-
   - Create multiple new entities in the knowledge graph
   - Input: `entities` (array of objects)
     - Each object contains:
@@ -430,7 +439,6 @@ The following tools are available to LLM client hosts through the Model Context 
       - `observations` (string[]): Associated observations
 
 - **add_observations**
-
   - Add new observations to existing entities
   - Input: `observations` (array of objects)
     - Each object contains:
@@ -438,7 +446,6 @@ The following tools are available to LLM client hosts through the Model Context 
       - `contents` (string[]): New observations to add
 
 - **delete_entities**
-
   - Remove entities and their relations
   - Input: `entityNames` (string[])
 
@@ -452,7 +459,6 @@ The following tools are available to LLM client hosts through the Model Context 
 ### Relation Management
 
 - **create_relations**
-
   - Create multiple new relations between entities with enhanced properties
   - Input: `relations` (array of objects)
     - Each object contains:
@@ -464,7 +470,6 @@ The following tools are available to LLM client hosts through the Model Context 
       - `metadata` (object, optional): Custom metadata fields
 
 - **get_relation**
-
   - Get a specific relation with its enhanced properties
   - Input:
     - `from` (string): Source entity name
@@ -472,7 +477,6 @@ The following tools are available to LLM client hosts through the Model Context 
     - `relationType` (string): Relationship type
 
 - **update_relation**
-
   - Update an existing relation with enhanced properties
   - Input: `relation` (object):
     - Contains:
@@ -494,12 +498,10 @@ The following tools are available to LLM client hosts through the Model Context 
 ### Graph Operations
 
 - **read_graph**
-
   - Read the entire knowledge graph
   - No input required
 
 - **search_nodes**
-
   - Search for nodes based on query
   - Input:
     - `query` (string): Search query
@@ -512,7 +514,6 @@ The following tools are available to LLM client hosts through the Model Context 
 ### Semantic Search
 
 - **semantic_search**
-
   - Search for entities semantically using vector embeddings and similarity
   - Input:
     - `query` (string): The text query to search for semantically
@@ -535,12 +536,10 @@ The following tools are available to LLM client hosts through the Model Context 
 ### Temporal Features
 
 - **get_entity_history**
-
   - Get complete version history of an entity
   - Input: `entityName` (string)
 
 - **get_relation_history**
-
   - Get complete version history of a relation
   - Input:
     - `from` (string): Source entity name
@@ -548,7 +547,6 @@ The following tools are available to LLM client hosts through the Model Context 
     - `relationType` (string): Relationship type
 
 - **get_graph_at_time**
-
   - Get the state of the graph at a specific timestamp
   - Input: `timestamp` (number): Unix timestamp (milliseconds since epoch)
 
@@ -606,17 +604,20 @@ When enabled, the metrics server starts on **port 9091** and exposes a `/metrics
 #### Available Metrics
 
 **Query Performance:**
+
 - `mcp_query_duration_seconds` - Histogram tracking query execution time
   - Labels: `operation` (loadGraph, searchNodes, openNodes, semanticSearch), `cache_status` (hit, miss, disabled)
   - Buckets: 1ms, 5ms, 10ms, 50ms, 100ms, 500ms, 1s, 5s
 
 **Cache Performance (ready for future cache integration):**
+
 - `mcp_cache_hits_total` - Counter for cache hits
 - `mcp_cache_misses_total` - Counter for cache misses
 - `mcp_cache_invalidations_total` - Counter for cache invalidations
 - `mcp_cache_size_current` - Gauge for current cache size
 
 **Process Metrics:**
+
 - Default Node.js process metrics (CPU, memory, event loop, garbage collection)
 
 #### Accessing Metrics
@@ -633,16 +634,17 @@ For production deployments (e.g., vps-2), configure Prometheus to scrape the met
 
 ```yaml
 scrape_configs:
-  - job_name: "mcp-kg-server"
+  - job_name: 'mcp-kg-server'
     scrape_interval: 30s
     static_configs:
-      - targets: ["localhost:9091"]
+      - targets: ['localhost:9091']
         labels:
-          instance: "mcp-neo4j-knowledge-graph"
-          environment: "production"
+          instance: 'mcp-neo4j-knowledge-graph'
+          environment: 'production'
 ```
 
 Metrics can then be visualized in Grafana with custom dashboards showing:
+
 - Query performance trends
 - Cache hit/miss ratios
 - System resource utilization
@@ -651,6 +653,7 @@ Metrics can then be visualized in Grafana with custom dashboards showing:
 #### Port Selection
 
 Port 9091 is chosen to avoid conflicts with common Prometheus exporters:
+
 - 9090: Prometheus server
 - 9099: neo4j-exporter
 - 9100: node-exporter
@@ -840,6 +843,7 @@ Show me the available MCP tools for the knowledge graph
 ```
 
 You should see tools like:
+
 - `mcp__kg__create_entities`
 - `mcp__kg__create_relations`
 - `mcp__kg__add_observations`

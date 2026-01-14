@@ -62,12 +62,12 @@ export namespace TemporalEntity {
 /**
  * TemporalEntityValidator class with validation methods
  */
-export class TemporalEntityValidator {
+export const TemporalEntityValidator = {
   /**
    * Validates if an object conforms to the TemporalEntity interface
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  static isTemporalEntity(obj: any): boolean {
+  isTemporalEntity(obj: any): boolean {
     // First ensure it's a valid Entity
     if (
       !obj ||
@@ -101,13 +101,13 @@ export class TemporalEntityValidator {
     }
 
     return true;
-  }
+  },
 
   /**
    * Checks if an entity has a valid temporal range
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  static hasValidTimeRange(obj: any): boolean {
+  hasValidTimeRange(obj: any): boolean {
     if (!this.isTemporalEntity(obj)) {
       return false;
     }
@@ -118,5 +118,5 @@ export class TemporalEntityValidator {
     }
 
     return true;
-  }
-}
+  },
+};

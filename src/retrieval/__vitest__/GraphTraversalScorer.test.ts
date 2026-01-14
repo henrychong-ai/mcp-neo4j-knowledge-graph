@@ -11,7 +11,10 @@ import { DEFAULT_HYBRID_CONFIG } from '../types.js';
 describe('GraphTraversalScorer', () => {
   const scorer = new GraphTraversalScorer();
 
-  const createContext = (relations: Relation[] = [], allRelations: Relation[] = []): ScoringContext => ({
+  const createContext = (
+    relations: Relation[] = [],
+    allRelations: Relation[] = []
+  ): ScoringContext => ({
     entity: {
       name: 'TestEntity',
       entityType: 'Test',
@@ -51,7 +54,7 @@ describe('GraphTraversalScorer', () => {
     it('should consider relation quality', async () => {
       const highQualityRelations: Relation[] = [
         { from: 'TestEntity', to: 'Entity1', relationType: 'RELATES_TO', confidence: 0.95 },
-        { from: 'TestEntity', to: 'Entity2', relationType: 'RELATES_TO', confidence: 0.90 },
+        { from: 'TestEntity', to: 'Entity2', relationType: 'RELATES_TO', confidence: 0.9 },
       ];
       const lowQualityRelations: Relation[] = [
         { from: 'TestEntity', to: 'Entity1', relationType: 'RELATES_TO', confidence: 0.3 },

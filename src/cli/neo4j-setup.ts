@@ -1,5 +1,3 @@
-#!/usr/bin/env node
-
 /**
  * Neo4j CLI Utility
  *
@@ -7,9 +5,9 @@
  * operations for the mcp-neo4j-knowledge-graph server.
  */
 
+import { DEFAULT_NEO4J_CONFIG, type Neo4jConfig } from '../storage/neo4j/Neo4jConfig.js';
 import { Neo4jConnectionManager } from '../storage/neo4j/Neo4jConnectionManager.js';
 import { Neo4jSchemaManager } from '../storage/neo4j/Neo4jSchemaManager.js';
-import { DEFAULT_NEO4J_CONFIG, type Neo4jConfig } from '../storage/neo4j/Neo4jConfig.js';
 
 // Factory types for dependency injection in testing
 export type ConnectionManagerFactory = (config: Neo4jConfig) => Neo4jConnectionManager;
@@ -52,7 +50,7 @@ export function parseArgs(argv: string[]): {
     } else if (arg === '--vector-index' && i + 1 < argv.length) {
       config.vectorIndexName = argv[++i];
     } else if (arg === '--dimensions' && i + 1 < argv.length) {
-      config.vectorDimensions = parseInt(argv[++i], 10);
+      config.vectorDimensions = Number.parseInt(argv[++i], 10);
     } else if (arg === '--similarity' && i + 1 < argv.length) {
       const similarity = argv[++i];
       if (similarity === 'cosine' || similarity === 'euclidean') {
@@ -257,11 +255,12 @@ export async function main(): Promise<void> {
   }
 
   switch (command) {
-    case 'test':
+    case 'test': {
       await testConnection(config, options.debug);
       break;
+    }
 
-    case 'init':
+    case 'init': {
       const connected = await testConnection(config, options.debug);
       if (connected) {
         await initializeSchema(config, options.debug, options.recreate);
@@ -270,15 +269,17 @@ export async function main(): Promise<void> {
         process.exit(1);
       }
       break;
+    }
 
     case 'help':
-    default:
+    default: {
       printHelp();
       if (command !== 'help') {
         console.error(`\nUnknown command: ${command}`);
         process.exit(1);
       }
       break;
+    }
   }
 }
 

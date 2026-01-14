@@ -48,10 +48,10 @@ export interface BatchResult<T> {
   /**
    * Items that failed processing with error details
    */
-  failed: Array<{
+  failed: {
     item: T;
     error: string;
-  }>;
+  }[];
 
   /**
    * Total time taken for the batch operation in milliseconds

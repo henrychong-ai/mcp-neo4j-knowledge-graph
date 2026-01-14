@@ -1,7 +1,9 @@
-import type { StorageProvider, SearchOptions } from './StorageProvider.js';
-import * as fs from 'fs';
+import * as fs from 'node:fs';
+import path from 'node:path';
+
 import type { KnowledgeGraph, Relation } from '../KnowledgeGraphManager.js';
-import path from 'path';
+
+import type { StorageProvider, SearchOptions } from './StorageProvider.js';
 import type { VectorStoreFactoryOptions } from './VectorStoreFactory.js';
 
 interface FileStorageProviderOptions {
@@ -64,7 +66,7 @@ export class FileStorageProvider implements StorageProvider {
    */
   async loadGraph(): Promise<KnowledgeGraph> {
     try {
-      const content = await this._fs.promises.readFile(this.filePath, 'utf-8');
+      const content = await this._fs.promises.readFile(this.filePath, 'utf8');
       this.graph = JSON.parse(content);
       return this.graph;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -288,7 +290,7 @@ export class FileStorageProvider implements StorageProvider {
     const graph = await this.loadGraph();
 
     // Process each deletion request
-    deletions.forEach((deletion) => {
+    for (const deletion of deletions) {
       const entity = graph.entities.find((e) => e.name === deletion.entityName);
       if (entity) {
         // Filter out the observations that should be deleted
@@ -296,7 +298,7 @@ export class FileStorageProvider implements StorageProvider {
           (obs) => !deletion.observations.includes(obs)
         );
       }
-    });
+    }
 
     // Save the updated graph
     await this.saveGraph(graph);
@@ -390,7 +392,10 @@ export class FileStorageProvider implements StorageProvider {
       // Check if entity already exists
       const exists = this.graph.entities.some((e) => e.name === entity.name);
 
-      if (!exists) {
+      if (exists) {
+        // Entity already exists, just return the original
+        createdEntities.push(entity);
+      } else {
         // Add temporal metadata to match SqliteStorageProvider behavior
         const createdEntity = {
           ...entity,
@@ -404,9 +409,6 @@ export class FileStorageProvider implements StorageProvider {
 
         this.graph.entities.push(createdEntity);
         createdEntities.push(createdEntity);
-      } else {
-        // Entity already exists, just return the original
-        createdEntities.push(entity);
       }
     }
 

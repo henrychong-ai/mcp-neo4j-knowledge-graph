@@ -1,20 +1,27 @@
-import type { StorageProvider, SearchOptions } from '../StorageProvider.js';
-import type { KnowledgeGraph, Entity } from '../../KnowledgeGraphManager.js';
-import type { Relation } from '../../types/relation.js';
-import type { EntityEmbedding, SemanticSearchOptions } from '../../types/entity-embedding.js';
-import { v4 as uuidv4 } from 'uuid';
-import { Neo4jConnectionManager } from './Neo4jConnectionManager.js';
-import { DEFAULT_NEO4J_CONFIG, type Neo4jConfig } from './Neo4jConfig.js';
-import { Neo4jSchemaManager } from './Neo4jSchemaManager.js';
-import { logger } from '../../utils/logger.js';
-import neo4j, { isInt } from 'neo4j-driver';
-import { Neo4jVectorStore } from './Neo4jVectorStore.js';
-import { EmbeddingServiceFactory } from '../../embeddings/EmbeddingServiceFactory.js';
-import type { EmbeddingService } from '../../embeddings/EmbeddingService.js';
-import { HybridRetriever, type HybridSearchConfig } from '../../retrieval/index.js';
 import { LRUCache } from 'lru-cache';
+import neo4j, { isInt } from 'neo4j-driver';
+import { v4 as uuidv4 } from 'uuid';
+
+import type { EmbeddingService } from '../../embeddings/EmbeddingService.js';
+import { EmbeddingServiceFactory } from '../../embeddings/EmbeddingServiceFactory.js';
+import type { KnowledgeGraph, Entity } from '../../KnowledgeGraphManager.js';
 import { PrometheusMetrics } from '../../metrics/PrometheusMetrics.js';
-import type { BatchConfig, BatchResult, ObservationBatch, EntityUpdate } from '../../types/batch-operations.js';
+import { HybridRetriever, type HybridSearchConfig } from '../../retrieval/index.js';
+import type {
+  BatchConfig,
+  BatchResult,
+  ObservationBatch,
+  EntityUpdate,
+} from '../../types/batch-operations.js';
+import type { EntityEmbedding, SemanticSearchOptions } from '../../types/entity-embedding.js';
+import type { Relation } from '../../types/relation.js';
+import { logger } from '../../utils/logger.js';
+import type { StorageProvider, SearchOptions } from '../StorageProvider.js';
+
+import { DEFAULT_NEO4J_CONFIG, type Neo4jConfig } from './Neo4jConfig.js';
+import { Neo4jConnectionManager } from './Neo4jConnectionManager.js';
+import { Neo4jSchemaManager } from './Neo4jSchemaManager.js';
+import { Neo4jVectorStore } from './Neo4jVectorStore.js';
 
 /**
  * Configuration options for Neo4j storage provider
@@ -114,6 +121,7 @@ export class Neo4jStorageProvider implements StorageProvider {
     halfLifeDays: number;
     minConfidence: number;
   };
+
   private vectorStore: Neo4jVectorStore;
   private embeddingService: EmbeddingService | null = null;
   private searchCache: LRUCache<string, KnowledgeGraphWithDiagnostics>;
@@ -126,7 +134,7 @@ export class Neo4jStorageProvider implements StorageProvider {
     // Set up configuration
     this.config = {
       ...DEFAULT_NEO4J_CONFIG,
-      ...(options?.config || {}),
+      ...options?.config,
     };
 
     // Configure decay settings
@@ -168,7 +176,7 @@ export class Neo4jStorageProvider implements StorageProvider {
     this.searchCache = new LRUCache<string, KnowledgeGraphWithDiagnostics>({
       max: 500, // Cache up to 500 unique queries
       ttl: 1000 * 60 * 5, // 5 minute TTL for cache entries
-      maxSize: 10000, // Maximum 10K entities across all cached results
+      maxSize: 10_000, // Maximum 10K entities across all cached results
       sizeCalculation: (graph) => {
         // Guard against undefined entities/relations
         const entityCount = Array.isArray(graph.entities) ? graph.entities.length : 0;
@@ -179,12 +187,12 @@ export class Neo4jStorageProvider implements StorageProvider {
     logger.debug('Neo4jStorageProvider: Search result cache initialized', {
       maxQueries: 500,
       ttlMinutes: 5,
-      maxEntities: 10000,
+      maxEntities: 10_000,
     });
 
     // Initialize the schema and vector store
-    this.initializeSchema().catch((err) => {
-      logger.error('Failed to initialize Neo4j schema', err);
+    this.initializeSchema().catch((error) => {
+      logger.error('Failed to initialize Neo4j schema', error);
     });
   }
 
@@ -207,9 +215,7 @@ export class Neo4jStorageProvider implements StorageProvider {
     const entityTypes = options.entityTypes ? [...options.entityTypes].sort() : [];
 
     // Serialize hybrid config if present
-    const hybridConfigKey = options.hybridConfig
-      ? JSON.stringify(options.hybridConfig)
-      : '';
+    const hybridConfigKey = options.hybridConfig ? JSON.stringify(options.hybridConfig) : '';
 
     // Hash query vector if present (vectors are large, hash them)
     const vectorKey = options.queryVector
@@ -273,7 +279,7 @@ export class Neo4jStorageProvider implements StorageProvider {
   private convertNeo4jInt(value: unknown): number | null | undefined {
     if (value === null) return null;
     if (value === undefined) return undefined;
-    if (isInt(value)) return (value as neo4j.Integer).toNumber();
+    if (isInt(value)) return value.toNumber();
     return Number(value);
   }
 
@@ -286,7 +292,7 @@ export class Neo4jStorageProvider implements StorageProvider {
     // Handle observations - Neo4j can return as string (JSON) or array
     let observations: string[];
     if (typeof node.observations === 'string') {
-      observations = JSON.parse(node.observations as string);
+      observations = JSON.parse(node.observations);
     } else if (Array.isArray(node.observations)) {
       observations = node.observations;
     } else {
@@ -296,14 +302,14 @@ export class Neo4jStorageProvider implements StorageProvider {
     return {
       name: node.name as string,
       entityType: node.entityType as string,
-      domain: (node.domain as string | null | undefined) as import('../../KnowledgeGraphManager.js').Domain | null | undefined,
+      domain: node.domain as string | null | undefined,
       observations,
       id: node.id as string | undefined,
       version: this.convertNeo4jInt(node.version) as number | undefined,
       createdAt: this.convertNeo4jInt(node.createdAt) as number | undefined,
       updatedAt: this.convertNeo4jInt(node.updatedAt) as number | undefined,
       validFrom: this.convertNeo4jInt(node.validFrom) as number | undefined,
-      validTo: this.convertNeo4jInt(node.validTo) as number | null | undefined,
+      validTo: this.convertNeo4jInt(node.validTo),
       changedBy: node.changedBy as string | null | undefined,
     };
   }
@@ -342,7 +348,7 @@ export class Neo4jStorageProvider implements StorageProvider {
     // Try to merge any additional metadata from the relation
     if (typeof rel.metadata === 'string' && rel.metadata) {
       try {
-        const parsedMetadata = JSON.parse(rel.metadata as string);
+        const parsedMetadata = JSON.parse(rel.metadata);
         Object.assign(metadata, parsedMetadata);
       } catch {
         logger.warn(`Failed to parse metadata for relation from ${fromNode} to ${toNode}`);
@@ -359,8 +365,8 @@ export class Neo4jStorageProvider implements StorageProvider {
       to: toNode,
       relationType: rel.relationType as string,
       // Convert null to undefined for compatibility with Relation interface
-      strength: strength === null ? undefined : (strength as number),
-      confidence: confidence === null ? undefined : (confidence as number),
+      strength: strength === null ? undefined : strength!,
+      confidence: confidence === null ? undefined : confidence!,
       metadata,
     };
   }
@@ -1154,8 +1160,8 @@ export class Neo4jStorageProvider implements StorageProvider {
                 toId: outRel.to.properties.id,
                 id: newRelId,
                 relationType: relProps.relationType,
-                strength: relProps.strength !== undefined ? relProps.strength : 0.9,
-                confidence: relProps.confidence !== undefined ? relProps.confidence : 0.95,
+                strength: relProps.strength === undefined ? 0.9 : relProps.strength,
+                confidence: relProps.confidence === undefined ? 0.95 : relProps.confidence,
                 metadata: relProps.metadata || null,
                 version: relProps.version || 1,
                 createdAt: relProps.createdAt ? Number(relProps.createdAt) : Date.now(), // Convert BigInt to Number
@@ -1193,8 +1199,8 @@ export class Neo4jStorageProvider implements StorageProvider {
                 toId: newEntityId,
                 id: newRelId,
                 relationType: relProps.relationType,
-                strength: relProps.strength !== undefined ? relProps.strength : 0.9,
-                confidence: relProps.confidence !== undefined ? relProps.confidence : 0.95,
+                strength: relProps.strength === undefined ? 0.9 : relProps.strength,
+                confidence: relProps.confidence === undefined ? 0.95 : relProps.confidence,
                 metadata: relProps.metadata || null,
                 version: relProps.version || 1,
                 createdAt: relProps.createdAt ? Number(relProps.createdAt) : Date.now(), // Convert BigInt to Number
@@ -1529,7 +1535,7 @@ export class Neo4jStorageProvider implements StorageProvider {
       const relations: Relation[] = [];
       for (const record of result.records) {
         const rel = record.get('r');
-        if (rel && rel.properties) {
+        if (rel?.properties) {
           const fromName = record.get('fromName');
           const toName = record.get('toName');
           relations.push(this.relationshipToRelation(rel.properties, fromName, toName));
@@ -1723,9 +1729,9 @@ export class Neo4jStorageProvider implements StorageProvider {
             fromName: relation.from,
             toName: relation.to,
             relationType: relation.relationType,
-            strength: relation.strength !== undefined ? relation.strength : currentRel.strength,
+            strength: relation.strength === undefined ? currentRel.strength : relation.strength,
             confidence:
-              relation.confidence !== undefined ? relation.confidence : currentRel.confidence,
+              relation.confidence === undefined ? currentRel.confidence : relation.confidence,
             metadata: relation.metadata ? JSON.stringify(relation.metadata) : currentRel.metadata,
             version: newVersion,
             createdAt: currentRel.createdAt,
@@ -2026,7 +2032,9 @@ export class Neo4jStorageProvider implements StorageProvider {
 
           // Clear search cache after updating entity embedding
           this.searchCache.clear();
-          logger.debug('Neo4jStorageProvider: Cleared search cache after updating entity embedding');
+          logger.debug(
+            'Neo4jStorageProvider: Cleared search cache after updating entity embedding'
+          );
         } catch (error) {
           // Rollback on error
           await txc.rollback();
@@ -2096,7 +2104,7 @@ export class Neo4jStorageProvider implements StorageProvider {
    * @param limit Maximum number of results to return
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  async findSimilarEntities(queryVector: number[], limit: number = 10): Promise<any[]> {
+  async findSimilarEntities(queryVector: number[], limit = 10): Promise<any[]> {
     try {
       // Direct vector search implementation using the approach proven to work in our test script
       logger.debug(`Neo4jStorageProvider: Using direct vector search with ${limit} limit`);
@@ -2142,7 +2150,7 @@ export class Neo4jStorageProvider implements StorageProvider {
           const entities = (await Promise.all(entityPromises)).filter(Boolean);
 
           // Return only valid entities
-          return entities.filter((entity) => entity && entity.validTo === null).slice(0, limit);
+          return entities.filter((entity) => entity?.validTo === null).slice(0, limit);
         }
 
         logger.debug('Neo4jStorageProvider: No results from vector search');
@@ -2228,7 +2236,7 @@ export class Neo4jStorageProvider implements StorageProvider {
       });
 
       // Ensure vector store is initialized
-      if (!this.vectorStore['initialized']) {
+      if (!this.vectorStore.initialized) {
         logger.info('Neo4jStorageProvider: Vector store not initialized, initializing now');
         diagnostics.stepsTaken.push({
           step: 'vectorStoreInitialization',
@@ -2262,20 +2270,20 @@ export class Neo4jStorageProvider implements StorageProvider {
       }
 
       // If no embedding service, log a warning
-      if (!this.embeddingService) {
-        logger.warn('Neo4jStorageProvider: No embedding service available for semantic search');
-        diagnostics.stepsTaken.push({
-          step: 'embeddingServiceCheck',
-          timestamp: Date.now(),
-          status: 'unavailable',
-        });
-      } else {
+      if (this.embeddingService) {
         diagnostics.stepsTaken.push({
           step: 'embeddingServiceCheck',
           timestamp: Date.now(),
           status: 'available',
           model: this.embeddingService.getProviderInfo().model,
           dimensions: this.embeddingService.getProviderInfo().dimensions,
+        });
+      } else {
+        logger.warn('Neo4jStorageProvider: No embedding service available for semantic search');
+        diagnostics.stepsTaken.push({
+          step: 'embeddingServiceCheck',
+          timestamp: Date.now(),
+          status: 'unavailable',
         });
       }
 
@@ -2421,7 +2429,7 @@ export class Neo4jStorageProvider implements StorageProvider {
                 options.enableHybridRetrieval !== false &&
                 (options.hybridSearch === true || options.hybridSearch === undefined);
 
-              let finalEntities = entities;
+              let _finalEntities = entities;
               let finalEntityNames = entities.map((e) => e.name);
 
               if (enableHybridRetrieval) {
@@ -2446,7 +2454,7 @@ export class Neo4jStorageProvider implements StorageProvider {
                   // Initialize hybrid retriever
                   const hybridRetriever = new HybridRetriever({
                     config: {
-                      ...(options.hybridConfig || {}),
+                      ...options.hybridConfig,
                       enableScoreDebug: process.env.DEBUG === 'true',
                     },
                   });
@@ -2462,8 +2470,8 @@ export class Neo4jStorageProvider implements StorageProvider {
                     allRelationsResult
                   );
 
-                  // Extract reranked entities
-                  finalEntities = hybridResults.map((r) => r.entity);
+                  // Extract reranked entities (finalEntities used for potential future expansion)
+                  _finalEntities = hybridResults.map((r) => r.entity);
                   finalEntityNames = hybridResults.map((r) => r.entity.name);
 
                   // Add hybrid scores to diagnostics if debug mode
@@ -2507,9 +2515,8 @@ export class Neo4jStorageProvider implements StorageProvider {
               diagnostics.totalTimeTaken = diagnostics.endTime - diagnostics.startTime;
 
               // Prepare result and cache it
-              const result: KnowledgeGraphWithDiagnostics = process.env.DEBUG === 'true'
-                ? { ...finalGraph, diagnostics }
-                : finalGraph;
+              const result: KnowledgeGraphWithDiagnostics =
+                process.env.DEBUG === 'true' ? { ...finalGraph, diagnostics } : finalGraph;
 
               // Cache the result if caching enabled
               if (useCaching) {
@@ -2634,9 +2641,8 @@ export class Neo4jStorageProvider implements StorageProvider {
         diagnostics.totalTimeTaken = diagnostics.endTime - diagnostics.startTime;
 
         // Prepare result and cache it
-        const result: KnowledgeGraphWithDiagnostics = process.env.DEBUG === 'true'
-          ? { ...finalGraph, diagnostics }
-          : finalGraph;
+        const result: KnowledgeGraphWithDiagnostics =
+          process.env.DEBUG === 'true' ? { ...finalGraph, diagnostics } : finalGraph;
 
         // Cache the result if caching enabled
         if (useCaching) {
@@ -2677,9 +2683,8 @@ export class Neo4jStorageProvider implements StorageProvider {
       diagnostics.totalTimeTaken = diagnostics.endTime - diagnostics.startTime;
 
       // Prepare result and cache it
-      const result: KnowledgeGraphWithDiagnostics = process.env.DEBUG === 'true'
-        ? { ...textResults, diagnostics }
-        : textResults;
+      const result: KnowledgeGraphWithDiagnostics =
+        process.env.DEBUG === 'true' ? { ...textResults, diagnostics } : textResults;
 
       // Cache the text search fallback result if caching enabled
       if (useCaching) {
@@ -2703,7 +2708,7 @@ export class Neo4jStorageProvider implements StorageProvider {
   async diagnoseVectorSearch(): Promise<Record<string, unknown>> {
     try {
       // First, make sure vector store is initialized
-      if (!this.vectorStore['initialized']) {
+      if (!this.vectorStore.initialized) {
         try {
           await this.vectorStore.initialize();
         } catch {
@@ -2737,12 +2742,12 @@ export class Neo4jStorageProvider implements StorageProvider {
   async createEntitiesBatch(entities: any[], config?: BatchConfig): Promise<BatchResult<any>> {
     const startTime = Date.now();
     const maxBatchSize = config?.maxBatchSize || 100;
-    const enableParallel = config?.enableParallel !== false;
+    const _enableParallel = config?.enableParallel !== false;
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const successful: any[] = [];
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const failed: Array<{ item: any; error: string }> = [];
+    const failed: { item: any; error: string }[] = [];
 
     try {
       // Split into chunks based on maxBatchSize
@@ -2751,9 +2756,7 @@ export class Neo4jStorageProvider implements StorageProvider {
         chunks.push(entities.slice(i, i + maxBatchSize));
       }
 
-      for (let chunkIndex = 0; chunkIndex < chunks.length; chunkIndex++) {
-        const chunk = chunks[chunkIndex];
-
+      for (const chunk of chunks) {
         // Generate embeddings if service available (parallel processing controlled by Promise.all)
         const entitiesWithEmbeddings = await Promise.all(
           chunk.map(async (entity) => {
@@ -2829,12 +2832,12 @@ export class Neo4jStorageProvider implements StorageProvider {
           } catch (error) {
             await txc.rollback();
             // Add all items in chunk to failed
-            chunk.forEach((entity) => {
+            for (const entity of chunk) {
               failed.push({
                 item: entity,
                 error: error instanceof Error ? error.message : String(error),
               });
-            });
+            }
           }
         } finally {
           await session.close();
@@ -2867,7 +2870,7 @@ export class Neo4jStorageProvider implements StorageProvider {
     const startTime = Date.now();
     const maxBatchSize = config?.maxBatchSize || 100;
     const successful: Relation[] = [];
-    const failed: Array<{ item: Relation; error: string }> = [];
+    const failed: { item: Relation; error: string }[] = [];
 
     try {
       const chunks = [];
@@ -2935,12 +2938,12 @@ export class Neo4jStorageProvider implements StorageProvider {
             }
           } catch (error) {
             await txc.rollback();
-            chunk.forEach((rel) => {
+            for (const rel of chunk) {
               failed.push({
                 item: rel,
                 error: error instanceof Error ? error.message : String(error),
               });
-            });
+            }
           }
         } finally {
           await session.close();
@@ -2971,7 +2974,7 @@ export class Neo4jStorageProvider implements StorageProvider {
   ): Promise<BatchResult<ObservationBatch>> {
     const startTime = Date.now();
     const successful: ObservationBatch[] = [];
-    const failed: Array<{ item: ObservationBatch; error: string }> = [];
+    const failed: { item: ObservationBatch; error: string }[] = [];
     const maxBatchSize = config?.maxBatchSize || 100;
 
     try {
@@ -2988,7 +2991,7 @@ export class Neo4jStorageProvider implements StorageProvider {
 
           try {
             // Step 1: Fetch all current entities in bulk
-            const entityNames = chunk.map(b => b.entityName);
+            const entityNames = chunk.map((b) => b.entityName);
             const fetchQuery = `
               UNWIND $names AS name
               MATCH (e:Entity {name: name})
@@ -2999,11 +3002,11 @@ export class Neo4jStorageProvider implements StorageProvider {
 
             // Build map of current entities
             const entityMap = new Map();
-            fetchResult.records.forEach(record => {
+            for (const record of fetchResult.records) {
               const entity = record.get('e').properties;
               const name = record.get('name');
               entityMap.set(name, entity);
-            });
+            }
 
             // Process each batch item
             const updates = [];
@@ -3012,7 +3015,7 @@ export class Neo4jStorageProvider implements StorageProvider {
               if (!currentEntity) {
                 failed.push({
                   item: batch,
-                  error: `Entity not found: ${batch.entityName}`
+                  error: `Entity not found: ${batch.entityName}`,
                 });
                 continue;
               }
@@ -3022,7 +3025,7 @@ export class Neo4jStorageProvider implements StorageProvider {
                 : JSON.parse(currentEntity.observations || '[]');
 
               const newObservations = batch.observations.filter(
-                obs => !currentObservations.includes(obs)
+                (obs) => !currentObservations.includes(obs)
               );
 
               if (newObservations.length === 0) {
@@ -3043,7 +3046,7 @@ export class Neo4jStorageProvider implements StorageProvider {
                 version: newVersion,
                 createdAt: Number(currentEntity.createdAt),
                 now: now,
-                newId: uuidv4()
+                newId: uuidv4(),
               });
 
               successful.push(batch);
@@ -3051,7 +3054,8 @@ export class Neo4jStorageProvider implements StorageProvider {
 
             if (updates.length > 0) {
               // Step 2: Query relationships BEFORE invalidation
-              const outgoingRels = await txc.run(`
+              const outgoingRels = await txc.run(
+                `
                 UNWIND $updates AS upd
                 MATCH (e:Entity {id: upd.id})
                 MATCH (e)-[r:RELATES_TO]->(to:Entity)
@@ -3070,10 +3074,13 @@ export class Neo4jStorageProvider implements StorageProvider {
                   changedBy: r.changedBy,
                   toName: to.name
                 }) as rels
-              `, { updates });
+              `,
+                { updates }
+              );
 
               // Step 3: Query incoming relationships BEFORE invalidation
-              const incomingRels = await txc.run(`
+              const incomingRels = await txc.run(
+                `
                 UNWIND $updates AS upd
                 MATCH (e:Entity {id: upd.id})
                 MATCH (from:Entity)-[r:RELATES_TO]->(e)
@@ -3092,10 +3099,13 @@ export class Neo4jStorageProvider implements StorageProvider {
                   changedBy: r.changedBy,
                   fromName: from.name
                 }) as rels
-              `, { updates });
+              `,
+                { updates }
+              );
 
               // Step 4: Invalidate old versions in bulk
-              await txc.run(`
+              await txc.run(
+                `
                 UNWIND $updates AS upd
                 MATCH (e:Entity {id: upd.id})
                 SET e.validTo = upd.now
@@ -3107,10 +3117,13 @@ export class Neo4jStorageProvider implements StorageProvider {
                 OPTIONAL MATCH ()-[r2:RELATES_TO]->(e)
                 WHERE r2.validTo IS NULL
                 SET r2.validTo = upd.now
-              `, { updates });
+              `,
+                { updates }
+              );
 
               // Step 5: Create new versions in bulk
-              await txc.run(`
+              await txc.run(
+                `
                 UNWIND $updates AS upd
                 CREATE (e:Entity {
                   id: upd.newId,
@@ -3125,14 +3138,17 @@ export class Neo4jStorageProvider implements StorageProvider {
                   validTo: null,
                   changedBy: null
                 })
-              `, { updates });
+              `,
+                { updates }
+              );
 
               // Step 6: Recreate outgoing relationships with fresh validTo
               for (const record of outgoingRels.records) {
                 const newId = record.get('newId');
                 const rels = record.get('rels');
                 if (rels && rels.length > 0) {
-                  await txc.run(`
+                  await txc.run(
+                    `
                     MATCH (newE:Entity {id: $newId})
                     UNWIND $rels AS rel
                     MATCH (to:Entity {name: rel.toName})
@@ -3150,7 +3166,9 @@ export class Neo4jStorageProvider implements StorageProvider {
                       validTo: null,
                       changedBy: rel.changedBy
                     }]->(to)
-                  `, { newId, rels });
+                  `,
+                    { newId, rels }
+                  );
                 }
               }
 
@@ -3159,7 +3177,8 @@ export class Neo4jStorageProvider implements StorageProvider {
                 const newId = record.get('newId');
                 const rels = record.get('rels');
                 if (rels && rels.length > 0) {
-                  await txc.run(`
+                  await txc.run(
+                    `
                     MATCH (newE:Entity {id: $newId})
                     UNWIND $rels AS rel
                     MATCH (from:Entity {name: rel.fromName})
@@ -3177,7 +3196,9 @@ export class Neo4jStorageProvider implements StorageProvider {
                       validTo: null,
                       changedBy: rel.changedBy
                     }]->(newE)
-                  `, { newId, rels });
+                  `,
+                    { newId, rels }
+                  );
                 }
               }
             }
@@ -3223,28 +3244,31 @@ export class Neo4jStorageProvider implements StorageProvider {
   ): Promise<BatchResult<EntityUpdate>> {
     const startTime = Date.now();
     const successful: EntityUpdate[] = [];
-    const failed: Array<{ item: EntityUpdate; error: string }> = [];
+    const failed: { item: EntityUpdate; error: string }[] = [];
 
     try {
       // Batch process entityType updates using UNWIND
-      const entityTypeUpdates = updates.filter(u => u.entityType);
+      const entityTypeUpdates = updates.filter((u) => u.entityType);
       if (entityTypeUpdates.length > 0) {
         const session = await this.connectionManager.getSession();
         try {
           const now = Date.now();
-          const updateData = entityTypeUpdates.map(u => ({
+          const updateData = entityTypeUpdates.map((u) => ({
             name: u.name,
             entityType: u.entityType,
-            now: now
+            now: now,
           }));
 
-          await session.run(`
+          await session.run(
+            `
             UNWIND $updates AS upd
             MATCH (e:Entity {name: upd.name})
             WHERE e.validTo IS NULL
             SET e.entityType = upd.entityType,
                 e.updatedAt = upd.now
-          `, { updates: updateData });
+          `,
+            { updates: updateData }
+          );
         } catch (error) {
           // Mark entityType updates as failed
           for (const update of entityTypeUpdates) {
@@ -3259,24 +3283,27 @@ export class Neo4jStorageProvider implements StorageProvider {
       }
 
       // Batch process domain updates using UNWIND
-      const domainUpdates = updates.filter(u => u.domain !== undefined);
+      const domainUpdates = updates.filter((u) => u.domain !== undefined);
       if (domainUpdates.length > 0) {
         const session = await this.connectionManager.getSession();
         try {
           const now = Date.now();
-          const updateData = domainUpdates.map(u => ({
+          const updateData = domainUpdates.map((u) => ({
             name: u.name,
             domain: u.domain,
-            now: now
+            now: now,
           }));
 
-          await session.run(`
+          await session.run(
+            `
             UNWIND $updates AS upd
             MATCH (e:Entity {name: upd.name})
             WHERE e.validTo IS NULL
             SET e.domain = upd.domain,
                 e.updatedAt = upd.now
-          `, { updates: updateData });
+          `,
+            { updates: updateData }
+          );
         } catch (error) {
           // Mark domain updates as failed
           for (const update of domainUpdates) {
@@ -3292,10 +3319,10 @@ export class Neo4jStorageProvider implements StorageProvider {
 
       // Batch process observation additions
       const addObsBatches = updates
-        .filter(u => u.addObservations && u.addObservations.length > 0)
-        .map(u => ({
+        .filter((u) => u.addObservations && u.addObservations.length > 0)
+        .map((u) => ({
           entityName: u.name,
-          observations: u.addObservations!
+          observations: u.addObservations!,
         }));
 
       if (addObsBatches.length > 0) {
@@ -3305,7 +3332,7 @@ export class Neo4jStorageProvider implements StorageProvider {
           // Propagate failures from batch operation
           for (const failure of addObsResult.failed) {
             // Find the corresponding EntityUpdate
-            const failedUpdate = updates.find(u => u.name === failure.item.entityName);
+            const failedUpdate = updates.find((u) => u.name === failure.item.entityName);
             if (failedUpdate) {
               failed.push({
                 item: failedUpdate,
@@ -3315,7 +3342,9 @@ export class Neo4jStorageProvider implements StorageProvider {
           }
         } catch (error) {
           // Mark all observation additions as failed on exception
-          for (const update of updates.filter(u => u.addObservations && u.addObservations.length > 0)) {
+          for (const update of updates.filter(
+            (u) => u.addObservations && u.addObservations.length > 0
+          )) {
             failed.push({
               item: update,
               error: error instanceof Error ? error.message : String(error),
@@ -3328,14 +3357,16 @@ export class Neo4jStorageProvider implements StorageProvider {
       for (const update of updates) {
         try {
           if (update.removeObservations && update.removeObservations.length > 0) {
-            await this.deleteObservations([{
-              entityName: update.name,
-              observations: update.removeObservations,
-            }]);
+            await this.deleteObservations([
+              {
+                entityName: update.name,
+                observations: update.removeObservations,
+              },
+            ]);
           }
 
           // Only add to successful if not already in failed
-          if (!failed.find(f => f.item.name === update.name)) {
+          if (!failed.find((f) => f.item.name === update.name)) {
             successful.push(update);
           }
 
@@ -3357,8 +3388,10 @@ export class Neo4jStorageProvider implements StorageProvider {
 
       // Mark remaining updates as successful if not in failed
       for (const update of updates) {
-        if (!failed.find(f => f.item.name === update.name) &&
-            !successful.find(s => s.name === update.name)) {
+        if (
+          !failed.find((f) => f.item.name === update.name) &&
+          !successful.find((s) => s.name === update.name)
+        ) {
           successful.push(update);
         }
       }

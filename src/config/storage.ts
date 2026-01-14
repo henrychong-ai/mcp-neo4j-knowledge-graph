@@ -56,7 +56,7 @@ export function createStorageConfig(storageType: string | undefined): StorageCon
       neo4jDatabase: process.env.NEO4J_DATABASE || 'neo4j',
       neo4jVectorIndexName: process.env.NEO4J_VECTOR_INDEX || 'entity_embeddings',
       neo4jVectorDimensions: process.env.NEO4J_VECTOR_DIMENSIONS
-        ? parseInt(process.env.NEO4J_VECTOR_DIMENSIONS, 10)
+        ? Number.parseInt(process.env.NEO4J_VECTOR_DIMENSIONS, 10)
         : 1536,
       neo4jSimilarityFunction:
         (process.env.NEO4J_SIMILARITY_FUNCTION as 'cosine' | 'euclidean') || 'cosine',
