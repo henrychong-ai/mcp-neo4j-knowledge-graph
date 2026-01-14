@@ -427,4 +427,343 @@ describe('handleCallToolRequest', () => {
       ],
     });
   });
+
+  describe('temporal versioning tools', () => {
+    test('should call getEntityHistory and return formatted results', async () => {
+      // Arrange
+      const request = {
+        params: {
+          name: 'get_entity_history',
+          arguments: {
+            entityName: 'Entity1',
+          },
+        },
+      };
+
+      const history = [
+        { version: 1, name: 'Entity1', entityType: 'test', validFrom: 1700000000000 },
+        { version: 2, name: 'Entity1', entityType: 'test', validFrom: 1700001000000 },
+      ];
+      mockKnowledgeGraphManager.getEntityHistory = vi.fn().mockResolvedValue(history);
+
+      // Act
+      const result = await handleCallToolRequest(request, mockKnowledgeGraphManager);
+
+      // Assert
+      expect(mockKnowledgeGraphManager.getEntityHistory).toHaveBeenCalledWith('Entity1');
+      expect(result).toEqual({
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(history, null, 2),
+          },
+        ],
+      });
+    });
+
+    test('should handle errors gracefully for get_entity_history', async () => {
+      // Arrange
+      const request = {
+        params: {
+          name: 'get_entity_history',
+          arguments: {
+            entityName: 'Entity1',
+          },
+        },
+      };
+
+      mockKnowledgeGraphManager.getEntityHistory = vi
+        .fn()
+        .mockRejectedValue(new Error('Database error'));
+
+      // Act
+      const result = await handleCallToolRequest(request, mockKnowledgeGraphManager);
+
+      // Assert
+      expect(result.content[0].text).toContain('Error retrieving entity history: Database error');
+    });
+
+    test('should call getRelationHistory and return formatted results', async () => {
+      // Arrange
+      const request = {
+        params: {
+          name: 'get_relation_history',
+          arguments: {
+            from: 'Entity1',
+            to: 'Entity2',
+            relationType: 'KNOWS',
+          },
+        },
+      };
+
+      const history = [{ version: 1, from: 'Entity1', to: 'Entity2', relationType: 'KNOWS' }];
+      (mockKnowledgeGraphManager as Record<string, ReturnType<typeof vi.fn>>).getRelationHistory =
+        vi.fn().mockResolvedValue(history);
+
+      // Act
+      const result = await handleCallToolRequest(request, mockKnowledgeGraphManager);
+
+      // Assert
+      expect(
+        (mockKnowledgeGraphManager as Record<string, ReturnType<typeof vi.fn>>).getRelationHistory
+      ).toHaveBeenCalledWith('Entity1', 'Entity2', 'KNOWS');
+      expect(result).toEqual({
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(history, null, 2),
+          },
+        ],
+      });
+    });
+
+    test('should handle errors gracefully for get_relation_history', async () => {
+      // Arrange
+      const request = {
+        params: {
+          name: 'get_relation_history',
+          arguments: {
+            from: 'Entity1',
+            to: 'Entity2',
+            relationType: 'KNOWS',
+          },
+        },
+      };
+
+      (mockKnowledgeGraphManager as Record<string, ReturnType<typeof vi.fn>>).getRelationHistory =
+        vi.fn().mockRejectedValue(new Error('Database error'));
+
+      // Act
+      const result = await handleCallToolRequest(request, mockKnowledgeGraphManager);
+
+      // Assert
+      expect(result.content[0].text).toContain('Error retrieving relation history: Database error');
+    });
+
+    test('should call getGraphAtTime and return formatted results', async () => {
+      // Arrange
+      const request = {
+        params: {
+          name: 'get_graph_at_time',
+          arguments: {
+            timestamp: 1700000000000,
+          },
+        },
+      };
+
+      const graph = { entities: [{ name: 'Entity1' }], relations: [] };
+      (mockKnowledgeGraphManager as Record<string, ReturnType<typeof vi.fn>>).getGraphAtTime = vi
+        .fn()
+        .mockResolvedValue(graph);
+
+      // Act
+      const result = await handleCallToolRequest(request, mockKnowledgeGraphManager);
+
+      // Assert
+      expect(
+        (mockKnowledgeGraphManager as Record<string, ReturnType<typeof vi.fn>>).getGraphAtTime
+      ).toHaveBeenCalledWith(1700000000000);
+      expect(result).toEqual({
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(graph, null, 2),
+          },
+        ],
+      });
+    });
+
+    test('should handle errors gracefully for get_graph_at_time', async () => {
+      // Arrange
+      const request = {
+        params: {
+          name: 'get_graph_at_time',
+          arguments: {
+            timestamp: 1700000000000,
+          },
+        },
+      };
+
+      (mockKnowledgeGraphManager as Record<string, ReturnType<typeof vi.fn>>).getGraphAtTime = vi
+        .fn()
+        .mockRejectedValue(new Error('Database error'));
+
+      // Act
+      const result = await handleCallToolRequest(request, mockKnowledgeGraphManager);
+
+      // Assert
+      expect(result.content[0].text).toContain('Error retrieving graph at time: Database error');
+    });
+
+    test('should call getDecayedGraph without options', async () => {
+      // Arrange
+      const request = {
+        params: {
+          name: 'get_decayed_graph',
+          arguments: {},
+        },
+      };
+
+      const graph = { entities: [], relations: [] };
+      (mockKnowledgeGraphManager as Record<string, ReturnType<typeof vi.fn>>).getDecayedGraph = vi
+        .fn()
+        .mockResolvedValue(graph);
+
+      // Act
+      const result = await handleCallToolRequest(request, mockKnowledgeGraphManager);
+
+      // Assert
+      expect(
+        (mockKnowledgeGraphManager as Record<string, ReturnType<typeof vi.fn>>).getDecayedGraph
+      ).toHaveBeenCalledWith();
+      expect(result).toEqual({
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(graph, null, 2),
+          },
+        ],
+      });
+    });
+
+    test('should call getDecayedGraph with reference_time option', async () => {
+      // Arrange
+      const request = {
+        params: {
+          name: 'get_decayed_graph',
+          arguments: {
+            reference_time: 1700000000000,
+          },
+        },
+      };
+
+      const graph = { entities: [], relations: [] };
+      (mockKnowledgeGraphManager as Record<string, ReturnType<typeof vi.fn>>).getDecayedGraph = vi
+        .fn()
+        .mockResolvedValue(graph);
+
+      // Act
+      const result = await handleCallToolRequest(request, mockKnowledgeGraphManager);
+
+      // Assert
+      expect(
+        (mockKnowledgeGraphManager as Record<string, ReturnType<typeof vi.fn>>).getDecayedGraph
+      ).toHaveBeenCalledWith({ referenceTime: 1700000000000 });
+      expect(result).toEqual({
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(graph, null, 2),
+          },
+        ],
+      });
+    });
+
+    test('should call getDecayedGraph with decay_factor option', async () => {
+      // Arrange
+      const request = {
+        params: {
+          name: 'get_decayed_graph',
+          arguments: {
+            decay_factor: 0.5,
+          },
+        },
+      };
+
+      const graph = { entities: [], relations: [] };
+      (mockKnowledgeGraphManager as Record<string, ReturnType<typeof vi.fn>>).getDecayedGraph = vi
+        .fn()
+        .mockResolvedValue(graph);
+
+      // Act
+      const result = await handleCallToolRequest(request, mockKnowledgeGraphManager);
+
+      // Assert
+      expect(
+        (mockKnowledgeGraphManager as Record<string, ReturnType<typeof vi.fn>>).getDecayedGraph
+      ).toHaveBeenCalledWith({ decayFactor: 0.5 });
+      expect(result).toEqual({
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(graph, null, 2),
+          },
+        ],
+      });
+    });
+
+    test('should call getDecayedGraph with both options', async () => {
+      // Arrange
+      const request = {
+        params: {
+          name: 'get_decayed_graph',
+          arguments: {
+            reference_time: 1700000000000,
+            decay_factor: 0.5,
+          },
+        },
+      };
+
+      const graph = { entities: [], relations: [] };
+      (mockKnowledgeGraphManager as Record<string, ReturnType<typeof vi.fn>>).getDecayedGraph = vi
+        .fn()
+        .mockResolvedValue(graph);
+
+      // Act
+      const result = await handleCallToolRequest(request, mockKnowledgeGraphManager);
+
+      // Assert
+      expect(
+        (mockKnowledgeGraphManager as Record<string, ReturnType<typeof vi.fn>>).getDecayedGraph
+      ).toHaveBeenCalledWith({ referenceTime: 1700000000000, decayFactor: 0.5 });
+      expect(result).toEqual({
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(graph, null, 2),
+          },
+        ],
+      });
+    });
+
+    test('should handle errors gracefully for get_decayed_graph', async () => {
+      // Arrange
+      const request = {
+        params: {
+          name: 'get_decayed_graph',
+          arguments: {},
+        },
+      };
+
+      (mockKnowledgeGraphManager as Record<string, ReturnType<typeof vi.fn>>).getDecayedGraph = vi
+        .fn()
+        .mockRejectedValue(new Error('Database error'));
+
+      // Act
+      const result = await handleCallToolRequest(request, mockKnowledgeGraphManager);
+
+      // Assert
+      expect(result.content[0].text).toContain('Error retrieving decayed graph: Database error');
+    });
+  });
+
+  describe('validation edge cases', () => {
+    test('should throw error when request is null', async () => {
+      await expect(handleCallToolRequest(null as never, mockKnowledgeGraphManager)).rejects.toThrow(
+        'Invalid request: request is null or undefined'
+      );
+    });
+
+    test('should throw error when params is missing', async () => {
+      await expect(handleCallToolRequest({}, mockKnowledgeGraphManager)).rejects.toThrow(
+        'Invalid request: missing params'
+      );
+    });
+
+    test('should throw error when tool name is missing', async () => {
+      await expect(
+        handleCallToolRequest({ params: { arguments: {} } }, mockKnowledgeGraphManager)
+      ).rejects.toThrow('Invalid request: missing tool name');
+    });
+  });
 });
