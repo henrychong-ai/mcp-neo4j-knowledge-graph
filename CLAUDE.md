@@ -18,7 +18,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 | Layer           | Technology                         |
 | --------------- | ---------------------------------- |
-| Runtime         | Node.js >=20                       |
+| Runtime         | Node.js >=24 LTS                   |
 | Language        | TypeScript 5.x                     |
 | Package Manager | pnpm                               |
 | Database        | Neo4j 5.13+ (Community/Enterprise) |
