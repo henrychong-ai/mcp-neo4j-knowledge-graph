@@ -35,6 +35,7 @@
   ],
   "scripts": {
     "build": "tsc && shx chmod +x dist/*.js",
+    "typecheck": "tsc --noEmit",
     "prepare": "husky",
     "dev": "tsc --watch",
     "test": "vitest run",
