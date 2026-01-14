@@ -52,9 +52,10 @@
     "embeddings:test": "tsx src/cli/generate-embeddings.ts -- --limit 5"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.20.2",
+    "@modelcontextprotocol/sdk": "^1.25.2",
     "axios": "^1.8.4",
     "dotenv": "^16.4.7",
+    "hono": "^4.11.4",
     "lru-cache": "^11.1.0",
     "neo4j-driver": "^6.0.0",
     "node-cron": "^3.0.3",
@@ -96,7 +97,8 @@
   },
   "overrides": {
     "glob": "^11.0.1",
-    "rimraf": "^6.0.1"
+    "rimraf": "^6.0.1",
+    "hono": "^4.11.4"
   },
   "engines": {
     "node": ">=20.0.0"
