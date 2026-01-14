@@ -8,22 +8,26 @@ const mockNeo4jInitialize = vi.fn().mockResolvedValue(undefined);
 
 // Mock the dependencies
 vi.mock('../neo4j/Neo4jVectorStore.js', () => {
-  const MockNeo4jVectorStore = vi.fn().mockImplementation(() => ({
-    initialize: mockNeo4jInitialize,
-    addVector: vi.fn().mockResolvedValue(undefined),
-    removeVector: vi.fn().mockResolvedValue(undefined),
-    search: vi.fn().mockResolvedValue([]),
-  }));
+  const MockNeo4jVectorStore = vi.fn().mockImplementation(function () {
+    return {
+      initialize: mockNeo4jInitialize,
+      addVector: vi.fn().mockResolvedValue(undefined),
+      removeVector: vi.fn().mockResolvedValue(undefined),
+      search: vi.fn().mockResolvedValue([]),
+    };
+  });
   return { Neo4jVectorStore: MockNeo4jVectorStore };
 });
 
 vi.mock('../neo4j/Neo4jConnectionManager.js', () => {
-  const MockNeo4jConnectionManager = vi.fn().mockImplementation(() => ({
-    getSession: vi.fn().mockResolvedValue({
+  const MockNeo4jConnectionManager = vi.fn().mockImplementation(function () {
+    return {
+      getSession: vi.fn().mockResolvedValue({
+        close: vi.fn().mockResolvedValue(undefined),
+      }),
       close: vi.fn().mockResolvedValue(undefined),
-    }),
-    close: vi.fn().mockResolvedValue(undefined),
-  }));
+    };
+  });
   return { Neo4jConnectionManager: MockNeo4jConnectionManager };
 });
 

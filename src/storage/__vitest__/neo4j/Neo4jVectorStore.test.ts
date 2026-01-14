@@ -56,10 +56,10 @@ vi.mock('../../neo4j/Neo4jConnectionManager.js', () => {
   });
 
   return {
-    Neo4jConnectionManager: vi.fn().mockImplementation(() => {
+    Neo4jConnectionManager: vi.fn().mockImplementation(function () {
       return {
         getSession: mockGetSession,
-        executeQuery: vi.fn().mockImplementation(() => {
+        executeQuery: vi.fn().mockImplementation(function () {
           return {
             records: [
               {
@@ -85,7 +85,7 @@ vi.mock('../../neo4j/Neo4jSchemaManager.js', () => {
   const createVectorIndexMock = vi.fn().mockResolvedValue(undefined);
 
   return {
-    Neo4jSchemaManager: vi.fn().mockImplementation(() => {
+    Neo4jSchemaManager: vi.fn().mockImplementation(function () {
       return {
         vectorIndexExists: vectorIndexExistsMock,
         createVectorIndex: createVectorIndexMock,

@@ -6,10 +6,12 @@ import { Neo4jConnectionManager } from '../../neo4j/Neo4jConnectionManager';
 vi.mock('../../neo4j/Neo4jConnectionManager', () => {
   const mockExecuteQuery = vi.fn().mockResolvedValue({ records: [] });
   return {
-    Neo4jConnectionManager: vi.fn().mockImplementation(() => ({
-      executeQuery: mockExecuteQuery,
-      close: vi.fn().mockResolvedValue(undefined),
-    })),
+    Neo4jConnectionManager: vi.fn().mockImplementation(function () {
+      return {
+        executeQuery: mockExecuteQuery,
+        close: vi.fn().mockResolvedValue(undefined),
+      };
+    }),
   };
 });
 

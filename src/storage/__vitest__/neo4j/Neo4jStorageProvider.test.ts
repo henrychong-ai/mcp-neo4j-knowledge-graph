@@ -60,7 +60,7 @@ vi.mock('neo4j-driver', () => {
 // Mock the Neo4jConnectionManager
 vi.mock('../../neo4j/Neo4jConnectionManager', () => {
   return {
-    Neo4jConnectionManager: vi.fn().mockImplementation(() => {
+    Neo4jConnectionManager: vi.fn().mockImplementation(function () {
       return {
         getSession: vi.fn().mockResolvedValue({
           beginTransaction: vi.fn().mockReturnValue({
@@ -174,7 +174,7 @@ vi.mock('../../neo4j/Neo4jConnectionManager', () => {
           }),
           close: vi.fn().mockResolvedValue(undefined),
         }),
-        executeQuery: vi.fn().mockImplementation(() => {
+        executeQuery: vi.fn().mockImplementation(function () {
           return {
             records: [
               {
@@ -290,7 +290,7 @@ vi.mock('../../neo4j/Neo4jConnectionManager', () => {
 // Mock the Neo4jSchemaManager
 vi.mock('../../neo4j/Neo4jSchemaManager', () => {
   return {
-    Neo4jSchemaManager: vi.fn().mockImplementation(() => {
+    Neo4jSchemaManager: vi.fn().mockImplementation(function () {
       return {
         initializeSchema: vi.fn().mockResolvedValue(undefined),
         close: vi.fn().mockResolvedValue(undefined),

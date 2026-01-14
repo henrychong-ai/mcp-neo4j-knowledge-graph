@@ -7,17 +7,19 @@ import fs from 'fs';
 
 // Define mocks at the top level to handle hoisting
 // These mocks will be applied for all tests
+// Vitest 4.0: vi.fn() with function implementation for constructor compatibility
 vi.mock('@modelcontextprotocol/sdk/server/stdio.js', () => ({
-  StdioServerTransport: vi.fn(() => ({ name: 'StdioServerTransport mock' })),
+  StdioServerTransport: vi.fn(function () {
+    return { name: 'StdioServerTransport mock' };
+  }),
 }));
 
-// Mock KnowledgeGraphManager
-vi.mock('../KnowledgeGraphManager.js', () => {
-  const MockKnowledgeGraphManager = vi.fn();
-  return {
-    KnowledgeGraphManager: MockKnowledgeGraphManager,
-  };
-});
+// Mock KnowledgeGraphManager with constructor-compatible vi.fn
+vi.mock('../KnowledgeGraphManager.js', () => ({
+  KnowledgeGraphManager: vi.fn(function () {
+    return {};
+  }),
+}));
 
 // Mock config/storage.js
 vi.mock('../config/storage.js', () => ({
@@ -49,8 +51,8 @@ beforeEach(() => {
     fs.mkdirSync(testDir, { recursive: true, mode: 0o777 });
   }
 
-  // Reset all mocks
-  vi.resetAllMocks();
+  // Clear mock call history (preserves implementations for Vitest 4.0 compatibility)
+  vi.clearAllMocks();
   vi.resetModules();
 });
 
@@ -115,7 +117,10 @@ describe('Memory Server Main Function', () => {
     };
 
     // Set mock implementation for this test
-    (StdioServerTransport as any).mockReturnValue(mockTransport);
+    // Vitest 4.0: use mockImplementation with function for constructor compatibility
+    (StdioServerTransport as any).mockImplementation(function () {
+      return mockTransport;
+    });
     (setupServer as any).mockReturnValue(mockServer);
 
     // Save current environment
@@ -198,7 +203,10 @@ describe('Memory Server Main Function', () => {
 
     // Set mock implementations for this test
     (initializeStorageProvider as any).mockReturnValue(mockStorageProvider);
-    (KnowledgeGraphManager as any).mockReturnValue(mockKnowledgeGraphManager);
+    // Vitest 4.0: use mockImplementation with function for constructor compatibility
+    (KnowledgeGraphManager as any).mockImplementation(function () {
+      return mockKnowledgeGraphManager;
+    });
     (setupServer as any).mockReturnValue(mockServer);
 
     // Import index to trigger initialization
