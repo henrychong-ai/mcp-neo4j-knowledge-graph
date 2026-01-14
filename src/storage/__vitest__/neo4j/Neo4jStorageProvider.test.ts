@@ -538,4 +538,161 @@ describe('Neo4jStorageProvider', () => {
       expect(storageProvider.getConnectionManager().getSession).toHaveBeenCalled();
     });
   });
+
+  // Temporal methods
+
+  describe('getEntityHistory', () => {
+    it('should retrieve entity version history', async () => {
+      const history = await storageProvider.getEntityHistory('test-entity');
+
+      expect(storageProvider.getConnectionManager().executeQuery).toHaveBeenCalled();
+      expect(Array.isArray(history)).toBe(true);
+    });
+  });
+
+  describe('getRelationHistory', () => {
+    it('should retrieve relation version history', async () => {
+      const history = await storageProvider.getRelationHistory(
+        'entity1',
+        'entity2',
+        'test-relation'
+      );
+
+      expect(storageProvider.getConnectionManager().executeQuery).toHaveBeenCalled();
+      expect(Array.isArray(history)).toBe(true);
+    });
+  });
+
+  describe('getGraphAtTime', () => {
+    it('should retrieve graph state at a specific timestamp', async () => {
+      const timestamp = Date.now() - 86400000; // 1 day ago
+      const graph = await storageProvider.getGraphAtTime(timestamp);
+
+      expect(storageProvider.getConnectionManager().executeQuery).toHaveBeenCalled();
+      expect(graph).toBeDefined();
+      expect(graph.entities).toBeDefined();
+      expect(graph.relations).toBeDefined();
+    });
+  });
+
+  describe('getDecayedGraph', () => {
+    it('should retrieve graph with confidence decay applied', async () => {
+      const graph = await storageProvider.getDecayedGraph();
+
+      expect(storageProvider.getConnectionManager().executeQuery).toHaveBeenCalled();
+      expect(graph).toBeDefined();
+      expect(graph.entities).toBeDefined();
+      expect(graph.relations).toBeDefined();
+    });
+  });
+
+  // Batch operations
+
+  describe('createEntitiesBatch', () => {
+    it('should create multiple entities in a batch', async () => {
+      const entities: Entity[] = [
+        { name: 'batch-entity-1', entityType: 'test', observations: ['obs1'] },
+        { name: 'batch-entity-2', entityType: 'test', observations: ['obs2'] },
+      ];
+
+      const result = await storageProvider.createEntitiesBatch(entities);
+
+      expect(storageProvider.getConnectionManager().getSession).toHaveBeenCalled();
+      expect(result).toBeDefined();
+      expect(result.successful).toBeDefined();
+      expect(result.failed).toBeDefined();
+    });
+
+    it('should accept batch config options', async () => {
+      const entities: Entity[] = [
+        { name: 'batch-entity-1', entityType: 'test', observations: ['obs1'] },
+      ];
+      const config = { maxBatchSize: 50, enableParallel: true };
+
+      const result = await storageProvider.createEntitiesBatch(entities, config);
+
+      expect(result).toBeDefined();
+    });
+  });
+
+  describe('createRelationsBatch', () => {
+    it('should create multiple relations in a batch', async () => {
+      const relations: Relation[] = [
+        { from: 'entity1', to: 'entity2', relationType: 'KNOWS' },
+        { from: 'entity2', to: 'entity3', relationType: 'WORKS_WITH' },
+      ];
+
+      const result = await storageProvider.createRelationsBatch(relations);
+
+      expect(storageProvider.getConnectionManager().getSession).toHaveBeenCalled();
+      expect(result).toBeDefined();
+      expect(result.successful).toBeDefined();
+      expect(result.failed).toBeDefined();
+    });
+  });
+
+  describe('addObservationsBatch', () => {
+    it('should add observations to multiple entities in a batch', async () => {
+      const observations = [
+        { entityName: 'entity1', contents: ['new obs 1'] },
+        { entityName: 'entity2', contents: ['new obs 2'] },
+      ];
+
+      const result = await storageProvider.addObservationsBatch(observations);
+
+      expect(storageProvider.getConnectionManager().getSession).toHaveBeenCalled();
+      expect(result).toBeDefined();
+      expect(result.successful).toBeDefined();
+    });
+  });
+
+  describe('updateEntitiesBatch', () => {
+    it('should update multiple entities in a batch', async () => {
+      const updates = [
+        { name: 'entity1', addObservations: ['added obs'] },
+        { name: 'entity2', entityType: 'updated-type' },
+      ];
+
+      const result = await storageProvider.updateEntitiesBatch(updates);
+
+      expect(storageProvider.getConnectionManager().getSession).toHaveBeenCalled();
+      expect(result).toBeDefined();
+      expect(result.successful).toBeDefined();
+    });
+  });
+
+  // Embedding methods
+
+  describe('getEntityEmbedding', () => {
+    it('should retrieve entity embedding', async () => {
+      const embedding = await storageProvider.getEntityEmbedding('test-entity');
+
+      expect(storageProvider.getConnectionManager().executeQuery).toHaveBeenCalled();
+      // May return null or embedding object depending on mock
+    });
+  });
+
+  describe('updateEntityEmbedding', () => {
+    it('should update entity embedding', async () => {
+      const embedding = {
+        vector: new Array(1536).fill(0).map(() => Math.random()),
+        model: 'text-embedding-3-small',
+        lastUpdated: Date.now(),
+      };
+
+      await storageProvider.updateEntityEmbedding('test-entity', embedding);
+
+      expect(storageProvider.getConnectionManager().getSession).toHaveBeenCalled();
+    });
+  });
+
+  // Helper methods
+
+  describe('close', () => {
+    it('should close the connection manager', async () => {
+      await storageProvider.close();
+
+      expect(storageProvider.getConnectionManager().close).toHaveBeenCalled();
+    });
+  });
 });
