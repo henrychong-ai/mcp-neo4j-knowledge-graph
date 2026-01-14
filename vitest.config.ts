@@ -31,9 +31,6 @@ export default defineConfig({
       '^(\\.\\.?/.*)(\\.[jt]s)?$': '$1',
     },
 
-    // Timeout for teardown to prevent hanging workers
-    teardownTimeout: 5000,
-
     // Coverage configuration
     coverage: {
       provider: 'v8',

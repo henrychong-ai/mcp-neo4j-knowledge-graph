@@ -66,7 +66,7 @@ export class FileStorageProvider implements StorageProvider {
    */
   async loadGraph(): Promise<KnowledgeGraph> {
     try {
-      const content = await this._fs.promises.readFile(this.filePath, 'utf8');
+      const content = await this._fs.promises.readFile(this.filePath, 'utf-8');
       this.graph = JSON.parse(content);
       return this.graph;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any

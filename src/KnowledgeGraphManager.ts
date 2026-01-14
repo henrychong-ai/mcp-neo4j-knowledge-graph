@@ -269,7 +269,7 @@ export class KnowledgeGraphManager {
         return { entities: [], relations: [] };
       }
 
-      const fileContents = await this.fsModule.readFile(this.memoryFilePath, 'utf8');
+      const fileContents = await this.fsModule.readFile(this.memoryFilePath, 'utf-8');
       if (!fileContents || fileContents.trim() === '') {
         return { entities: [], relations: [] };
       }
