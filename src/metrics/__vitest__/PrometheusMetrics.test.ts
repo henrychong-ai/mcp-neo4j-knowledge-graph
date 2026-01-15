@@ -2,18 +2,39 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { PrometheusMetrics } from '../PrometheusMetrics.js';
 
 describe('PrometheusMetrics', () => {
-  // Store original env
-  const originalEnv = { ...process.env };
+  // Store original env values we'll modify
+  let originalEnableMetrics: string | undefined;
 
   beforeEach(() => {
+    // Store specific env vars we'll modify
+    originalEnableMetrics = process.env.ENABLE_PROMETHEUS_METRICS;
+
+    // Get existing instance and stop it to prevent timer leaks
+    const existingInstance = (PrometheusMetrics as { instance: PrometheusMetrics | null }).instance;
+    if (existingInstance) {
+      existingInstance.stopServer();
+      existingInstance.stopDefaultMetrics();
+    }
+
     // Reset singleton between tests
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (PrometheusMetrics as any).instance = null;
-    process.env = { ...originalEnv };
   });
 
   afterEach(() => {
-    process.env = originalEnv;
+    // Stop any active instance to prevent timer leaks
+    const instance = (PrometheusMetrics as { instance: PrometheusMetrics | null }).instance;
+    if (instance) {
+      instance.stopServer();
+      instance.stopDefaultMetrics();
+    }
+
+    // Restore original env values
+    if (originalEnableMetrics === undefined) {
+      delete process.env.ENABLE_PROMETHEUS_METRICS;
+    } else {
+      process.env.ENABLE_PROMETHEUS_METRICS = originalEnableMetrics;
+    }
   });
 
   describe('getInstance', () => {
