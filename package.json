@@ -34,7 +34,7 @@
     "SETUP_AUTOMATION.md"
   ],
   "scripts": {
-    "build": "tsc && shx chmod +x dist/*.js",
+    "build": "tsc && echo '#!/usr/bin/env node' | cat - dist/index.js > dist/index.js.tmp && mv dist/index.js.tmp dist/index.js && shx chmod +x dist/*.js",
     "typecheck": "tsc --noEmit",
     "prepare": "husky",
     "dev": "tsc --watch",
