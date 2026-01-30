@@ -245,7 +245,46 @@ Test files use Vitest with comprehensive mocking:
 - Embedding service has mock implementation for testing
 - File system operations mocked via `src/utils/fs.ts`
 
+## CI/CD Pipeline
+
+### GitHub Actions (`ci-cd.yml`)
+
+| Job                | Trigger           | Node Versions    |
+| ------------------ | ----------------- | ---------------- |
+| **Build and Test** | All pushes, PRs   | 20.x, 22.x, 24.x |
+| **Publish to npm** | Tags matching v\* | 24.x             |
+
+**Build Job Steps:**
+
+1. Checkout code
+2. Install pnpm 10
+3. Setup Node.js with pnpm cache
+4. Install dependencies
+5. Lint (`pnpm lint`)
+6. Type check (`pnpm typecheck`)
+7. Build project
+8. Initialize Neo4j schema (service container)
+9. Run tests
+10. Run test coverage
+
+**Publish Job:**
+
+- **Trigger**: Only on version tags (e.g., `v1.12.2`)
+- **Authentication**: OIDC (scoped packages @henrychong-ai/\* support automatic auth)
+- **Version Check**: Tag must match `package.json` version
+
 ## Version History & Recent Bugfixes
+
+### v1.12.2 (2026-01-31) - CI/CD Improvements
+
+**Changes:**
+
+- Expanded test matrix to Node 20.x, 22.x, 24.x
+- Added lint and typecheck steps before build
+- Publish uses Node 24.x (current LTS)
+- Renamed workflow from `mcp-neo4j-knowledge-graph.yml` to `ci-cd.yml`
+
+---
 
 ### v1.0.5 (2025-10-17) - BigInt Version Arithmetic Fix
 
