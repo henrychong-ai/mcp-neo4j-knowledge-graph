@@ -1,6 +1,6 @@
 {
   "name": "@henrychong-ai/mcp-neo4j-knowledge-graph",
-  "version": "1.12.2",
+  "version": "1.12.3",
   "description": "Neo4j-based knowledge graph MCP server with temporal versioning and semantic search",
   "license": "MIT",
   "author": "Henry Chong <henry@henrychong.ai>",
@@ -45,7 +45,9 @@
     "test:integration": "TEST_INTEGRATION=true pnpm test",
     "lint": "eslint 'src/**/*.ts'",
     "lint:fix": "eslint 'src/**/*.ts' --fix",
-    "format": "prettier --write \"**/*.{ts,json,md}\"",
+    "format": "prettier --write \"**/*.{ts,json,md,yml,yaml}\"",
+    "format:check": "prettier --check .",
+    "check": "pnpm lint && pnpm format:check && pnpm typecheck",
     "fix": "pnpm run lint:fix && pnpm run format",
     "neo4j:init": "tsx src/cli/neo4j-setup.ts init",
     "neo4j:test": "tsx src/cli/neo4j-setup.ts test",
@@ -100,6 +102,7 @@
     "rimraf": "^6.0.1",
     "hono": "^4.11.4"
   },
+  "packageManager": "pnpm@10.0.0",
   "engines": {
     "node": ">=24.0.0"
   },

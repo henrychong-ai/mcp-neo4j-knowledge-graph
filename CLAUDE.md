@@ -269,11 +269,35 @@ Test files use Vitest with comprehensive mocking:
 
 **Publish Job:**
 
-- **Trigger**: Only on version tags (e.g., `v1.12.2`)
+- **Trigger**: Only on version tags (e.g., `v1.12.3`)
 - **Authentication**: OIDC (scoped packages @henrychong-ai/\* support automatic auth)
 - **Version Check**: Tag must match `package.json` version
 
 ## Version History & Recent Bugfixes
+
+### v1.12.3 (2026-01-31) - Lint Stack & Ironclad Stack Alignment
+
+**Lint Stack Alignment:**
+
+- Added `format:check` script for CI format validation
+- Added `check` script combining lint + format:check + typecheck
+- Created `.prettierignore` with comprehensive exclusion patterns
+- Created `.vscode/settings.json` for format-on-save integration
+- Added format:check step to CI/CD workflow
+- Fixed pre-commit hook executable permissions
+- Fixed Prettier formatting in 4 config files
+
+**Ironclad Stack Compliance:**
+
+- Updated `.nvmrc` to explicit version `24.13.0`
+- Added `engine-strict=true` to `.npmrc`
+- Added `packageManager: "pnpm@10.0.0"` to package.json
+- Added `isolatedModules: true` to tsconfig.json (ESM compatibility)
+- Added `useUnknownInCatchVariables: true` to tsconfig.json (type safety)
+
+**Coverage Thresholds:** Current thresholds (40-45%) are intentionally lower than ironclad standard (80%) as this is an existing codebase with incremental improvement planned. See vitest.config.ts for details.
+
+---
 
 ### v1.12.2 (2026-01-31) - CI/CD Improvements
 

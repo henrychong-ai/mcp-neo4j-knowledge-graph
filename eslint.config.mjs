@@ -66,11 +66,14 @@ export default tseslint.config(
       import: importPlugin,
     },
     rules: {
-      'import/order': ['error', {
-        'groups': ['builtin', 'external', 'internal', 'parent', 'sibling', 'index'],
-        'newlines-between': 'always',
-        'alphabetize': { order: 'asc', caseInsensitive: true },
-      }],
+      'import/order': [
+        'error',
+        {
+          groups: ['builtin', 'external', 'internal', 'parent', 'sibling', 'index'],
+          'newlines-between': 'always',
+          alphabetize: { order: 'asc', caseInsensitive: true },
+        },
+      ],
       'import/no-duplicates': 'error',
       'import/no-cycle': 'warn',
       'import/no-unresolved': 'off',
@@ -86,10 +89,13 @@ export default tseslint.config(
       ...unicorn.configs.recommended.rules,
       // Allow camelCase filenames (existing convention: temporalEntity.ts)
       // Also ignore specific files like OpenAIEmbeddingService.ts (AI acronym)
-      'unicorn/filename-case': ['error', {
-        cases: { kebabCase: true, pascalCase: true, camelCase: true },
-        ignore: ['^OpenAI.*\\.ts$'],
-      }],
+      'unicorn/filename-case': [
+        'error',
+        {
+          cases: { kebabCase: true, pascalCase: true, camelCase: true },
+          ignore: ['^OpenAI.*\\.ts$'],
+        },
+      ],
       'unicorn/prevent-abbreviations': 'off',
       'unicorn/no-null': 'off',
       'unicorn/no-array-reduce': 'off',
@@ -190,16 +196,22 @@ export default tseslint.config(
   {
     rules: {
       // TypeScript rules - relaxed for existing codebase
-      '@typescript-eslint/no-unused-vars': ['error', {
-        argsIgnorePattern: '^_',
-        varsIgnorePattern: '^_',
-        destructuredArrayIgnorePattern: '^_',
-      }],
-      '@typescript-eslint/consistent-type-imports': ['error', {
-        prefer: 'type-imports',
-        fixStyle: 'separate-type-imports',
-        disallowTypeAnnotations: false, // Allow import() type annotations
-      }],
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        {
+          argsIgnorePattern: '^_',
+          varsIgnorePattern: '^_',
+          destructuredArrayIgnorePattern: '^_',
+        },
+      ],
+      '@typescript-eslint/consistent-type-imports': [
+        'error',
+        {
+          prefer: 'type-imports',
+          fixStyle: 'separate-type-imports',
+          disallowTypeAnnotations: false, // Allow import() type annotations
+        },
+      ],
       '@typescript-eslint/consistent-type-exports': 'error',
       '@typescript-eslint/no-explicit-any': 'warn',
       '@typescript-eslint/no-unsafe-assignment': 'off',
@@ -217,11 +229,15 @@ export default tseslint.config(
       '@typescript-eslint/no-empty-function': 'off', // Allow empty stubs
       '@typescript-eslint/no-misused-promises': 'off',
       '@typescript-eslint/no-base-to-string': 'off',
-      '@typescript-eslint/explicit-function-return-type': ['warn', {
-        allowExpressions: true,
-        allowTypedFunctionExpressions: true,
-      }],
-      '@typescript-eslint/naming-convention': ['error',
+      '@typescript-eslint/explicit-function-return-type': [
+        'warn',
+        {
+          allowExpressions: true,
+          allowTypedFunctionExpressions: true,
+        },
+      ],
+      '@typescript-eslint/naming-convention': [
+        'error',
         {
           selector: 'typeLike',
           format: ['PascalCase'],
@@ -247,5 +263,5 @@ export default tseslint.config(
   // =============================================================================
   // PRETTIER (must be last)
   // =============================================================================
-  prettier,
+  prettier
 );
