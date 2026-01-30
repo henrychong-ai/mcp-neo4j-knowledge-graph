@@ -1,13 +1,14 @@
-# This workflow will do a clean installation of node dependencies, cache/restore them, build the source code and run tests across different versions of node
-# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-nodejs
+# Neo4j Knowledge Graph MCP - CI and npm Publishing
+# Runs tests on all pushes, publishes to npm only on version tags (v*)
 
 name: Neo4j Knowledge Graph MCP CI
 
 on:
   push:
-    branches: [ "**" ]  # Trigger on all branches
+    branches: ['**']
+    tags: ['v*'] # Trigger on version tags for npm publish
   pull_request:
-    branches: [ "**" ]  # Trigger on all PRs
+    branches: ['**']
 
 jobs:
   build:
@@ -17,7 +18,6 @@ jobs:
     strategy:
       matrix:
         node-version: [20.x]
-        # See supported Node.js release schedule at https://nodejs.org/en/about/releases/
 
     services:
       # Set up Neo4j service for graph database and vector search
@@ -37,143 +37,129 @@ jobs:
           --health-retries 5
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Install pnpm
-      uses: pnpm/action-setup@v4
-      with:
-        version: 10
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
 
-    - name: Use Node.js ${{ matrix.node-version }}
-      uses: actions/setup-node@v4
-      with:
-        node-version: ${{ matrix.node-version }}
-        cache: 'pnpm'
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'pnpm'
 
-    - name: Install dependencies
-      run: pnpm install
+      - name: Install dependencies
+        run: pnpm install
 
-    - name: Build project
-      run: pnpm run build
+      - name: Build project
+        run: pnpm run build
 
-    - name: Create mock .env file for tests
-      run: |
-        echo "# Mock environment for CI testing" >> .env
-        echo "# This enables tests to run without a real OpenAI API key" >> .env
-        echo "OPENAI_API_KEY=sk-mock-api-key-for-tests" >> .env
-        echo "OPENAI_EMBEDDING_MODEL=text-embedding-3-small" >> .env
-        echo "# The MOCK_EMBEDDINGS flag forces the use of DefaultEmbeddingService" >> .env
-        echo "# which generates random vectors instead of calling the OpenAI API" >> .env
-        echo "MOCK_EMBEDDINGS=true" >> .env
-        echo "ENV_FILE_CREATED=true" >> .env
-        cat .env
+      - name: Create mock .env file for tests
+        run: |
+          echo "# Mock environment for CI testing" >> .env
+          echo "# This enables tests to run without a real OpenAI API key" >> .env
+          echo "OPENAI_API_KEY=sk-mock-api-key-for-tests" >> .env
+          echo "OPENAI_EMBEDDING_MODEL=text-embedding-3-small" >> .env
+          echo "# The MOCK_EMBEDDINGS flag forces the use of DefaultEmbeddingService" >> .env
+          echo "# which generates random vectors instead of calling the OpenAI API" >> .env
+          echo "MOCK_EMBEDDINGS=true" >> .env
+          echo "ENV_FILE_CREATED=true" >> .env
+          cat .env
 
-    - name: Initialize Neo4j Schema
-      run: pnpm run neo4j:init
-      env:
-        NEO4J_URI: bolt://localhost:7687
-        NEO4J_USERNAME: neo4j
-        NEO4J_PASSWORD: memento_password
-        NEO4J_DATABASE: neo4j
-        NEO4J_VECTOR_INDEX: entity_embeddings
-        NEO4J_VECTOR_DIMENSIONS: 1536
-        NEO4J_SIMILARITY_FUNCTION: cosine
+      - name: Initialize Neo4j Schema
+        run: pnpm run neo4j:init
+        env:
+          NEO4J_URI: bolt://localhost:7687
+          NEO4J_USERNAME: neo4j
+          NEO4J_PASSWORD: memento_password
+          NEO4J_DATABASE: neo4j
+          NEO4J_VECTOR_INDEX: entity_embeddings
+          NEO4J_VECTOR_DIMENSIONS: 1536
+          NEO4J_SIMILARITY_FUNCTION: cosine
 
-    - name: Run tests
-      run: pnpm test
-      env:
-        MEMORY_STORAGE_TYPE: neo4j
-        NEO4J_URI: bolt://localhost:7687
-        NEO4J_USERNAME: neo4j
-        NEO4J_PASSWORD: memento_password
-        NEO4J_DATABASE: neo4j
-        NEO4J_VECTOR_INDEX: entity_embeddings
-        NEO4J_VECTOR_DIMENSIONS: 1536
-        NEO4J_SIMILARITY_FUNCTION: cosine
-        OPENAI_API_KEY: sk-mock-api-key-for-tests
-        OPENAI_EMBEDDING_MODEL: text-embedding-3-small
-        MOCK_EMBEDDINGS: true
+      - name: Run tests
+        run: pnpm test
+        env:
+          MEMORY_STORAGE_TYPE: neo4j
+          NEO4J_URI: bolt://localhost:7687
+          NEO4J_USERNAME: neo4j
+          NEO4J_PASSWORD: memento_password
+          NEO4J_DATABASE: neo4j
+          NEO4J_VECTOR_INDEX: entity_embeddings
+          NEO4J_VECTOR_DIMENSIONS: 1536
+          NEO4J_SIMILARITY_FUNCTION: cosine
+          OPENAI_API_KEY: sk-mock-api-key-for-tests
+          OPENAI_EMBEDDING_MODEL: text-embedding-3-small
+          MOCK_EMBEDDINGS: true
 
-    - name: Run test coverage
-      run: pnpm run test:coverage
-      env:
-        MEMORY_STORAGE_TYPE: neo4j
-        NEO4J_URI: bolt://localhost:7687
-        NEO4J_USERNAME: neo4j
-        NEO4J_PASSWORD: memento_password
-        NEO4J_DATABASE: neo4j
-        NEO4J_VECTOR_INDEX: entity_embeddings
-        NEO4J_VECTOR_DIMENSIONS: 1536
-        NEO4J_SIMILARITY_FUNCTION: cosine
-        OPENAI_API_KEY: sk-mock-api-key-for-tests
-        OPENAI_EMBEDDING_MODEL: text-embedding-3-small
-        MOCK_EMBEDDINGS: true
+      - name: Run test coverage
+        run: pnpm run test:coverage
+        env:
+          MEMORY_STORAGE_TYPE: neo4j
+          NEO4J_URI: bolt://localhost:7687
+          NEO4J_USERNAME: neo4j
+          NEO4J_PASSWORD: memento_password
+          NEO4J_DATABASE: neo4j
+          NEO4J_VECTOR_INDEX: entity_embeddings
+          NEO4J_VECTOR_DIMENSIONS: 1536
+          NEO4J_SIMILARITY_FUNCTION: cosine
+          OPENAI_API_KEY: sk-mock-api-key-for-tests
+          OPENAI_EMBEDDING_MODEL: text-embedding-3-small
+          MOCK_EMBEDDINGS: true
 
   publish:
     name: Publish to npm
     needs: build
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    # Only publish on version tags (v*)
+    if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
 
     permissions:
       contents: read
-      id-token: write  # Required for OIDC token
+      id-token: write # Required for npm OIDC authentication
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Use Node.js 20.x
-      uses: actions/setup-node@v4
-      with:
-        node-version: 20.x
-        registry-url: 'https://registry.npmjs.org'
+      - name: Use Node.js 20.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          registry-url: 'https://registry.npmjs.org'
 
-    - name: Update npm to latest (required for OIDC ≥11.5.1)
-      run: npm install -g npm@latest
+      - name: Install dependencies
+        run: |
+          rm -rf node_modules
+          rm -f package-lock.json
+          npm install
 
-    - name: Install dependencies
-      run: |
-        rm -rf node_modules
-        rm -f package-lock.json
-        npm install
+      - name: Build package
+        run: npm run build
 
-    - name: Build package
-      run: npm run build
+      - name: Set executable permissions
+        run: chmod +x dist/*.js
 
-    - name: Set executable permissions
-      run: chmod +x dist/*.js
+      - name: Verify tag matches package.json version
+        run: |
+          # Extract version from tag (remove 'v' prefix)
+          TAG_VERSION=${GITHUB_REF#refs/tags/v}
+          echo "Tag version: $TAG_VERSION"
 
-    - name: Check version and determine if publish is needed
-      id: check_version
-      run: |
-        # Get current version from package.json
-        CURRENT_VERSION=$(node -p "require('./package.json').version")
-        echo "Current version in package.json: $CURRENT_VERSION"
+          # Get version from package.json
+          PACKAGE_VERSION=$(node -p "require('./package.json').version")
+          echo "Package.json version: $PACKAGE_VERSION"
 
-        # Get latest version from npm (if it exists)
-        if LATEST_VERSION=$(npm view @henrychong-ai/mcp-neo4j-knowledge-graph version 2>/dev/null); then
-          echo "Latest published version: $LATEST_VERSION"
-
-          # Compare versions using node
-          IS_HIGHER=$(node -e "const semver = require('semver'); console.log(semver.gt('$CURRENT_VERSION', '$LATEST_VERSION') ? 'true' : 'false')")
-          echo "is_higher=$IS_HIGHER" >> $GITHUB_OUTPUT
-
-          if [ "$IS_HIGHER" = "true" ]; then
-            echo "Current version is higher than latest published version. Proceeding with publish."
-          else
-            echo "Current version is not higher than latest published version. Skipping publish."
+          # Verify they match
+          if [ "$TAG_VERSION" != "$PACKAGE_VERSION" ]; then
+            echo "❌ Error: Tag version ($TAG_VERSION) does not match package.json version ($PACKAGE_VERSION)"
+            exit 1
           fi
-        else
-          echo "No published version found. This appears to be the first publish."
-          echo "is_higher=true" >> $GITHUB_OUTPUT
-        fi
+          echo "✅ Tag version matches package.json version"
 
-    - name: Publish to npm
-      if: steps.check_version.outputs.is_higher == 'true'
-      run: npm publish --access public
-
-    - name: Skip publish - version not higher
-      if: steps.check_version.outputs.is_higher != 'true'
-      run: echo "✅ Build successful but publish skipped - current version is not higher than the latest published version."
+      - name: Publish to npm
+        # Uses OIDC authentication via setup-node + id-token permission
+        run: npm publish --access public
