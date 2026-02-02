@@ -276,6 +276,30 @@ Test files use Vitest with comprehensive mocking:
 
 ## Version History & Recent Bugfixes
 
+### v1.13.0 (2026-02-02) - Tech Stack Modernization
+
+**Major Tech Stack Updates:**
+
+- Zod 4.x for runtime validation with comprehensive schemas (`src/schemas/index.ts`)
+- ESLint 9 with strictTypeChecked configuration
+- Vitest 4.x testing framework
+- pnpm 10.28.2 package manager
+- TypeScript ES2022 target with isolatedModules
+
+**Dependency Updates:**
+
+- @modelcontextprotocol/sdk 1.25.3
+- @typescript-eslint/\* 8.54.0
+- prettier 3.8.1
+- All packages updated to latest minor/patch versions
+
+**CI/CD Improvements:**
+
+- Fixed flaky rate limiter timing test
+- Adjusted coverage thresholds for CI environment variance
+
+---
+
 ### v1.12.5 (2026-02-02) - Dependency Updates
 
 **Updated to Latest Minor/Patch Versions:**
