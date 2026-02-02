@@ -169,5 +169,7 @@ jobs:
           echo "✅ Tag version matches package.json version"
 
       - name: Publish to npm
-        # Uses OIDC authentication via setup-node + id-token permission
+        # Uses NPM_TOKEN secret for authentication
         run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
