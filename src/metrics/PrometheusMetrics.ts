@@ -35,9 +35,9 @@ export class PrometheusMetrics {
     this.register = new promClient.Registry();
 
     // Add default metrics (process CPU, memory, etc.)
-    // Store interval reference for cleanup
-    const clearFn = promClient.collectDefaultMetrics({ register: this.register });
-    this.defaultMetricsInterval = typeof clearFn === 'function' ? clearFn : null;
+    // Note: collectDefaultMetrics returns void in prom-client 15+
+    promClient.collectDefaultMetrics({ register: this.register });
+    this.defaultMetricsInterval = null;
 
     // Initialize cache hit counter
     this.cacheHits = new promClient.Counter({

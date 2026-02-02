@@ -946,7 +946,7 @@ export class KnowledgeGraphManager {
             const embeddingService = this.embeddingJobManager.embeddingService;
             if (embeddingService) {
               const queryVector = await embeddingService.generateEmbedding(query);
-              return this.storageProvider.semanticSearch(query, {
+              return await this.storageProvider.semanticSearch(query, {
                 ...options,
                 queryVector,
               });
@@ -954,7 +954,7 @@ export class KnowledgeGraphManager {
           }
 
           // Fall back to text search if no embedding service
-          return this.storageProvider.searchNodes(query, {
+          return await this.storageProvider.searchNodes(query, {
             domain: options.domain,
             includeNullDomain: options.includeNullDomain,
           });

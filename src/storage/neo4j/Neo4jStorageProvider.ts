@@ -1908,7 +1908,7 @@ export class Neo4jStorageProvider implements StorageProvider {
     try {
       // If decay is not enabled, just return the regular graph
       if (!this.decayConfig.enabled) {
-        return this.loadGraph();
+        return await this.loadGraph();
       }
 
       const startTime = Date.now();

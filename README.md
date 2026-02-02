@@ -4,7 +4,7 @@ Scalable, high-performance knowledge graph memory system with semantic retrieval
 
 **Maintained by** [Henry Chong](https://github.com/henrychong-ai)
 
-[![Neo4j Knowledge Graph MCP CI](https://github.com/henrychong-ai/mcp-neo4j-knowledge-graph/actions/workflows/mcp-neo4j-knowledge-graph.yml/badge.svg)](https://github.com/henrychong-ai/mcp-neo4j-knowledge-graph/actions/workflows/mcp-neo4j-knowledge-graph.yml)
+[![CI/CD](https://github.com/henrychong-ai/mcp-neo4j-knowledge-graph/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/henrychong-ai/mcp-neo4j-knowledge-graph/actions/workflows/ci-cd.yml)
 
 ---
 

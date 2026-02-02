@@ -43,8 +43,8 @@ export default tseslint.config(
   // Base ESLint recommended
   eslint.configs.recommended,
 
-  // TypeScript recommended (not strictTypeChecked for existing codebase)
-  ...tseslint.configs.recommendedTypeChecked,
+  // TypeScript strict type checking (Ironclad Stack standard)
+  ...tseslint.configs.strictTypeChecked,
   ...tseslint.configs.stylisticTypeChecked,
 
   // Parser options for type-aware linting
@@ -214,21 +214,30 @@ export default tseslint.config(
       ],
       '@typescript-eslint/consistent-type-exports': 'error',
       '@typescript-eslint/no-explicit-any': 'warn',
-      '@typescript-eslint/no-unsafe-assignment': 'off',
-      '@typescript-eslint/no-unsafe-member-access': 'off',
-      '@typescript-eslint/no-unsafe-call': 'off',
-      '@typescript-eslint/no-unsafe-return': 'off',
-      '@typescript-eslint/no-unsafe-argument': 'off',
-      '@typescript-eslint/restrict-template-expressions': 'off',
-      '@typescript-eslint/no-unnecessary-condition': 'off',
+      // Strict type checking - kept on for strictTypeChecked compliance
+      '@typescript-eslint/no-unsafe-assignment': 'warn',
+      '@typescript-eslint/no-unsafe-member-access': 'warn',
+      '@typescript-eslint/no-unsafe-call': 'warn',
+      '@typescript-eslint/no-unsafe-return': 'warn',
+      '@typescript-eslint/no-unsafe-argument': 'warn',
+      '@typescript-eslint/restrict-template-expressions': 'warn',
+      '@typescript-eslint/no-unnecessary-condition': 'off', // Too noisy for defensive coding
       '@typescript-eslint/use-unknown-in-catch-callback-variable': 'off',
-      '@typescript-eslint/prefer-nullish-coalescing': 'off',
+      '@typescript-eslint/prefer-nullish-coalescing': 'off', // Allow || for intentional falsy checks
       '@typescript-eslint/no-redundant-type-constituents': 'off',
       '@typescript-eslint/require-await': 'warn',
       '@typescript-eslint/no-floating-promises': 'warn',
       '@typescript-eslint/no-empty-function': 'off', // Allow empty stubs
-      '@typescript-eslint/no-misused-promises': 'off',
-      '@typescript-eslint/no-base-to-string': 'off',
+      '@typescript-eslint/no-misused-promises': 'warn',
+      '@typescript-eslint/no-base-to-string': 'warn',
+      // Deprecated methods are intentional (backwards compat with file storage)
+      '@typescript-eslint/no-deprecated': 'warn',
+      // Allow non-null assertions with caution (warn, not error)
+      '@typescript-eslint/no-non-null-assertion': 'warn',
+      // Static-only classes are valid factory pattern
+      '@typescript-eslint/no-extraneous-class': 'off',
+      // Unnecessary type conversions - some are for BigInt safety
+      '@typescript-eslint/no-unnecessary-type-conversion': 'warn',
       '@typescript-eslint/explicit-function-return-type': [
         'warn',
         {

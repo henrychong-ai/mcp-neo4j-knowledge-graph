@@ -211,7 +211,7 @@ export class Neo4jVectorStore implements VectorStore {
       if (!hasValidNorm) {
         logger.warn(`Neo4jVectorStore: Vector has invalid l2-norm, using fallback search`);
         // Fallback to pattern matching instead
-        return this.searchByPatternFallback(options.limit ?? 5, options.domain);
+        return await this.searchByPatternFallback(options.limit ?? 5, options.domain);
       }
 
       // Process search options
@@ -270,12 +270,12 @@ export class Neo4jVectorStore implements VectorStore {
 
         // If no results, use fallback
         logger.debug(`Neo4jVectorStore: No results from vector search, using fallback`);
-        return this.searchByPatternFallback(limit, domain);
+        return await this.searchByPatternFallback(limit, domain);
       } catch (error) {
         logger.error(
           `Neo4jVectorStore: Vector search failed: ${error instanceof Error ? error.message : String(error)}`
         );
-        return this.searchByPatternFallback(limit, domain);
+        return await this.searchByPatternFallback(limit, domain);
       } finally {
         await session.close();
       }

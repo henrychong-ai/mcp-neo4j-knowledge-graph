@@ -18,15 +18,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 | Layer           | Technology                         |
 | --------------- | ---------------------------------- |
-| Runtime         | Node.js >=24 LTS                   |
-| Language        | TypeScript 5.x                     |
-| Package Manager | pnpm                               |
+| Runtime         | Node.js >=18 LTS                   |
+| Language        | TypeScript 5.x (ES2022 target)     |
+| Package Manager | pnpm 10.28.2                       |
 | Database        | Neo4j 5.13+ (Community/Enterprise) |
 | Protocol        | MCP SDK 1.x                        |
+| Validation      | Zod 4.x                            |
 | Embeddings      | OpenAI text-embedding-3-small      |
-| Testing         | Vitest                             |
+| Testing         | Vitest 4.x                         |
 | Coverage        | @vitest/coverage-v8                |
-| Linting         | ESLint + typescript-eslint         |
+| Linting         | ESLint 9 (strictTypeChecked)       |
 | Formatting      | Prettier                           |
 | Git Hooks       | Husky + lint-staged                |
 
@@ -275,6 +276,51 @@ Test files use Vitest with comprehensive mocking:
 
 ## Version History & Recent Bugfixes
 
+### v1.12.5 (2026-02-02) - Dependency Updates
+
+**Updated to Latest Minor/Patch Versions:**
+
+- @modelcontextprotocol/sdk: 1.25.2 → 1.25.3
+- @stylistic/eslint-plugin: 5.7.0 → 5.7.1
+- @typescript-eslint/\*: 8.53.0 → 8.54.0
+- @vitest/coverage-v8: 4.0.17 → 4.0.18
+- axios: 1.13.2 → 1.13.4
+- eslint-plugin-sonarjs: 3.0.5 → 3.0.6
+- lru-cache: 11.2.4 → 11.2.5
+- prettier: 3.7.4 → 3.8.1
+- typescript-eslint: 8.53.0 → 8.54.0
+- vitest: 4.0.17 → 4.0.18
+
+---
+
+### v1.12.4 (2026-02-02) - Zod 4, ESLint strictTypeChecked, Dependency Updates
+
+**Validation & Type Safety:**
+
+- Added Zod 4.x for runtime input validation (`src/schemas/index.ts`)
+- Comprehensive schemas for all MCP tool inputs (entities, relations, observations, search)
+- Type-safe validation helpers with error handling
+
+**ESLint strictTypeChecked Compliance:**
+
+- Upgraded from `recommendedTypeChecked` to `strictTypeChecked`
+- 13 rules set to 'warn' for gradual adoption (no-unsafe-\*, restrict-template-expressions, etc.)
+- 6 rules disabled with documented justifications (no-unnecessary-condition, no-extraneous-class, etc.)
+- Build passes with 0 errors, 1068 warnings for incremental improvement
+
+**Dependency Updates:**
+
+- Updated pnpm from 10.0.0 to 10.28.2 (latest stable)
+- Updated TypeScript target from ES2020 to ES2022
+- Updated Node.js engines from >=24 to >=18 (broader compatibility)
+- Removed dead dependencies: hono, openai, ts-node, glob, rimraf, semver
+
+**Security:**
+
+- Resolved 5 Dependabot alerts by removing unused dependencies with vulnerabilities
+
+---
+
 ### v1.12.3 (2026-01-31) - Lint Stack & Ironclad Stack Alignment
 
 **Lint Stack Alignment:**
@@ -291,7 +337,7 @@ Test files use Vitest with comprehensive mocking:
 
 - Updated `.nvmrc` to explicit version `24.13.0`
 - Added `engine-strict=true` to `.npmrc`
-- Added `packageManager: "pnpm@10.0.0"` to package.json
+- Added `packageManager` field to package.json (now pnpm@10.28.2)
 - Added `isolatedModules: true` to tsconfig.json (ESM compatibility)
 - Added `useUnknownInCatchVariables: true` to tsconfig.json (type safety)
 
