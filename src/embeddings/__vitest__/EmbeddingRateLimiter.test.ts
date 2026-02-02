@@ -297,6 +297,8 @@ describe('EmbeddingJobManager Rate Limiting', () => {
     const initialStatus = manager.getRateLimiterStatus();
     expect(initialStatus.availableTokens).toBe(10);
     expect(initialStatus.maxTokens).toBe(10);
-    expect(initialStatus.resetInMs).toBe(60000);
+    // Allow 100ms tolerance for timing variations in CI environments
+    expect(initialStatus.resetInMs).toBeGreaterThanOrEqual(59900);
+    expect(initialStatus.resetInMs).toBeLessThanOrEqual(60000);
   });
 });
