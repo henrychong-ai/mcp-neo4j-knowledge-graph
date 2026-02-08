@@ -49,35 +49,35 @@ This guide ensures new users can get the MCP server running in 10-15 minutes.
 ### Build & Development
 
 ```bash
-npm run build              # TypeScript compilation + executable permissions
-npm run dev               # Watch mode for development
-npm run prepare           # Pre-publish build (runs automatically)
+pnpm run build              # TypeScript compilation + executable permissions
+pnpm run dev               # Watch mode for development
+pnpm run prepare           # Pre-publish build (runs automatically)
 ```
 
 ### Testing
 
 ```bash
-npm test                  # Run all tests
-npm run test:watch        # Watch mode
-npm run test:verbose      # Detailed output
-npm run test:coverage     # Coverage report
-npm run test:integration  # Integration tests (requires Neo4j)
+pnpm test                  # Run all tests
+pnpm run test:watch        # Watch mode
+pnpm run test:verbose      # Detailed output
+pnpm run test:coverage     # Coverage report
+pnpm run test:integration  # Integration tests (requires Neo4j)
 ```
 
 ### Code Quality
 
 ```bash
-npm run lint              # ESLint check
-npm run lint:fix          # Auto-fix linting issues
-npm run format            # Prettier formatting
-npm run fix               # lint:fix + format
+pnpm run lint              # ESLint check
+pnpm run lint:fix          # Auto-fix linting issues
+pnpm run format            # Prettier formatting
+pnpm run fix               # lint:fix + format
 ```
 
 ### Neo4j Setup
 
 ```bash
-npm run neo4j:init        # Initialize Neo4j schema
-npm run neo4j:test        # Test Neo4j connection
+pnpm run neo4j:init        # Initialize Neo4j schema
+pnpm run neo4j:test        # Test Neo4j connection
 ```
 
 ### Running Single Tests
@@ -97,9 +97,8 @@ npx vitest run --grep "temporal versioning"
 **KnowledgeGraphManager** (`src/KnowledgeGraphManager.ts`)
 
 - Central orchestrator for all graph operations
-- Manages entities, relations, and observations
+- Manages entities, relations, and observations via Neo4j storage provider
 - Coordinates between storage provider, vector store, and embedding service
-- Handles both file-based (deprecated) and database storage
 
 **Neo4j Storage Layer** (`src/storage/neo4j/`)
 
@@ -244,7 +243,6 @@ Test files use Vitest with comprehensive mocking:
 
 - Storage providers can be mocked or use real Neo4j
 - Embedding service has mock implementation for testing
-- File system operations mocked via `src/utils/fs.ts`
 
 ## CI/CD Pipeline
 
@@ -554,9 +552,9 @@ docker run -d \
 
 **Manual Maintenance:**
 
-- On-demand generation: `npm run embeddings:generate`
-- Test subset: `npm run embeddings:test` (processes 5 entities)
-- Regenerate all: `npm run embeddings:generate -- --force`
+- On-demand generation: `pnpm run embeddings:generate`
+- Test subset: `pnpm run embeddings:test` (processes 5 entities)
+- Regenerate all: `pnpm run embeddings:generate -- --force`
 - Cost per run: ~$0.02 per 1M tokens
 
 ## Critical Implementation Patterns
@@ -600,9 +598,9 @@ See `CHANGELOG.md` for complete history.
 Package is published to npm as `@henrychong-ai/mcp-neo4j-knowledge-graph`:
 
 ```bash
-npm run build              # Build first
-npm version patch          # Bump version
-npm publish --access public
+pnpm run build              # Build first
+pnpm version patch          # Bump version
+pnpm publish --access public
 git push && git push --tags
 ```
 

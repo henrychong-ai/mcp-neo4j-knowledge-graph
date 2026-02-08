@@ -713,27 +713,25 @@ act push -j publish --secret NPM_TOKEN=...  # Test publish job
 
 ---
 
-**Last Updated:** 2025-11-05
+**Last Updated:** 2026-02-08
 
 **Session Context:**
 
-- ✅ **v1.5.0 Query Result Caching** - Complete and ready for PR merge
-- ✅ **README.md comprehensive update** - v1.2.0-v1.5.0 features documented
-- ✅ **SETUP.md branch rebased** - Ready for merge after v1.5.0
-- 🚧 **Batch Operations API** - Storage layer complete (60% done, MCP handlers remaining)
-- ✅ **334 unit tests passing** - All code compiles successfully
-- ✅ **3 branches pushed** with production-ready code
+- ✅ **v2.0.0 Breaking Change Release** - FileStorageProvider removal complete
+- ✅ **Infrastructure Cleanup** - Removed ~1,200 lines of dead code
+- ✅ **Documentation Modernization** - All docs updated (npm→pnpm, docker-compose→docker run)
+- ✅ **Neo4j-Only Architecture** - Code now matches enforced architecture
+- ✅ **340 unit tests passing** - All tests green, build successful
 
 **Current State:**
 
-- Production-ready v1.5.0 awaiting PR creation and merge
-- High-impact batch operations 60% complete
-- Documentation fully up to date
-- All tests passing, zero known issues
+- v2.0.0 ready for release with comprehensive breaking changes
+- Clean codebase: Neo4j-only, no file storage remnants
+- Modern tooling: pnpm, plain Docker commands
+- Documentation aligned with reality
 
 **Next Steps:**
 
-1. Create and merge v1.5.0 PR → triggers automated npm publish
-2. Merge SETUP.md branch for better onboarding
-3. Complete Batch Operations API (handlers + tests + docs)
-4. Consider implementing Branch Testing & Preview Deployments for safer releases
+1. Tag and publish v2.0.0 → automated npm publish via GitHub Actions
+2. Monitor for any migration issues from breaking changes
+3. Continue with planned features (Batch Operations API, etc.)

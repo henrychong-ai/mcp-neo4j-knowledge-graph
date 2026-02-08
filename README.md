@@ -62,10 +62,10 @@ For local use or development:
 
 ```bash
 # Install the package
-npm install -g @henrychong-ai/mcp-neo4j-knowledge-graph
+pnpm install -g @henrychong-ai/mcp-neo4j-knowledge-graph
 
 # Or use locally in your project
-npm install @henrychong-ai/mcp-neo4j-knowledge-graph
+pnpm install @henrychong-ai/mcp-neo4j-knowledge-graph
 ```
 
 > **Note**: This package is maintained in a private GitHub repository but published publicly to npm. The compiled code, documentation, and full functionality are available through npm installation.
@@ -152,47 +152,60 @@ The Neo4j database will be available at:
 
 - **Bolt URI**: `bolt://127.0.0.1:7687` (for driver connections)
 - **HTTP**: `http://127.0.0.1:7474` (for Neo4j Browser UI)
-- **Default credentials**: username: `neo4j`, password: `memento_password` (or whatever you configured)
+- **Default credentials**: username: `neo4j`, password: `your_password` (or whatever you configured)
 
 ### Neo4j Setup with Docker (Alternative)
 
-Alternatively, you can use Docker Compose to run Neo4j:
+Alternatively, you can use Docker to run Neo4j:
 
 ```bash
 # Start Neo4j container
-docker-compose up -d neo4j
+docker run -d \
+  --name neo4j-kg \
+  --restart unless-stopped \
+  -p 7474:7474 \
+  -p 7687:7687 \
+  -v neo4j-kg_data:/data \
+  -v neo4j-kg_logs:/logs \
+  -e NEO4J_AUTH=neo4j/your_password \
+  neo4j:5.26-community
 
 # Stop Neo4j container
-docker-compose stop neo4j
+docker stop neo4j-kg
 
-# Remove Neo4j container (preserves data)
-docker-compose rm neo4j
+# Start existing container
+docker start neo4j-kg
+
+# Remove Neo4j container (preserves data in volumes)
+docker rm neo4j-kg
 ```
 
 When using Docker, the Neo4j database will be available at:
 
 - **Bolt URI**: `bolt://127.0.0.1:7687` (for driver connections)
 - **HTTP**: `http://127.0.0.1:7474` (for Neo4j Browser UI)
-- **Default credentials**: username: `neo4j`, password: `memento_password`
+- **Default credentials**: username: `neo4j`, password: `your_password`
 
 #### Data Persistence and Management
 
-Neo4j data persists across container restarts and even version upgrades due to the Docker volume configuration in the `docker-compose.yml` file:
+Neo4j data persists across container restarts and even version upgrades due to Docker named volumes:
 
-```yaml
-volumes:
-  - ./neo4j-data:/data
-  - ./neo4j-logs:/logs
-  - ./neo4j-import:/import
+- `neo4j-kg_data` - Database files
+- `neo4j-kg_logs` - Log files
+
+To backup your data:
+
+```bash
+# Create a backup of the data volume
+docker run --rm -v neo4j-kg_data:/data -v $(pwd):/backup alpine tar czf /backup/neo4j-backup-$(date +%Y%m%d).tar.gz -C /data .
 ```
 
-These mappings ensure that:
+To restore from backup:
 
-- `/data` directory (contains all database files) persists on your host at `./neo4j-data`
-- `/logs` directory persists on your host at `./neo4j-logs`
-- `/import` directory (for importing data files) persists at `./neo4j-import`
-
-You can modify these paths in your `docker-compose.yml` file to store data in different locations if needed.
+```bash
+# Restore data from backup
+docker run --rm -v neo4j-kg_data:/data -v $(pwd):/backup alpine tar xzf /backup/neo4j-backup-YYYYMMDD.tar.gz -C /data
+```
 
 ##### Upgrading Neo4j Version
 
@@ -207,13 +220,14 @@ This guide covers:
 - Real-world upgrade examples with verified commands
 - 48-hour monitoring schedule
 
-**Quick Reference for Docker Compose:**
+**Quick Reference for Docker:**
 
 ```bash
 # Basic upgrade (for development/testing)
-1. Update the Neo4j image version in `docker-compose.yml`
-2. Restart: docker-compose down && docker-compose up -d neo4j
-3. Reinitialize schema: npm run neo4j:init
+1. Stop current container: docker stop neo4j-kg
+2. Remove container: docker rm neo4j-kg
+3. Start new version: docker run -d --name neo4j-kg ... neo4j:5.XX-community
+4. Reinitialize schema: pnpm run neo4j:init
 ```
 
 > **Production Warning**: For production deployments with valuable data, always follow the complete procedure in docs/UPGRADE.md, which includes backup verification, data integrity checks, and rollback procedures.
@@ -223,29 +237,26 @@ This guide covers:
 If you need to completely reset your Neo4j database:
 
 ```bash
-# Stop the container
-docker-compose stop neo4j
+# Stop and remove the container
+docker stop neo4j-kg
+docker rm neo4j-kg
 
-# Remove the container
-docker-compose rm -f neo4j
+# Remove the data volume
+docker volume rm neo4j-kg_data
 
-# Delete the data directory contents
-rm -rf ./neo4j-data/*
-
-# Restart the container
-docker-compose up -d neo4j
+# Restart with fresh container
+docker run -d \
+  --name neo4j-kg \
+  --restart unless-stopped \
+  -p 7474:7474 \
+  -p 7687:7687 \
+  -v neo4j-kg_data:/data \
+  -v neo4j-kg_logs:/logs \
+  -e NEO4J_AUTH=neo4j/your_password \
+  neo4j:5.26-community
 
 # Reinitialize the schema
-npm run neo4j:init
-```
-
-##### Backing Up Data
-
-To back up your Neo4j data, you can simply copy the data directory:
-
-```bash
-# Make a backup of the Neo4j data
-cp -r ./neo4j-data ./neo4j-data-backup-$(date +%Y%m%d)
+pnpm run neo4j:init
 ```
 
 ### Neo4j CLI Utilities
@@ -258,10 +269,10 @@ Test the connection to your Neo4j database:
 
 ```bash
 # Test with default settings
-npm run neo4j:test
+pnpm run neo4j:test
 
 # Test with custom settings
-npm run neo4j:test -- --uri bolt://127.0.0.1:7687 --username myuser --password mypass --database neo4j
+pnpm run neo4j:test -- --uri bolt://127.0.0.1:7687 --username myuser --password mypass --database neo4j
 ```
 
 #### Initializing Schema
@@ -272,16 +283,16 @@ The following commands are only necessary for development, testing, or advanced 
 
 ```bash
 # Initialize with default settings (only needed for development or troubleshooting)
-npm run neo4j:init
+pnpm run neo4j:init
 
 # Initialize with custom vector dimensions
-npm run neo4j:init -- --dimensions 768 --similarity euclidean
+pnpm run neo4j:init -- --dimensions 768 --similarity euclidean
 
 # Force recreation of all constraints and indexes
-npm run neo4j:init -- --recreate
+pnpm run neo4j:init -- --recreate
 
 # Combine multiple options
-npm run neo4j:init -- --vector-index custom_index --dimensions 384 --recreate
+pnpm run neo4j:init -- --vector-index custom_index --dimensions 384 --recreate
 ```
 
 ## Advanced Features
@@ -566,7 +577,7 @@ Configure the MCP server with these environment variables:
 # Neo4j Connection Settings
 NEO4J_URI=bolt://127.0.0.1:7687
 NEO4J_USERNAME=neo4j
-NEO4J_PASSWORD=memento_password
+NEO4J_PASSWORD=your_password
 NEO4J_DATABASE=neo4j
 
 # Vector Search Configuration
@@ -575,7 +586,6 @@ NEO4J_VECTOR_DIMENSIONS=1536
 NEO4J_SIMILARITY_FUNCTION=cosine
 
 # Embedding Service Configuration
-MEMORY_STORAGE_TYPE=neo4j
 OPENAI_API_KEY=your-openai-api-key
 OPENAI_EMBEDDING_MODEL=text-embedding-3-small
 
@@ -711,10 +721,9 @@ Add this to your `claude_desktop_config.json`:
       "command": "npx",
       "args": ["-y", "@henrychong-ai/mcp-neo4j-knowledge-graph"],
       "env": {
-        "MEMORY_STORAGE_TYPE": "neo4j",
         "NEO4J_URI": "bolt://127.0.0.1:7687",
         "NEO4J_USERNAME": "neo4j",
-        "NEO4J_PASSWORD": "memento_password",
+        "NEO4J_PASSWORD": "your_password",
         "NEO4J_DATABASE": "neo4j",
         "NEO4J_VECTOR_INDEX": "entity_embeddings",
         "NEO4J_VECTOR_DIMENSIONS": "1536",
@@ -737,10 +746,9 @@ Alternatively, for local development, you can use:
       "command": "/path/to/node",
       "args": ["/path/to/mcp-neo4j-knowledge-graph/dist/index.js"],
       "env": {
-        "MEMORY_STORAGE_TYPE": "neo4j",
         "NEO4J_URI": "bolt://127.0.0.1:7687",
         "NEO4J_USERNAME": "neo4j",
-        "NEO4J_PASSWORD": "memento_password",
+        "NEO4J_PASSWORD": "your_password",
         "NEO4J_DATABASE": "neo4j",
         "NEO4J_VECTOR_INDEX": "entity_embeddings",
         "NEO4J_VECTOR_DIMENSIONS": "1536",
@@ -818,10 +826,9 @@ Add this to your `~/.claude.json`:
       "command": "npx",
       "args": ["-y", "@henrychong-ai/mcp-neo4j-knowledge-graph"],
       "env": {
-        "MEMORY_STORAGE_TYPE": "neo4j",
         "NEO4J_URI": "bolt://127.0.0.1:7687",
         "NEO4J_USERNAME": "neo4j",
-        "NEO4J_PASSWORD": "your_password_here",
+        "NEO4J_PASSWORD": "your_password",
         "NEO4J_DATABASE": "neo4j",
         "NEO4J_VECTOR_INDEX": "entity_embeddings",
         "NEO4J_VECTOR_DIMENSIONS": "1536",
@@ -937,25 +944,33 @@ To completely reset your Neo4j database during development:
 
 ```bash
 # Stop the container (if using Docker)
-docker-compose stop neo4j
+docker stop neo4j-kg
 
 # Remove the container (if using Docker)
-docker-compose rm -f neo4j
+docker rm neo4j-kg
 
-# Delete the data directory (if using Docker)
-rm -rf ./neo4j-data/*
+# Delete the data volume (if using Docker)
+docker volume rm neo4j-kg_data
 
 # For Neo4j Desktop, right-click your database and select "Drop database"
 
 # Restart the database
 # For Docker:
-docker-compose up -d neo4j
+docker run -d \
+  --name neo4j-kg \
+  --restart unless-stopped \
+  -p 7474:7474 \
+  -p 7687:7687 \
+  -v neo4j-kg_data:/data \
+  -v neo4j-kg_logs:/logs \
+  -e NEO4J_AUTH=neo4j/your_password \
+  neo4j:5.26-community
 
 # For Neo4j Desktop:
 # Click the "Start" button for your database
 
 # Reinitialize the schema
-npm run neo4j:init
+pnpm run neo4j:init
 ```
 
 ## Package Information
@@ -963,7 +978,7 @@ npm run neo4j:init
 This package is maintained in a private GitHub repository but published publicly to npm:
 
 - **npm Package**: [@henrychong-ai/mcp-neo4j-knowledge-graph](https://www.npmjs.com/package/@henrychong-ai/mcp-neo4j-knowledge-graph)
-- **Installation**: `npm install @henrychong-ai/mcp-neo4j-knowledge-graph`
+- **Installation**: `pnpm install @henrychong-ai/mcp-neo4j-knowledge-graph`
 - **Published Contents**: Compiled JavaScript (dist/), documentation, and type definitions
 - **License**: MIT
 - **Automated Publishing**: GitHub Actions with OIDC authentication
@@ -972,7 +987,7 @@ The npm package includes everything needed to use this MCP server - compiled cod
 
 ## License
 
-MIT - see LICENSE file for details
+MIT
 
 ## Acknowledgments
 

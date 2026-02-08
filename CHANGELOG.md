@@ -5,6 +5,47 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0] - 2026-02-08
+
+### BREAKING CHANGES
+
+- **Removed FileStorageProvider**: Eliminated deprecated file-based storage code (~1,200 lines)
+  - Removed `src/storage/FileStorageProvider.ts` and all related tests
+  - Removed `src/config/paths.ts` and configuration helpers
+  - Removed `src/utils/fs.ts` file system utilities
+- **Removed 'file' storage type**: `StorageProviderFactory` now only supports 'neo4j'
+- **Removed `memoryFilePath` option**: `KnowledgeGraphManager` constructor no longer accepts file path
+
+### Removed
+
+- **Docker Compose Infrastructure**: Removed docker-compose.yml and Dockerfile (Memento-era artifacts)
+- **Smithery Configuration**: Removed smithery.yaml (obsolete deployment config)
+- **Dead Code**: Removed old handler stub, Jest artifacts, empty .gitmodules
+
+### Changed
+
+- **Neo4j is sole storage backend**: Code now matches architecture (was already enforced, now code is clean)
+- **Updated all documentation**: Removed stale npm/docker-compose/MEMORY_STORAGE_TYPE references
+- **Package manager**: All commands now reference pnpm instead of npm
+- **Generic examples**: Replaced `memento_password` with `your_password` placeholder
+
+### Migration Guide
+
+**If you were using file-based storage:**
+
+- This was already deprecated and non-functional
+- Migrate to Neo4j using the setup guide in README.md
+
+**Configuration changes:**
+
+- Remove `MEMORY_STORAGE_TYPE=neo4j` from environment variables (no longer needed)
+- Neo4j is now the only storage backend (no configuration required)
+
+**Docker changes:**
+
+- Use plain `docker run` commands instead of docker-compose
+- See README.md "Neo4j Setup with Docker" section for updated commands
+
 ## [1.8.6] - 2025-12-22
 
 ### Security
