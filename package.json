@@ -1,6 +1,6 @@
 {
   "name": "@henrychong-ai/mcp-neo4j-knowledge-graph",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Neo4j-based knowledge graph MCP server with temporal versioning and semantic search",
   "license": "MIT",
   "author": "Henry Chong <henry@henrychong.ai>",
@@ -55,7 +55,7 @@
     "embeddings:test": "tsx src/cli/generate-embeddings.ts -- --limit 5"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.25.3",
+    "@modelcontextprotocol/sdk": "^1.26.0",
     "axios": "^1.13.4",
     "dotenv": "^16.6.1",
     "lru-cache": "^11.2.5",
