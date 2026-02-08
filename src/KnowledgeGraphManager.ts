@@ -8,7 +8,6 @@ import {
 import type { EntityEmbedding } from './types/entity-embedding.js';
 import type { Relation } from './types/relation.js';
 import type { VectorStore } from './types/vector-store.js';
-import { fs } from './utils/fs.js';
 import { logger } from './utils/logger.js';
 
 // Extended storage provider interfaces for optional methods
@@ -110,19 +109,15 @@ export interface SearchResponse {
 
 interface KnowledgeGraphManagerOptions {
   storageProvider?: StorageProvider;
-  memoryFilePath?: string;
   embeddingJobManager?: EmbeddingJobManager;
   vectorStoreOptions?: VectorStoreFactoryOptions;
 }
 
 // The KnowledgeGraphManager class contains all operations to interact with the knowledge graph
 export class KnowledgeGraphManager {
-  private memoryFilePath = '';
   private storageProvider?: StorageProvider;
   private embeddingJobManager?: EmbeddingJobManager;
   private vectorStore?: VectorStore;
-  // Expose the fs module for testing
-  protected fsModule = fs;
 
   constructor(options?: KnowledgeGraphManagerOptions) {
     this.storageProvider = options?.storageProvider;
@@ -131,15 +126,8 @@ export class KnowledgeGraphManager {
     // If no storage provider is given, log a deprecation warning
     if (!this.storageProvider) {
       logger.warn(
-        'WARNING: Using deprecated file-based storage. This will be removed in a future version. Please use a StorageProvider implementation instead.'
+        'WARNING: No storage provider specified. Operations will fail without a StorageProvider implementation.'
       );
-    }
-
-    // If memoryFilePath is provided, use it (for backward compatibility)
-    if (options?.memoryFilePath) {
-      this.memoryFilePath = options.memoryFilePath;
-    } else if (process.env.MEMORY_FILE_PATH) {
-      this.memoryFilePath = process.env.MEMORY_FILE_PATH;
     }
 
     // Initialize vector store if options provided
@@ -245,265 +233,66 @@ export class KnowledgeGraphManager {
 
   /**
    * Load the knowledge graph from storage
-   * @deprecated Direct file-based storage is deprecated. Use a StorageProvider implementation instead.
    * @private
    */
   private async loadGraph(): Promise<KnowledgeGraph> {
-    if (this.storageProvider) {
-      return this.storageProvider.loadGraph();
+    if (!this.storageProvider) {
+      throw new Error('Storage provider is required to load graph');
     }
-
-    // Fallback to file-based implementation
-    try {
-      // If no memory file path is set, return empty graph
-      if (!this.memoryFilePath) {
-        logger.warn('No memory file path set, returning empty graph');
-        return { entities: [], relations: [] };
-      }
-
-      // Check if file exists before reading
-      try {
-        await this.fsModule.access(this.memoryFilePath);
-      } catch {
-        // If file doesn't exist, create empty graph
-        return { entities: [], relations: [] };
-      }
-
-      const fileContents = await this.fsModule.readFile(this.memoryFilePath, 'utf-8');
-      if (!fileContents || fileContents.trim() === '') {
-        return { entities: [], relations: [] };
-      }
-
-      // Try to parse it as a single entity or relation
-      try {
-        const parsedItem = JSON.parse(fileContents);
-
-        // If it's a test object with a type field
-        if (parsedItem.type === 'entity') {
-          const { type: _, ...entity } = parsedItem;
-          return {
-            entities: [entity as Entity],
-            relations: [],
-          };
-        } else if (parsedItem.type === 'relation') {
-          const { type: _, ...relation } = parsedItem;
-          return {
-            entities: [],
-            relations: [relation as Relation],
-          };
-        }
-
-        // If it's a complete graph object with entities and relations arrays,
-        // just return it directly - this helps with certain test scenarios
-        if (parsedItem.entities || parsedItem.relations) {
-          return {
-            entities: parsedItem.entities || [],
-            relations: parsedItem.relations || [],
-          };
-        }
-      } catch (error) {
-        logger.error('Error parsing complete file content', error);
-      }
-
-      // Try to parse it as newline-delimited JSON
-      const lines = fileContents.split('\n').filter((line) => line.trim() !== '');
-      const entities: Entity[] = [];
-      const relations: Relation[] = [];
-
-      for (const line of lines) {
-        try {
-          const item = JSON.parse(line);
-          if (item.type === 'entity') {
-            const { type: _, ...entity } = item; // Remove the type property
-            entities.push(entity as Entity);
-          } else if (item.type === 'relation') {
-            const { type: _, ...relation } = item; // Remove the type property
-            relations.push(relation as Relation);
-          }
-        } catch (error) {
-          logger.error('Error parsing line', { line, error: error });
-        }
-      }
-
-      return { entities, relations };
-    } catch (error) {
-      // If error has code 'ENOENT', return empty graph (file not found)
-      if ((error as { code?: string })?.code === 'ENOENT') {
-        return { entities: [], relations: [] };
-      }
-      logger.error('Error loading graph from file', error);
-      throw error;
-    }
+    return this.storageProvider.loadGraph();
   }
 
   /**
    * Save the knowledge graph to storage
-   * @deprecated Direct file-based storage is deprecated. Use a StorageProvider implementation instead.
    * @private
    */
   private async saveGraph(graph: KnowledgeGraph): Promise<void> {
-    if (this.storageProvider) {
-      return this.storageProvider.saveGraph(graph);
+    if (!this.storageProvider) {
+      throw new Error('Storage provider is required to save graph');
     }
-
-    // Fallback to file-based implementation
-    try {
-      // If no memory file path is set, log warning and return
-      if (!this.memoryFilePath) {
-        logger.warn('No memory file path set, cannot save graph');
-        return;
-      }
-
-      // Convert entities and relations to JSON lines with type field
-      // Use newlines for better readability and append
-      const lines: string[] = [];
-
-      // Add entities
-      for (const entity of graph.entities) {
-        // Create a copy without entityType to avoid duplication
-        const { entityType, ...entityWithoutType } = entity;
-        lines.push(JSON.stringify({ entityType, ...entityWithoutType }));
-      }
-
-      // Add relations
-      for (const relation of graph.relations) {
-        // Create a copy without relationType to avoid duplication
-        const { relationType, ...relationWithoutType } = relation;
-        lines.push(JSON.stringify({ relationType, ...relationWithoutType }));
-      }
-
-      // Write to file
-      await this.fsModule.writeFile(this.memoryFilePath, lines.join('\n'));
-    } catch (error) {
-      logger.error('Error saving graph to file', error);
-      throw error;
-    }
+    return this.storageProvider.saveGraph(graph);
   }
 
   async createEntities(entities: Entity[]): Promise<Entity[]> {
-    // If no entities to create, load graph, save it unchanged and return empty array early
+    // If no entities to create, return empty array early
     if (!entities || entities.length === 0) {
-      if (!this.storageProvider) {
-        const graph = await this.loadGraph();
-        await this.saveGraph(graph);
-      }
       return [];
     }
 
-    // Filter entities to only include those we need to create
-    const graph = await this.loadGraph();
-    const entitiesMap = new Map<string, Entity>();
-
-    // Add existing entities to the map
-    for (const entity of graph.entities) {
-      entitiesMap.set(entity.name, entity);
-    }
-
-    // Process new entities
-    let entitiesArray = [...graph.entities];
-    const newEntities: Entity[] = [];
-
-    for (const entity of entities) {
-      // Check if entity already exists
-      if (entitiesMap.has(entity.name)) {
-        // Update existing entity by merging observations
-        const existingEntity = entitiesMap.get(entity.name)!;
-        const updatedObservations = new Set([
-          ...existingEntity.observations,
-          ...entity.observations,
-        ]);
-
-        existingEntity.observations = [...updatedObservations];
-
-        // Update the entity in our map and array
-        entitiesMap.set(entity.name, existingEntity);
-        entitiesArray = entitiesArray.map((e) => (e.name === entity.name ? existingEntity : e));
-      } else {
-        // Add new entity
-        entitiesMap.set(entity.name, entity);
-        entitiesArray.push(entity);
-        newEntities.push(entity);
-      }
-    }
-
-    // Update the graph with our modified entities
-    graph.entities = entitiesArray;
-
-    // Save the graph regardless of whether we have new entities
     if (!this.storageProvider) {
-      await this.saveGraph(graph);
+      throw new Error('Storage provider is required to create entities');
     }
 
-    // If no new entities, just return empty array
-    if (newEntities.length === 0) {
-      return [];
+    // Use storage provider for creating entities
+    const createdEntities = await this.storageProvider.createEntities(entities);
+
+    // Add entities with existing embeddings to vector store
+    for (const entity of createdEntities) {
+      if (entity.embedding?.vector) {
+        try {
+          const vectorStore = await this.ensureVectorStore().catch(() => {});
+          if (vectorStore) {
+            // Add metadata for filtering
+            const metadata = {
+              name: entity.name,
+              entityType: entity.entityType,
+            };
+
+            await vectorStore.addVector(entity.name, entity.embedding.vector, metadata);
+            logger.debug(`Added vector for entity ${entity.name} to vector store`);
+          }
+        } catch (error) {
+          logger.error(`Failed to add vector for entity ${entity.name} to vector store`, error);
+          // Continue with scheduling embedding job
+        }
+      }
     }
 
-    let createdEntities: Entity[] = [];
-
-    if (this.storageProvider) {
-      // Use storage provider for creating entities
-      createdEntities = await this.storageProvider.createEntities(newEntities);
-
-      // Add entities with existing embeddings to vector store
+    // Schedule embedding jobs if manager is provided
+    if (this.embeddingJobManager) {
       for (const entity of createdEntities) {
-        if (entity.embedding?.vector) {
-          try {
-            const vectorStore = await this.ensureVectorStore().catch(() => {});
-            if (vectorStore) {
-              // Add metadata for filtering
-              const metadata = {
-                name: entity.name,
-                entityType: entity.entityType,
-              };
-
-              await vectorStore.addVector(entity.name, entity.embedding.vector, metadata);
-              logger.debug(`Added vector for entity ${entity.name} to vector store`);
-            }
-          } catch (error) {
-            logger.error(`Failed to add vector for entity ${entity.name} to vector store`, error);
-            // Continue with scheduling embedding job
-          }
-        }
+        await this.embeddingJobManager.scheduleEntityEmbedding(entity.name, 1);
       }
-
-      // Schedule embedding jobs if manager is provided
-      if (this.embeddingJobManager) {
-        for (const entity of createdEntities) {
-          await this.embeddingJobManager.scheduleEntityEmbedding(entity.name, 1);
-        }
-      }
-    } else {
-      // No storage provider, so use the entities we've already added to the graph
-      // Add entities with existing embeddings to vector store
-      for (const entity of newEntities) {
-        if (entity.embedding?.vector) {
-          try {
-            const vectorStore = await this.ensureVectorStore().catch(() => {});
-            if (vectorStore) {
-              // Add metadata for filtering
-              const metadata = {
-                name: entity.name,
-                entityType: entity.entityType,
-              };
-
-              await vectorStore.addVector(entity.name, entity.embedding.vector, metadata);
-              logger.debug(`Added vector for entity ${entity.name} to vector store`);
-            }
-          } catch (error) {
-            logger.error(`Failed to add vector for entity ${entity.name} to vector store`, error);
-            // Continue with scheduling embedding job
-          }
-        }
-      }
-
-      if (this.embeddingJobManager) {
-        for (const entity of newEntities) {
-          await this.embeddingJobManager.scheduleEntityEmbedding(entity.name, 1);
-        }
-      }
-
-      createdEntities = newEntities;
     }
 
     return createdEntities;
@@ -511,60 +300,16 @@ export class KnowledgeGraphManager {
 
   async createRelations(relations: Relation[]): Promise<Relation[]> {
     if (!relations || relations.length === 0) {
-      if (!this.storageProvider) {
-        // In test mode, still call loadGraph/saveGraph for empty relations
-        // This ensures mockWriteFile is called in tests
-        const graph = await this.loadGraph();
-        await this.saveGraph(graph);
-      }
       return [];
     }
 
-    if (this.storageProvider) {
-      // Use storage provider for creating relations
-      const createdRelations = await this.storageProvider.createRelations(relations);
-      return createdRelations;
-    } else {
-      // Fallback to file-based implementation
-      const graph = await this.loadGraph();
-
-      // Get the entities that exist in the graph
-      const entityNames = new Set(graph.entities.map((e) => e.name));
-
-      // Verify all entities in the relations exist
-      for (const relation of relations) {
-        if (!entityNames.has(relation.from)) {
-          throw new Error(`"From" entity with name ${relation.from} does not exist.`);
-        }
-        if (!entityNames.has(relation.to)) {
-          throw new Error(`"To" entity with name ${relation.to} does not exist.`);
-        }
-      }
-
-      // Filter out relations that already exist
-      const existingRelations = new Set();
-      for (const r of graph.relations) {
-        const key = `${r.from}|${r.relationType}|${r.to}`;
-        existingRelations.add(key);
-      }
-
-      const newRelations = relations.filter((r) => {
-        const key = `${r.from}|${r.relationType}|${r.to}`;
-        return !existingRelations.has(key);
-      });
-
-      // If no new relations to create, return empty array
-      if (newRelations.length === 0) {
-        // Still save the graph to ensure mockWriteFile is called in tests
-        await this.saveGraph(graph);
-        return [];
-      }
-
-      // Fallback to file-based implementation
-      graph.relations = [...graph.relations, ...newRelations];
-      await this.saveGraph(graph);
-      return newRelations;
+    if (!this.storageProvider) {
+      throw new Error('Storage provider is required to create relations');
     }
+
+    // Use storage provider for creating relations
+    const createdRelations = await this.storageProvider.createRelations(relations);
+    return createdRelations;
   }
 
   async deleteEntities(entityNames: string[]): Promise<void> {
@@ -572,27 +317,12 @@ export class KnowledgeGraphManager {
       return;
     }
 
-    if (this.storageProvider) {
-      // Use storage provider for deleting entities
-      await this.storageProvider.deleteEntities(entityNames);
-    } else {
-      // Fallback to file-based implementation
-      const graph = await this.loadGraph();
-
-      // Remove the entities
-      const entitiesToKeep = graph.entities.filter((e) => !entityNames.includes(e.name));
-
-      // Remove relations involving the deleted entities
-      const relationsToKeep = graph.relations.filter(
-        (r) => !entityNames.includes(r.from) && !entityNames.includes(r.to)
-      );
-
-      // Update the graph
-      graph.entities = entitiesToKeep;
-      graph.relations = relationsToKeep;
-
-      await this.saveGraph(graph);
+    if (!this.storageProvider) {
+      throw new Error('Storage provider is required to delete entities');
     }
+
+    // Use storage provider for deleting entities
+    await this.storageProvider.deleteEntities(entityNames);
 
     // Remove entities from vector store if available
     try {
@@ -623,38 +353,17 @@ export class KnowledgeGraphManager {
       return;
     }
 
-    if (this.storageProvider) {
-      // Use storage provider for deleting observations
-      await this.storageProvider.deleteObservations(deletions);
+    if (!this.storageProvider) {
+      throw new Error('Storage provider is required to delete observations');
+    }
 
-      // Schedule re-embedding for affected entities if manager is provided
-      if (this.embeddingJobManager) {
-        for (const deletion of deletions) {
-          await this.embeddingJobManager.scheduleEntityEmbedding(deletion.entityName, 1);
-        }
-      }
-    } else {
-      // Fallback to file-based implementation
-      const graph = await this.loadGraph();
+    // Use storage provider for deleting observations
+    await this.storageProvider.deleteObservations(deletions);
 
-      // Process each deletion
+    // Schedule re-embedding for affected entities if manager is provided
+    if (this.embeddingJobManager) {
       for (const deletion of deletions) {
-        const entity = graph.entities.find((e) => e.name === deletion.entityName);
-        if (entity) {
-          // Remove the observations
-          entity.observations = entity.observations.filter(
-            (obs) => !deletion.observations.includes(obs)
-          );
-        }
-      }
-
-      await this.saveGraph(graph);
-
-      // Schedule re-embedding for affected entities if manager is provided
-      if (this.embeddingJobManager) {
-        for (const deletion of deletions) {
-          await this.embeddingJobManager.scheduleEntityEmbedding(deletion.entityName, 1);
-        }
+        await this.embeddingJobManager.scheduleEntityEmbedding(deletion.entityName, 1);
       }
     }
   }
@@ -664,83 +373,29 @@ export class KnowledgeGraphManager {
       return;
     }
 
-    if (this.storageProvider) {
-      // Use storage provider for deleting relations
-      await this.storageProvider.deleteRelations(relations);
-    } else {
-      // Fallback to file-based implementation
-      const graph = await this.loadGraph();
-
-      // Filter out relations that match the ones to delete
-      graph.relations = graph.relations.filter((r) => {
-        // Check if this relation matches any in the deletion list
-        return !relations.some(
-          (delRel) =>
-            r.from === delRel.from && r.relationType === delRel.relationType && r.to === delRel.to
-        );
-      });
-
-      await this.saveGraph(graph);
+    if (!this.storageProvider) {
+      throw new Error('Storage provider is required to delete relations');
     }
+
+    // Use storage provider for deleting relations
+    await this.storageProvider.deleteRelations(relations);
   }
 
   async searchNodes(
     query: string,
     options: { domain?: string; includeNullDomain?: boolean } = {}
   ): Promise<KnowledgeGraph> {
-    if (this.storageProvider) {
-      return this.storageProvider.searchNodes(query, options);
+    if (!this.storageProvider) {
+      throw new Error('Storage provider is required to search nodes');
     }
-
-    // Fallback to file-based implementation
-    const graph = await this.loadGraph();
-    const lowercaseQuery = query.toLowerCase();
-
-    // Filter entities based on name match and optional domain
-    const filteredEntities = graph.entities.filter((e) => {
-      const nameMatch = e.name.toLowerCase().includes(lowercaseQuery);
-      // Domain filtering: includeNullDomain returns only null domains, domain filters to specific domain
-      let domainMatch = true;
-      if (options.includeNullDomain) {
-        domainMatch = (e as any).domain === null || (e as any).domain === undefined;
-      } else if (options.domain) {
-        domainMatch = (e as any).domain === options.domain;
-      }
-      return nameMatch && domainMatch;
-    });
-
-    // Get relations where either the source or target entity matches the query
-    const filteredRelations = graph.relations.filter(
-      (r) =>
-        r.from.toLowerCase().includes(lowercaseQuery) || r.to.toLowerCase().includes(lowercaseQuery)
-    );
-
-    return {
-      entities: filteredEntities,
-      relations: filteredRelations,
-    };
+    return this.storageProvider.searchNodes(query, options);
   }
 
   async openNodes(names: string[]): Promise<KnowledgeGraph> {
-    if (this.storageProvider) {
-      return this.storageProvider.openNodes(names);
+    if (!this.storageProvider) {
+      throw new Error('Storage provider is required to open nodes');
     }
-
-    // Fallback to file-based implementation
-    const graph = await this.loadGraph();
-
-    // Filter entities by name
-    const filteredEntities = graph.entities.filter((e) => names.includes(e.name));
-
-    // Get relations connected to these entities
-    const filteredRelations = graph.relations.filter(
-      (r) => names.includes(r.from) || names.includes(r.to)
-    );
-
-    return {
-      entities: filteredEntities,
-      relations: filteredRelations,
-    };
+    return this.storageProvider.openNodes(names);
   }
 
   /**
@@ -763,6 +418,10 @@ export class KnowledgeGraphManager {
       return [];
     }
 
+    if (!this.storageProvider) {
+      throw new Error('Storage provider is required to add observations');
+    }
+
     // Extract only the fields needed by storage providers
     // Keep the simplified format for compatibility with existing storage providers
     const simplifiedObservations = observations.map((obs) => ({
@@ -770,72 +429,19 @@ export class KnowledgeGraphManager {
       contents: obs.contents,
     }));
 
-    if (this.storageProvider) {
-      // Use storage provider for adding observations
-      const results = await this.storageProvider.addObservations(simplifiedObservations);
+    // Use storage provider for adding observations
+    const results = await this.storageProvider.addObservations(simplifiedObservations);
 
-      // Schedule re-embedding for affected entities if manager is provided
-      if (this.embeddingJobManager) {
-        for (const result of results) {
-          if (result.addedObservations.length > 0) {
-            await this.embeddingJobManager.scheduleEntityEmbedding(result.entityName, 1);
-          }
+    // Schedule re-embedding for affected entities if manager is provided
+    if (this.embeddingJobManager) {
+      for (const result of results) {
+        if (result.addedObservations.length > 0) {
+          await this.embeddingJobManager.scheduleEntityEmbedding(result.entityName, 1);
         }
       }
-
-      return results;
-    } else {
-      // Fallback to file-based implementation
-      const graph = await this.loadGraph();
-
-      // Check if all entity names exist first
-      const entityNames = new Set(graph.entities.map((e) => e.name));
-
-      for (const obs of simplifiedObservations) {
-        if (!entityNames.has(obs.entityName)) {
-          throw new Error(`Entity with name ${obs.entityName} does not exist.`);
-        }
-      }
-
-      const results: { entityName: string; addedObservations: string[] }[] = [];
-
-      // Process each observation addition
-      for (const obs of simplifiedObservations) {
-        const entity = graph.entities.find((e) => e.name === obs.entityName);
-        if (entity) {
-          // Create a set of existing observations for deduplication
-          const existingObsSet = new Set(entity.observations);
-          const addedObservations: string[] = [];
-
-          // Add new observations
-          for (const content of obs.contents) {
-            if (!existingObsSet.has(content)) {
-              entity.observations.push(content);
-              existingObsSet.add(content);
-              addedObservations.push(content);
-            }
-          }
-
-          results.push({
-            entityName: obs.entityName,
-            addedObservations,
-          });
-        }
-      }
-
-      await this.saveGraph(graph);
-
-      // Schedule re-embedding for affected entities if manager is provided
-      if (this.embeddingJobManager) {
-        for (const result of results) {
-          if (result.addedObservations.length > 0) {
-            await this.embeddingJobManager.scheduleEntityEmbedding(result.entityName, 1);
-          }
-        }
-      }
-
-      return results;
     }
+
+    return results;
   }
 
   /**
@@ -1079,17 +685,10 @@ export class KnowledgeGraphManager {
    * @returns The relation or null if not found
    */
   async getRelation(from: string, to: string, relationType: string): Promise<Relation | null> {
-    if (this.storageProvider && typeof this.storageProvider.getRelation === 'function') {
-      return this.storageProvider.getRelation(from, to, relationType);
+    if (!this.storageProvider || typeof this.storageProvider.getRelation !== 'function') {
+      throw new Error('Storage provider with getRelation method is required');
     }
-
-    // Fallback implementation
-    const graph = await this.loadGraph();
-    const relation = graph.relations.find(
-      (r) => r.from === from && r.to === to && r.relationType === relationType
-    );
-
-    return relation || null;
+    return this.storageProvider.getRelation(from, to, relationType);
   }
 
   /**
@@ -1099,34 +698,13 @@ export class KnowledgeGraphManager {
    * @returns The updated relation
    */
   async updateRelation(relation: Relation): Promise<Relation> {
-    if (this.storageProvider && hasUpdateRelation(this.storageProvider)) {
-      // Cast to the extended interface to access the method
-      const provider = this.storageProvider as unknown as StorageProviderWithUpdateRelation;
-      return provider.updateRelation(relation);
+    if (!this.storageProvider || !hasUpdateRelation(this.storageProvider)) {
+      throw new Error('Storage provider with updateRelation method is required');
     }
 
-    // Fallback implementation
-    const graph = await this.loadGraph();
-
-    // Find the relation to update
-    const index = graph.relations.findIndex(
-      (r) =>
-        r.from === relation.from && r.to === relation.to && r.relationType === relation.relationType
-    );
-
-    if (index === -1) {
-      throw new Error(
-        `Relation from '${relation.from}' to '${relation.to}' of type '${relation.relationType}' not found`
-      );
-    }
-
-    // Update the relation
-    graph.relations[index] = relation;
-
-    // Save the updated graph
-    await this.saveGraph(graph);
-
-    return relation;
+    // Cast to the extended interface to access the method
+    const provider = this.storageProvider as unknown as StorageProviderWithUpdateRelation;
+    return provider.updateRelation(relation);
   }
 
   /**
@@ -1138,55 +716,29 @@ export class KnowledgeGraphManager {
    */
   async updateEntity(entityName: string, updates: Partial<Entity>): Promise<Entity> {
     if (
-      this.storageProvider &&
-      'updateEntity' in this.storageProvider &&
+      !this.storageProvider ||
+      !('updateEntity' in this.storageProvider) ||
       typeof (
         this.storageProvider as {
           updateEntity?: (name: string, updates: Partial<Entity>) => Promise<Entity>;
         }
-      ).updateEntity === 'function'
+      ).updateEntity !== 'function'
     ) {
-      const result = await (
-        this.storageProvider as {
-          updateEntity: (name: string, updates: Partial<Entity>) => Promise<Entity>;
-        }
-      ).updateEntity(entityName, updates);
+      throw new Error('Storage provider with updateEntity method is required');
+    }
 
-      // Schedule embedding generation if observations were updated
-      if (this.embeddingJobManager && updates.observations) {
-        await this.embeddingJobManager.scheduleEntityEmbedding(entityName, 2);
+    const result = await (
+      this.storageProvider as {
+        updateEntity: (name: string, updates: Partial<Entity>) => Promise<Entity>;
       }
-
-      return result;
-    }
-
-    // Fallback implementation
-    const graph = await this.loadGraph();
-
-    // Find the entity to update
-    const index = graph.entities.findIndex((e) => e.name === entityName);
-
-    if (index === -1) {
-      throw new Error(`Entity with name ${entityName} not found`);
-    }
-
-    // Update the entity
-    const updatedEntity = {
-      ...graph.entities[index],
-      ...updates,
-    };
-
-    graph.entities[index] = updatedEntity;
-
-    // Save the updated graph
-    await this.saveGraph(graph);
+    ).updateEntity(entityName, updates);
 
     // Schedule embedding generation if observations were updated
     if (this.embeddingJobManager && updates.observations) {
       await this.embeddingJobManager.scheduleEntityEmbedding(entityName, 2);
     }
 
-    return updatedEntity;
+    return result;
   }
 
   /**

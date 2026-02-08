@@ -149,32 +149,6 @@ describe('KnowledgeGraphManager Search', () => {
     expect(result.entities[0].name).toBe('KeywordResult');
   });
 
-  it('should fall back to basic search for file-based implementation', async () => {
-    // Create a manager without a storage provider
-    const fileBasedManager = new KnowledgeGraphManager({
-      memoryFilePath: testFilePath,
-    });
-
-    // Mock searchNodes implementation
-    fileBasedManager.searchNodes = vi.fn().mockResolvedValue({
-      entities: [{ name: 'FileResult', entityType: 'Test', observations: ['file result'] }],
-      relations: [],
-    });
-
-    // Call the search method
-    const result = await fileBasedManager.search('test query', { semanticSearch: true });
-
-    // Should call searchNodes with options
-    expect(fileBasedManager.searchNodes).toHaveBeenCalledWith('test query', {
-      domain: undefined,
-      includeNullDomain: undefined,
-    });
-
-    // Result should be what searchNodes returns
-    expect(result.entities.length).toBe(1);
-    expect(result.entities[0].name).toBe('FileResult');
-  });
-
   it('should pass additional search options to semanticSearch', async () => {
     // Call search with multiple options
     const searchOptions: SemanticSearchOptions = {

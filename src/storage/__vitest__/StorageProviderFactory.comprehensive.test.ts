@@ -3,33 +3,9 @@
  * Covers: error handling, edge cases, all validation branches
  */
 
-import { describe, it, expect, beforeEach, afterEach, afterAll, vi } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { StorageProviderFactory } from '../StorageProviderFactory.js';
-import { FileStorageProvider } from '../FileStorageProvider.js';
 import { Neo4jStorageProvider } from '../neo4j/Neo4jStorageProvider.js';
-import path from 'path';
-import fs from 'fs';
-
-// Test directory setup
-const testDir = path.join(process.cwd(), 'test-output', 'storage-provider-factory-comprehensive');
-const testJsonPath = path.join(testDir, 'test.json');
-
-// Ensure test directory exists
-beforeEach(() => {
-  if (!fs.existsSync(testDir)) {
-    fs.mkdirSync(testDir, { recursive: true });
-  }
-  if (fs.existsSync(testJsonPath)) {
-    fs.unlinkSync(testJsonPath);
-  }
-});
-
-// Clean up after all tests
-afterAll(() => {
-  if (fs.existsSync(testDir)) {
-    fs.rmSync(testDir, { recursive: true, force: true });
-  }
-});
 
 describe('StorageProviderFactory Comprehensive', () => {
   let factory: StorageProviderFactory;
@@ -85,39 +61,6 @@ describe('StorageProviderFactory Comprehensive', () => {
   });
 
   // --------------------------------------------------------------------------
-  // Error Handling - File Provider Specific
-  // --------------------------------------------------------------------------
-
-  describe('error handling - file provider', () => {
-    it('should throw error when memoryFilePath is missing for file provider', () => {
-      expect(() =>
-        factory.createProvider({
-          type: 'file',
-          options: {},
-        })
-      ).toThrow('memoryFilePath is required for file provider');
-    });
-
-    it('should throw error when memoryFilePath is empty string', () => {
-      expect(() =>
-        factory.createProvider({
-          type: 'file',
-          options: { memoryFilePath: '' },
-        })
-      ).toThrow('memoryFilePath is required for file provider');
-    });
-
-    it('should throw error when memoryFilePath is null', () => {
-      expect(() =>
-        factory.createProvider({
-          type: 'file',
-          options: { memoryFilePath: null },
-        } as any)
-      ).toThrow('memoryFilePath is required for file provider');
-    });
-  });
-
-  // --------------------------------------------------------------------------
   // Error Handling - Unsupported Provider Type
   // --------------------------------------------------------------------------
 
@@ -155,14 +98,6 @@ describe('StorageProviderFactory Comprehensive', () => {
   // --------------------------------------------------------------------------
 
   describe('case insensitive type handling', () => {
-    it('should handle uppercase FILE type', () => {
-      const provider = factory.createProvider({
-        type: 'FILE' as any,
-        options: { memoryFilePath: testJsonPath },
-      });
-      expect(provider).toBeInstanceOf(FileStorageProvider);
-    });
-
     it('should handle mixed case Neo4j type', () => {
       const provider = factory.createProvider({
         type: 'Neo4J' as any,
@@ -265,35 +200,10 @@ describe('StorageProviderFactory Comprehensive', () => {
   });
 
   // --------------------------------------------------------------------------
-  // File Provider Configuration
-  // --------------------------------------------------------------------------
-
-  describe('file provider configuration', () => {
-    it('should create file provider with vector store options', () => {
-      const provider = factory.createProvider({
-        type: 'file',
-        options: { memoryFilePath: testJsonPath },
-        vectorStoreOptions: {
-          type: 'memory',
-        },
-      });
-      expect(provider).toBeInstanceOf(FileStorageProvider);
-    });
-  });
-
-  // --------------------------------------------------------------------------
   // Provider Tracking
   // --------------------------------------------------------------------------
 
   describe('provider tracking', () => {
-    it('should track newly created file provider', () => {
-      const provider = factory.createProvider({
-        type: 'file',
-        options: { memoryFilePath: testJsonPath },
-      });
-      expect(factory.isProviderConnected(provider)).toBe(true);
-    });
-
     it('should track newly created neo4j provider', () => {
       const provider = factory.createProvider({
         type: 'neo4j',
@@ -306,12 +216,6 @@ describe('StorageProviderFactory Comprehensive', () => {
       expect(factory.isProviderConnected(provider)).toBe(true);
     });
 
-    it('should return false for untracked provider', () => {
-      // Create a file provider outside the factory
-      const provider = new FileStorageProvider({ filePath: testJsonPath });
-      expect(factory.isProviderConnected(provider)).toBe(false);
-    });
-
     it('should track default provider', () => {
       const provider = factory.getDefaultProvider();
       expect(factory.isProviderConnected(provider)).toBe(true);
@@ -319,12 +223,20 @@ describe('StorageProviderFactory Comprehensive', () => {
 
     it('should track multiple providers independently', () => {
       const provider1 = factory.createProvider({
-        type: 'file',
-        options: { memoryFilePath: testJsonPath },
+        type: 'neo4j',
+        options: {
+          neo4jUri: 'bolt://localhost:7687',
+          neo4jUsername: 'neo4j',
+          neo4jPassword: 'password',
+        },
       });
       const provider2 = factory.createProvider({
-        type: 'file',
-        options: { memoryFilePath: path.join(testDir, 'test2.json') },
+        type: 'neo4j',
+        options: {
+          neo4jUri: 'bolt://localhost:7688',
+          neo4jUsername: 'neo4j',
+          neo4jPassword: 'password',
+        },
       });
 
       expect(factory.isProviderConnected(provider1)).toBe(true);
@@ -344,27 +256,28 @@ describe('StorageProviderFactory Comprehensive', () => {
   describe('cleanup operations', () => {
     it('should cleanup provider without cleanup method', async () => {
       const provider = factory.createProvider({
-        type: 'file',
-        options: { memoryFilePath: testJsonPath },
+        type: 'neo4j',
+        options: {
+          neo4jUri: 'bolt://localhost:7687',
+          neo4jUsername: 'neo4j',
+          neo4jPassword: 'password',
+        },
       });
 
-      // FileStorageProvider doesn't have cleanup method by default
+      // Neo4jStorageProvider doesn't have cleanup method by default
       await factory.cleanupProvider(provider);
 
-      expect(factory.isProviderConnected(provider)).toBe(false);
-    });
-
-    it('should skip cleanup for non-connected provider', async () => {
-      const provider = new FileStorageProvider({ filePath: testJsonPath });
-      // Should not throw
-      await factory.cleanupProvider(provider);
       expect(factory.isProviderConnected(provider)).toBe(false);
     });
 
     it('should handle cleanup when cleanup method throws', async () => {
       const provider = factory.createProvider({
-        type: 'file',
-        options: { memoryFilePath: testJsonPath },
+        type: 'neo4j',
+        options: {
+          neo4jUri: 'bolt://localhost:7687',
+          neo4jUsername: 'neo4j',
+          neo4jPassword: 'password',
+        },
       });
 
       // Mock cleanup to throw
@@ -375,12 +288,20 @@ describe('StorageProviderFactory Comprehensive', () => {
 
     it('should cleanup all providers even if some fail', async () => {
       const provider1 = factory.createProvider({
-        type: 'file',
-        options: { memoryFilePath: testJsonPath },
+        type: 'neo4j',
+        options: {
+          neo4jUri: 'bolt://localhost:7687',
+          neo4jUsername: 'neo4j',
+          neo4jPassword: 'password',
+        },
       });
       const provider2 = factory.createProvider({
-        type: 'file',
-        options: { memoryFilePath: path.join(testDir, 'test2.json') },
+        type: 'neo4j',
+        options: {
+          neo4jUri: 'bolt://localhost:7688',
+          neo4jUsername: 'neo4j',
+          neo4jPassword: 'password',
+        },
       });
 
       (provider1 as any).cleanup = vi.fn().mockResolvedValue(undefined);

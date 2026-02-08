@@ -1197,53 +1197,6 @@ describe('KnowledgeGraphManager - Add Observations', () => {
 });
 
 describe('KnowledgeGraphManager - Create Entities', () => {
-  it('should return empty array and save graph for empty entities with no storage provider', async () => {
-    // Test the deprecated file-based path
-    const mockFs = {
-      access: vi.fn().mockRejectedValue(new Error('ENOENT')),
-      readFile: vi.fn().mockResolvedValue(''),
-      writeFile: vi.fn().mockResolvedValue(undefined),
-    };
-
-    const manager = new KnowledgeGraphManager({
-      memoryFilePath: '/tmp/test-memory.json',
-    });
-
-    // Inject mock fs
-    (manager as any).fsModule = mockFs;
-
-    const result = await manager.createEntities([]);
-
-    expect(result).toEqual([]);
-  });
-
-  it('should merge observations when entity already exists in file-based storage', async () => {
-    const existingGraph = {
-      entities: [{ name: 'entity1', entityType: 'person', observations: ['existing-obs'] }],
-      relations: [],
-    };
-
-    const mockFs = {
-      access: vi.fn().mockResolvedValue(undefined),
-      readFile: vi.fn().mockResolvedValue(JSON.stringify(existingGraph)),
-      writeFile: vi.fn().mockResolvedValue(undefined),
-    };
-
-    const manager = new KnowledgeGraphManager({
-      memoryFilePath: '/tmp/test-memory.json',
-    });
-
-    // Inject mock fs
-    (manager as any).fsModule = mockFs;
-
-    const result = await manager.createEntities([
-      { name: 'entity1', entityType: 'person', observations: ['new-obs'] },
-    ]);
-
-    // Should return empty because entity already existed (merged, not created)
-    expect(result).toEqual([]);
-  });
-
   it('should add vectors to vector store when creating entities with embeddings', async () => {
     const mockVectorStore = {
       addVector: vi.fn().mockResolvedValue(undefined),

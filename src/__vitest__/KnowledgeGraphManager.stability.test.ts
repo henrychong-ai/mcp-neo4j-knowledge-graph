@@ -65,6 +65,13 @@ describe('KnowledgeGraphManager Stability', () => {
       deleteRelations: vi.fn().mockResolvedValue(undefined),
       openNodes: vi.fn().mockResolvedValue({ entities: [], relations: [] }),
       searchNodes: vi.fn().mockResolvedValue({ entities: [], relations: [] }),
+      updateEntity: vi.fn().mockImplementation((name: string, updates: Partial<Entity>) => {
+        const entity = mockGraph.entities.find((e) => e.name === name);
+        if (!entity) {
+          return Promise.reject(new Error(`Entity with name ${name} not found`));
+        }
+        return Promise.resolve({ ...entity, ...updates });
+      }),
       close: vi.fn().mockResolvedValue(undefined),
     };
 
@@ -78,52 +85,10 @@ describe('KnowledgeGraphManager Stability', () => {
   });
 
   // --------------------------------------------------------------------------
-  // getRelation Fallback Tests
+  // getRelation Tests
   // --------------------------------------------------------------------------
 
-  describe('getRelation fallback', () => {
-    it('should return relation when found in fallback implementation', async () => {
-      const result = await manager.getRelation('Entity1', 'Entity2', 'RELATES_TO');
-
-      expect(result).not.toBeNull();
-      expect(result?.from).toBe('Entity1');
-      expect(result?.to).toBe('Entity2');
-      expect(result?.relationType).toBe('RELATES_TO');
-      expect(result?.strength).toBe(0.5);
-    });
-
-    it('should return null when relation not found in fallback', async () => {
-      const result = await manager.getRelation('Entity1', 'Entity3', 'RELATES_TO');
-
-      expect(result).toBeNull();
-    });
-
-    it('should return null when from entity does not exist', async () => {
-      const result = await manager.getRelation('NonExistent', 'Entity2', 'RELATES_TO');
-
-      expect(result).toBeNull();
-    });
-
-    it('should return null when to entity does not exist', async () => {
-      const result = await manager.getRelation('Entity1', 'NonExistent', 'RELATES_TO');
-
-      expect(result).toBeNull();
-    });
-
-    it('should return null when relationType does not match', async () => {
-      const result = await manager.getRelation('Entity1', 'Entity2', 'WRONG_TYPE');
-
-      expect(result).toBeNull();
-    });
-
-    it('should find relation with different relation type', async () => {
-      const result = await manager.getRelation('Entity2', 'Entity3', 'DEPENDS_ON');
-
-      expect(result).not.toBeNull();
-      expect(result?.relationType).toBe('DEPENDS_ON');
-      expect(result?.strength).toBe(0.8);
-    });
-
+  describe('getRelation', () => {
     it('should use storage provider getRelation when available', async () => {
       const mockGetRelation = vi.fn().mockResolvedValue({
         from: 'Entity1',

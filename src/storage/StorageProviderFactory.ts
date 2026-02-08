@@ -1,13 +1,11 @@
-import { FileStorageProvider } from './FileStorageProvider.js';
 import type { Neo4jConfig } from './neo4j/Neo4jConfig.js';
 import { Neo4jStorageProvider } from './neo4j/Neo4jStorageProvider.js';
 import type { StorageProvider } from './StorageProvider.js';
 import type { VectorStoreFactoryOptions } from './VectorStoreFactory.js';
 
 export interface StorageProviderConfig {
-  type: 'file' | 'neo4j';
+  type: 'neo4j';
   options?: {
-    memoryFilePath?: string;
     enableDecay?: boolean;
     decayConfig?: {
       enabled?: boolean;
@@ -58,16 +56,6 @@ export class StorageProviderFactory {
     let provider: StorageProvider;
 
     switch (config.type.toLowerCase()) {
-      case 'file': {
-        if (!config.options.memoryFilePath) {
-          throw new Error('memoryFilePath is required for file provider');
-        }
-        provider = new FileStorageProvider({
-          filePath: config.options.memoryFilePath,
-          vectorStoreOptions: config.vectorStoreOptions,
-        });
-        break;
-      }
       case 'neo4j': {
         // Configure Neo4j provider
         const neo4jConfig: Partial<Neo4jConfig> = {

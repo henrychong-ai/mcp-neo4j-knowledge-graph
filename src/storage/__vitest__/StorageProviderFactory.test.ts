@@ -2,42 +2,16 @@
  * Test file for the StorageProviderFactory
  * Migrated from Jest to Vitest and converted to TypeScript
  */
-import { describe, it, expect, beforeEach, afterEach, afterAll, vi } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { StorageProviderFactory } from '../StorageProviderFactory.js';
-import { FileStorageProvider } from '../FileStorageProvider.js';
 import { Neo4jStorageProvider } from '../neo4j/Neo4jStorageProvider.js';
-import { StorageProvider } from '../StorageProvider.js';
-import path from 'path';
-import fs from 'fs';
 
 // Define types from the module
-type StorageProviderType = 'file' | 'neo4j';
+type StorageProviderType = 'neo4j';
 interface StorageProviderConfig {
   type: StorageProviderType;
   options: Record<string, any>;
 }
-
-// Test directory setup
-const testDir = path.join(process.cwd(), 'test-output', 'storage-provider-factory');
-const testJsonPath = path.join(testDir, 'test.json');
-
-// Ensure test directory exists
-beforeEach(() => {
-  if (!fs.existsSync(testDir)) {
-    fs.mkdirSync(testDir, { recursive: true });
-  }
-  // Clean up any existing test files
-  if (fs.existsSync(testJsonPath)) {
-    fs.unlinkSync(testJsonPath);
-  }
-});
-
-// Clean up after all tests
-afterAll(() => {
-  if (fs.existsSync(testDir)) {
-    fs.rmSync(testDir, { recursive: true, force: true });
-  }
-});
 
 describe('StorageProviderFactory', () => {
   describe('creation', () => {
@@ -48,23 +22,6 @@ describe('StorageProviderFactory', () => {
   });
 
   describe('provider creation', () => {
-    it('should create a FileStorageProvider when type is "file"', () => {
-      // Arrange
-      const factory = new StorageProviderFactory();
-      const config: StorageProviderConfig = {
-        type: 'file',
-        options: {
-          memoryFilePath: testJsonPath,
-        },
-      };
-
-      // Act
-      const provider = factory.createProvider(config);
-
-      // Assert
-      expect(provider).toBeInstanceOf(FileStorageProvider);
-    });
-
     it('should create a Neo4jStorageProvider when type is "neo4j"', () => {
       // Arrange
       const factory = new StorageProviderFactory();
@@ -115,9 +72,11 @@ describe('StorageProviderFactory', () => {
       // Arrange
       const factory = new StorageProviderFactory();
       const config: StorageProviderConfig = {
-        type: 'file',
+        type: 'neo4j',
         options: {
-          memoryFilePath: testJsonPath,
+          neo4jUri: 'bolt://localhost:7687',
+          neo4jUsername: 'neo4j',
+          neo4jPassword: 'password',
         },
       };
       const provider = factory.createProvider(config);
@@ -130,9 +89,11 @@ describe('StorageProviderFactory', () => {
       // Arrange
       const factory = new StorageProviderFactory();
       const config: StorageProviderConfig = {
-        type: 'file',
+        type: 'neo4j',
         options: {
-          memoryFilePath: testJsonPath,
+          neo4jUri: 'bolt://localhost:7687',
+          neo4jUsername: 'neo4j',
+          neo4jPassword: 'password',
         },
       };
       const provider = factory.createProvider(config);
@@ -148,9 +109,11 @@ describe('StorageProviderFactory', () => {
       // Arrange
       const factory = new StorageProviderFactory();
       const config: StorageProviderConfig = {
-        type: 'file',
+        type: 'neo4j',
         options: {
-          memoryFilePath: testJsonPath,
+          neo4jUri: 'bolt://localhost:7687',
+          neo4jUsername: 'neo4j',
+          neo4jPassword: 'password',
         },
       };
       const provider = factory.createProvider(config);
@@ -167,9 +130,11 @@ describe('StorageProviderFactory', () => {
       // Arrange
       const factory = new StorageProviderFactory();
       const config: StorageProviderConfig = {
-        type: 'file',
+        type: 'neo4j',
         options: {
-          memoryFilePath: testJsonPath,
+          neo4jUri: 'bolt://localhost:7687',
+          neo4jUsername: 'neo4j',
+          neo4jPassword: 'password',
         },
       };
       const provider = factory.createProvider(config);
@@ -189,9 +154,11 @@ describe('StorageProviderFactory', () => {
       // Arrange
       const factory = new StorageProviderFactory();
       const config: StorageProviderConfig = {
-        type: 'file',
+        type: 'neo4j',
         options: {
-          memoryFilePath: testJsonPath,
+          neo4jUri: 'bolt://localhost:7687',
+          neo4jUsername: 'neo4j',
+          neo4jPassword: 'password',
         },
       };
       const provider = factory.createProvider(config);
@@ -204,13 +171,7 @@ describe('StorageProviderFactory', () => {
     it('should cleanup multiple providers', async () => {
       // Arrange
       const factory = new StorageProviderFactory();
-      const fileConfig: StorageProviderConfig = {
-        type: 'file',
-        options: {
-          memoryFilePath: testJsonPath,
-        },
-      };
-      const neo4jConfig: StorageProviderConfig = {
+      const neo4jConfig1: StorageProviderConfig = {
         type: 'neo4j',
         options: {
           neo4jUri: 'bolt://localhost:7687',
@@ -218,21 +179,29 @@ describe('StorageProviderFactory', () => {
           neo4jPassword: 'password',
         },
       };
-      const fileProvider = factory.createProvider(fileConfig);
-      const neo4jProvider = factory.createProvider(neo4jConfig);
+      const neo4jConfig2: StorageProviderConfig = {
+        type: 'neo4j',
+        options: {
+          neo4jUri: 'bolt://localhost:7688',
+          neo4jUsername: 'neo4j',
+          neo4jPassword: 'password',
+        },
+      };
+      const provider1 = factory.createProvider(neo4jConfig1);
+      const provider2 = factory.createProvider(neo4jConfig2);
 
       // Mock cleanup methods
-      (fileProvider as any).cleanup = vi.fn().mockResolvedValue(undefined);
-      (neo4jProvider as any).cleanup = vi.fn().mockResolvedValue(undefined);
+      (provider1 as any).cleanup = vi.fn().mockResolvedValue(undefined);
+      (provider2 as any).cleanup = vi.fn().mockResolvedValue(undefined);
 
       // Act
       await factory.cleanupAllProviders();
 
       // Assert
-      expect((fileProvider as any).cleanup).toHaveBeenCalled();
-      expect((neo4jProvider as any).cleanup).toHaveBeenCalled();
-      expect(factory.isProviderConnected(fileProvider)).toBe(false);
-      expect(factory.isProviderConnected(neo4jProvider)).toBe(false);
+      expect((provider1 as any).cleanup).toHaveBeenCalled();
+      expect((provider2 as any).cleanup).toHaveBeenCalled();
+      expect(factory.isProviderConnected(provider1)).toBe(false);
+      expect(factory.isProviderConnected(provider2)).toBe(false);
     });
   });
 });

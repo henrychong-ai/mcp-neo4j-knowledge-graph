@@ -74,68 +74,6 @@ describe('KnowledgeGraphManager Fallback Operations', () => {
   });
 
   // --------------------------------------------------------------------------
-  // updateRelation Fallback Tests
-  // --------------------------------------------------------------------------
-
-  describe('updateRelation fallback', () => {
-    it('should update relation using fallback implementation', async () => {
-      const updatedRelation: Relation = {
-        from: 'Entity1',
-        to: 'Entity2',
-        relationType: 'RELATES_TO',
-        strength: 0.8,
-        confidence: 0.9,
-      };
-
-      const result = await manager.updateRelation(updatedRelation);
-
-      expect(result).toEqual(updatedRelation);
-    });
-
-    it('should throw error when relation not found in fallback', async () => {
-      const nonExistentRelation: Relation = {
-        from: 'NonExistent',
-        to: 'Entity2',
-        relationType: 'RELATES_TO',
-      };
-
-      await expect(manager.updateRelation(nonExistentRelation)).rejects.toThrow(
-        "Relation from 'NonExistent' to 'Entity2' of type 'RELATES_TO' not found"
-      );
-    });
-  });
-
-  // --------------------------------------------------------------------------
-  // updateEntity Fallback Tests
-  // --------------------------------------------------------------------------
-
-  describe('updateEntity fallback', () => {
-    it('should update entity using fallback implementation', async () => {
-      const result = await manager.updateEntity('Entity1', {
-        entityType: 'updated-type',
-      });
-
-      expect(result.entityType).toBe('updated-type');
-      expect(result.name).toBe('Entity1');
-    });
-
-    it('should throw error when entity not found in fallback', async () => {
-      await expect(manager.updateEntity('NonExistent', { entityType: 'new-type' })).rejects.toThrow(
-        'Entity with name NonExistent not found'
-      );
-    });
-
-    it('should merge updates with existing entity data', async () => {
-      const result = await manager.updateEntity('Entity1', {
-        observations: ['new obs1', 'new obs2'],
-      });
-
-      expect(result.name).toBe('Entity1');
-      expect(result.observations).toEqual(['new obs1', 'new obs2']);
-    });
-  });
-
-  // --------------------------------------------------------------------------
   // Temporal Operations Tests (Error Cases)
   // --------------------------------------------------------------------------
 
