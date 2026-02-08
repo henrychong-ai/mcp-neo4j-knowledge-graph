@@ -27,8 +27,6 @@ export default tseslint.config(
       'coverage/',
       '*.config.js',
       '*.config.mjs',
-      'src/utils/__mocks__/**',
-      'src/utils/test-teardown.js',
       // Test files excluded from type-checked linting (not in tsconfig)
       '**/__vitest__/**',
       '**/*.test.ts',
