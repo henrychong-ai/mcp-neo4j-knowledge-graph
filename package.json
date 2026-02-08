@@ -1,6 +1,6 @@
 {
   "name": "@henrychong-ai/mcp-neo4j-knowledge-graph",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "description": "Neo4j-based knowledge graph MCP server with temporal versioning and semantic search",
   "license": "MIT",
   "author": "Henry Chong <henry@henrychong.ai>",
@@ -94,6 +94,11 @@
   "packageManager": "pnpm@10.28.2",
   "engines": {
     "node": ">=18.0.0"
+  },
+  "pnpm": {
+    "overrides": {
+      "@isaacs/brace-expansion": ">=5.0.1"
+    }
   },
   "lint-staged": {
     "src/**/*.ts": [
