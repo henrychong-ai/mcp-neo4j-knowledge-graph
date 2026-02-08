@@ -33,7 +33,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Getting Started
 
-**First time setup?** See **[SETUP.md](SETUP.md)** for complete step-by-step instructions covering:
+**First time setup?** See **[SETUP_AUTOMATION.md](SETUP_AUTOMATION.md)** for complete step-by-step instructions covering:
 
 - Prerequisites (Node.js, Neo4j, Docker)
 - Environment configuration

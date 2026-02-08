@@ -6,53 +6,7 @@ _(No critical priority items - all clear!)_
 
 ---
 
-# TODO - Outstanding Tasks
-
-## 🚨 Critical Priority
-
-_(No critical priority items - all clear!)_
-
----
-
 ## 🎯 Next Priority - Ready to Merge
-
-### v1.5.0 Query Result Caching - READY FOR PR MERGE
-
-**Goal**: Dramatically improve semantic search performance through LRU caching
-
-**Status**: ✅ **COMPLETE** - Branch: `claude/check-published-version-011CUq7WxEjcEqQsurmGap5j`
-
-**Priority**: 🔥 **MERGE IMMEDIATELY** - Tested and production-ready
-
-**Implementation Complete**:
-
-- ✅ LRU cache for semantic search query results
-- ✅ 500 unique queries cached with 5-minute TTL
-- ✅ 10K entity limit across all cached results
-- ✅ Sub-millisecond response for repeated queries
-- ✅ Automatic cache invalidation on mutations
-- ✅ Prometheus metrics integration (cache hits/misses)
-- ✅ README.md updated with v1.2.0-v1.5.0 features
-- ✅ CHANGELOG.md v1.5.0 entry complete
-- ✅ 334 unit tests passing
-
-**PR URL**: https://github.com/henrychong-ai/mcp-neo4j-knowledge-graph/compare/main...claude/check-published-version-011CUq7WxEjcEqQsurmGap5j
-
-**Files Changed**:
-
-- `src/storage/neo4j/Neo4jStorageProvider.ts` (+150/-21 lines)
-- `README.md` (+193/-7 lines) - Comprehensive "What's New" section
-- `CHANGELOG.md` (+57 lines)
-- `package.json` (version bump to 1.5.0)
-
-**Action Required**:
-
-1. Create PR on GitHub
-2. Merge to main → triggers automated npm publish
-3. Verify GitHub Actions CI passes
-4. Confirm npm package published
-
----
 
 ### SETUP.md Interactive Setup Guide - READY FOR PR MERGE
 

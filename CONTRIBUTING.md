@@ -18,14 +18,14 @@ By participating in this project, you agree to abide by our Code of Conduct:
 1. Fork the repository
 2. Clone your fork: `git clone https://github.com/YOUR-USERNAME/mcp-neo4j-knowledge-graph.git`
 3. Add the upstream remote: `git remote add upstream https://github.com/henrychong-ai/mcp-neo4j-knowledge-graph.git`
-4. Install dependencies: `npm install`
-5. Setup Neo4j: `docker-compose up -d neo4j && npm run neo4j:init`
+4. Install dependencies: `pnpm install`
+5. Setup Neo4j: See README.md for manual Neo4j setup instructions
 
 ### Development Process
 
 1. Create a new branch for your feature: `git checkout -b feature/your-feature-name`
 2. Implement your feature or fix
-3. Run the full test suite: `npm test`
+3. Run the full test suite: `pnpm test`
 4. Ensure passing tests and full coverage of your changes
 5. Commit your changes with descriptive messages
 6. Push to your fork: `git push origin feature/your-feature-name`
@@ -45,9 +45,9 @@ Note: We require all code to have appropriate test coverage. Writing tests that 
 ## Pull Request Process
 
 1. Update documentation to reflect any changes
-2. Ensure all tests pass: `npm test`
-3. Verify code coverage: `npm run test:coverage`
-4. Run linting: `npm run lint`
+2. Ensure all tests pass: `pnpm test`
+3. Verify code coverage: `pnpm run test:coverage`
+4. Run linting: `pnpm run lint`
 5. Make sure your code follows project conventions
 6. Update the README.md if needed with details of changes
 7. Your PR will be reviewed by the maintainers
@@ -59,10 +59,10 @@ All contributions must include appropriate tests:
 
 ```bash
 # Run all tests
-npm test
+pnpm test
 
 # Run tests with coverage report
-npm run test:coverage
+pnpm run test:coverage
 ```
 
 Ensure all tests are passing before submitting a PR. New code should maintain or improve the existing test coverage. PRs without tests will not be reviewed.
@@ -76,7 +76,7 @@ This project uses GitHub Actions for continuous integration on all pull requests
 - Linting checks ensure code quality standards are maintained
 - The workflow runs tests across target Node.js versions
 
-PRs cannot be merged until CI passes all checks. You can see the full CI workflow configuration in `.github/workflows/mcp-neo4j-knowledge-graph.yml`.
+PRs cannot be merged until CI passes all checks. You can see the full CI workflow configuration in `.github/workflows/ci-cd.yml`.
 
 ## Documentation
 

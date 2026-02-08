@@ -52,17 +52,8 @@ export default defineConfig({
         'src/types/vector-store.ts',
         // CLI scripts (integration tooling)
         'src/cli/**/*.ts',
-        // File system utilities (thin wrapper)
-        'src/utils/fs.ts',
         // Test utilities (mocks and fixtures for testing)
         'src/__test-utils__/**/*.ts',
-        // Mock embedding service (used only in tests)
-        'src/embeddings/MockEmbeddingService.ts',
-        // Main tool handler wrapper (simple entry point)
-        'src/mainToolHandler.ts',
-        // Deprecated storage provider - Neo4j is primary storage
-        // Scheduled for removal in v2.0.0 (see plans/v2.0.0-remove-file-storage-provider.md)
-        'src/storage/FileStorageProvider.ts',
       ],
       thresholds: {
         // Target: 75% coverage (72% for branches due to Neo4jStorageProvider integration code)
