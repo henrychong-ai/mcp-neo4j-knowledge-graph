@@ -494,7 +494,7 @@ git tag vX.Y.Z
 git push origin main --tags
 
 # GitHub Actions automatically:
-# - Builds and tests (834 tests) on Node 20.x/22.x/24.x
+# - Builds and tests (834 tests) on Node 24.x
 # - Publishes to npm via OIDC on v* tags
 ```
 
@@ -502,4 +502,4 @@ git push origin main --tags
 
 **Last Updated:** 2026-02-09
 
-**Current State:** v2.0.3 — Neo4j-only architecture, 834 tests, pnpm/Vitest/ESLint 9 toolchain.
+**Current State:** v2.1.0 — Neo4j-only architecture, ES2024/Node 24, 834 tests, pnpm/Vitest/ESLint 9 toolchain.
