@@ -18,8 +18,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 | Layer           | Technology                         |
 | --------------- | ---------------------------------- |
-| Runtime         | Node.js >=18 LTS                   |
-| Language        | TypeScript 5.x (ES2022 target)     |
+| Runtime         | Node.js >=24 LTS                   |
+| Language        | TypeScript 5.x (ES2024 target)     |
 | Package Manager | pnpm 10.28.2                       |
 | Database        | Neo4j 5.13+ (Community/Enterprise) |
 | Protocol        | MCP SDK 1.x                        |
@@ -248,10 +248,10 @@ Test files use Vitest with comprehensive mocking:
 
 ### GitHub Actions (`ci-cd.yml`)
 
-| Job                | Trigger           | Node Versions    |
-| ------------------ | ----------------- | ---------------- |
-| **Build and Test** | All pushes, PRs   | 20.x, 22.x, 24.x |
-| **Publish to npm** | Tags matching v\* | 24.x             |
+| Job                | Trigger           | Node Versions |
+| ------------------ | ----------------- | ------------- |
+| **Build and Test** | All pushes, PRs   | 24.x          |
+| **Publish to npm** | Tags matching v\* | 24.x          |
 
 **Build Job Steps:**
 
@@ -474,36 +474,43 @@ See `INVESTIGATION.md` for detailed technical analysis.
 
 - Host: vps-2 (Singapore VPS, 4C/12GB RAM)
 - Container: neo4j-kg
-- Neo4j Version: 5.26.13 LTS (community edition)
-- Memory: 512M heap, 256M pagecache, 128M transaction max
-- Database: 686 entities, 934 relations (as of 2025-10-20)
+- Neo4j Version: 5.26.21 (community edition)
+- Memory: 2G heap, 1G pagecache, 512M transaction max
+- Database: 1,354 entities, 3,077 relations (as of 2026-02-09)
+- Managed via: `/opt/neo4j-kg/docker-compose.yml` (systemd service `docker-containers-tailscale.service`)
 
-**Production Docker Run Command:**
+**Production Docker Compose Configuration:**
 
-```bash
-docker run -d \
-  --name neo4j-kg \
-  --restart unless-stopped \
-  -p 7474:7474 \
-  -p 7687:7687 \
-  -v neo4j-kg_neo4j_data:/data \
-  -v neo4j-kg_neo4j_logs:/logs \
-  -v /opt/neo4j-kg/backups:/backups \
-  -e NEO4J_AUTH=neo4j/<password> \
-  -e "NEO4J_PLUGINS=[\"apoc\"]" \
-  -e NEO4J_db_checkpoint_interval_time=30s \
-  -e NEO4J_server_memory_heap_initial__size=512M \
-  -e NEO4J_server_memory_heap_max__size=512M \
-  -e NEO4J_server_memory_pagecache_size=256M \
-  -e NEO4J_db_memory_transaction_max=128M \
-  neo4j:5.26-community
+```yaml
+services:
+  neo4j:
+    image: neo4j:5.26-community
+    container_name: neo4j-kg
+    environment:
+      NEO4J_AUTH: neo4j/${NEO4J_PASSWORD}
+      NEO4J_PLUGINS: '["apoc"]'
+      NEO4J_server_memory_heap_initial__size: 2G
+      NEO4J_server_memory_heap_max__size: 2G
+      NEO4J_server_memory_pagecache_size: 1G
+      NEO4J_db_memory_transaction_max: 512M
+      NEO4J_db_checkpoint_interval_time: '30s'
+    ports:
+      - '100.72.126.98:7474:7474' # HTTP (Tailscale only)
+      - '100.72.126.98:7687:7687' # Bolt (Tailscale only)
+    volumes:
+      - neo4j_data:/data
+      - neo4j_logs:/logs
+      - ./backups:/backups
+    restart: unless-stopped
+    mem_limit: 4G
+    mem_reservation: 2.5G
 ```
 
 **Configuration Notes:**
 
-- Environment variables use Neo4j 5.26 naming convention (updated 2025-10-20)
-- Old deprecated settings (NEO4J*dbms*_) replaced with new format (NEO4J*db*_, NEO4J*server*\*)
-- Zero deprecation warnings in logs after configuration update
+- Environment variables use Neo4j 5.26 naming convention (migrated from deprecated `dbms.*` format 2026-02-09)
+- Zero deprecation warnings in logs
+- Ports bound to Tailscale IP only (not 0.0.0.0)
 - Volumes preserve data across container recreations
 
 **For upgrade procedures**, see [docs/UPGRADE.md](docs/UPGRADE.md) which covers:

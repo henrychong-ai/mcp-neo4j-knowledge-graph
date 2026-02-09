@@ -6,227 +6,29 @@ _(No critical priority items - all clear!)_
 
 ---
 
-## 🎯 Next Priority - Ready to Merge
+## 🚀 Open Items
 
-### SETUP.md Interactive Setup Guide - READY FOR PR MERGE
-
-**Goal**: Provide comprehensive setup guide for public npm users
-
-**Status**: ✅ **REBASED** - Branch: `claude/cc-automatic-setup-011CUq7WxEjcEqQsurmGap5j`
-
-**Priority**: 🔥 **MERGE AFTER v1.5.0** - Ready for testing and merge
-
-**Implementation Complete**:
-
-- ✅ Created comprehensive 545-line setup guide
-- ✅ Self-contained for public npm users (no private repo references)
-- ✅ Included in npm package via `package.json` files array
-- ✅ Updated README.md with "Getting Started" section
-- ✅ Expanded inline troubleshooting (schema constraints, etc.)
-- ✅ **Successfully rebased** onto main with v1.5.0 changes
-
-**PR URL**: https://github.com/henrychong-ai/mcp-neo4j-knowledge-graph/compare/main...claude/cc-automatic-setup-011CUq7WxEjcEqQsurmGap5j
-
-**Pre-Merge Testing Checklist**:
-
-1. **NPM Package Accessibility Test**:
-   - [ ] Install package: `npm install -g @henrychong-ai/mcp-neo4j-knowledge-graph`
-   - [ ] Access SETUP.md: `cat $(npm root -g)/@henrychong-ai/mcp-neo4j-knowledge-graph/SETUP.md`
-   - [ ] Verify all sections readable from npm package
-
-2. **Link Validation**:
-   - [ ] No broken file links (grep for .md references)
-   - [ ] No private repo URLs (grep for github.com)
-   - [ ] External links work (Neo4j docs, OpenAI, etc.)
-
-3. **User Journey Test**:
-   - [ ] Fresh user follows SETUP.md from npm package
-   - [ ] All commands work as documented
-   - [ ] Neo4j setup successful (Docker Compose recommended path)
-   - [ ] Claude Desktop configuration works
-   - [ ] First entity creation successful
-   - [ ] Troubleshooting sections resolve common issues
-
-4. **Documentation Quality**:
-   - [ ] Clear for beginners (no assumed knowledge)
-   - [ ] Code blocks properly formatted
-   - [ ] Screenshots/examples helpful (if any)
-   - [ ] Troubleshooting covers real issues
-
-**Merge Decision**: Merge after v1.5.0 is published and tested by actual npm user workflow
+_(No open items - all clear!)_
 
 ---
 
-## 🚀 High Priority
+## ❌ Closed (Not Needed)
+
+### SETUP.md Interactive Setup Guide
+
+**Closed**: Shipped as `SETUP_AUTOMATION.md` in npm package. Branch deleted in v2.0.0 cleanup.
 
 ### Batch Operations API
 
-**Goal**: Enable efficient bulk operations for knowledge graph ingestion and updates
-
-**Status**: 🚧 **STORAGE LAYER COMPLETE** - Branch: `claude/batch-operations-api-011CUq7WxEjcEqQsurmGap5j`
-
-**Progress**: 60% Complete (3 of 5 phases done)
-
-**Completed**:
-
-- ✅ Phase 1: Batch API interfaces and types (`src/types/batch-operations.ts`)
-- ✅ Phase 2: Storage methods with transaction management
-  - `createEntitiesBatch` - UNWIND + parallel embedding generation
-  - `createRelationsBatch` - UNWIND bulk operations
-  - `addObservationsBatch` - Batch observation additions
-  - `updateEntitiesBatch` - Batch entity updates
-- ✅ Performance: <5ms per entity target achieved with UNWIND
-- ✅ Partial failure handling with detailed error reports
-- ✅ Progress reporting via callbacks
-- ✅ Code compiles successfully
-
-**Remaining** (Phases 3-5):
-
-- [ ] Phase 3: MCP tool handlers
-  - Add handlers to `src/server/handlers/callToolHandler.ts`
-  - Register tools in `src/server/handlers/listToolsHandler.ts`
-- [ ] Phase 4: KnowledgeGraphManager wrappers
-  - Add wrapper methods in `src/KnowledgeGraphManager.ts`
-- [ ] Phase 5: Testing and documentation
-  - Unit tests for batch operations
-  - Integration tests with Neo4j
-  - README.md updates with batch API examples
-  - CHANGELOG.md entry
-
-**Problem**: Creating/updating many entities requires multiple MCP tool calls with individual transactions. This is slow for AI workflows that need to ingest large context dumps or process document batches.
-
-**Solution**:
-
-- New MCP tools for batch operations:
-  - `create_entities_batch(entities: Entity[], config?: BatchConfig)`
-  - `create_relations_batch(relations: Relation[], config?: BatchConfig)`
-  - `add_observations_batch(batches: ObservationBatch[], config?: BatchConfig)`
-  - `update_entities_batch(updates: EntityUpdate[], config?: BatchConfig)`
-- Single transaction per batch with partial success handling
-- Progress reporting for long-running batches
-- Configurable batch size limits (default: 100 items)
-
-**Impact**:
-
-- **User Value**: 10-100x faster bulk operations, enables new use cases (document ingestion, context migration)
-- **Technical Complexity**: Medium (storage complete, handlers remaining)
-- **Estimated Remaining Time**: 2-3 hours
-
-**Success Metrics**:
-
-- ✅ < 5ms per entity for batches of 100+ entities (ACHIEVED)
-- ✅ Graceful partial failure handling with detailed error reports (IMPLEMENTED)
-- ✅ Zero transaction leaks or orphaned data (IMPLEMENTED)
-
-**PR URL**: https://github.com/henrychong-ai/mcp-neo4j-knowledge-graph/compare/main...claude/batch-operations-api-011CUq7WxEjcEqQsurmGap5j
-
----
-
-## 🏗️ Infrastructure & CI/CD
+**Closed**: Branch deleted in v2.0.0 cleanup. Existing `create_entities` already accepts arrays. Single-entity tools handle typical MCP usage. Can be revisited if bulk ingestion becomes a real need.
 
 ### Branch Testing & Preview Deployments
 
-**Goal**: Enable testing of branches before merging to main to prevent production issues
-
-**Status**: ⏳ **NOT STARTED** - Critical after v1.2.1 release
-
-**Problem**: Currently we merge to main → publish to npm → discover issues. Need ability to test branches in production-like environments before merging.
-
-**Solution Components**:
-
-1. **Branch Build & Test Automation**:
-   - GitHub Actions workflow for pull requests
-   - Run full test suite on every branch push
-   - Build package and verify no errors
-   - Report test results in PR comments
-
-2. **Preview NPM Packages** (Optional):
-   - Publish branch builds to npm with alpha/beta tags
-   - Example: `@henrychong-ai/mcp-neo4j-knowledge-graph@1.2.1-alpha.1`
-   - Test in real Claude Desktop/Code environments
-   - Clean up preview packages after merge/close
-
-3. **Automated Testing Checklist**:
-   - [ ] Unit tests (existing 333 tests)
-   - [ ] Integration tests with Neo4j (currently manual)
-   - [ ] Build verification (TypeScript compilation)
-   - [ ] Package size check (detect bloat)
-   - [ ] Dependency security audit
-
-**Implementation Phases**:
-
-1. Add `.github/workflows/pull-request.yml` workflow
-2. Configure test reporting and status checks
-3. Optional: Add preview package publishing
-4. Document testing process in CONTRIBUTING.md
-
----
+**Closed**: CI/CD (`ci-cd.yml`) already runs build+lint+typecheck+test on all pushes and PRs across Node 20.x/22.x/24.x. Preview npm packages not needed for a single-maintainer project.
 
 ### Cloud Testing Environments
 
-**Goal**: Set up cloud-based Neo4j instances for testing in Claude Code web and Codex web
-
-**Status**: ⏳ **NOT STARTED** - Needed for comprehensive testing
-
-**Problem**: Current testing limited to local Neo4j. Need cloud environments to test:
-
-- Claude Code web (browser-based, different networking)
-- Codex web (different authentication, environment)
-- Public internet accessibility
-- Production-like configurations
-
-**Solution Options**:
-
-1. **Neo4j Aura (Managed Cloud)**:
-   - Free tier: 200K nodes, 400K relationships
-   - Always-on, no Docker required
-   - Test connectivity from web environments
-   - Production-like performance characteristics
-
-2. **VPS-Hosted Neo4j** (Current vps-2 production):
-   - Full control over configuration
-   - Already have vps-2 with Neo4j 5.26
-   - Can create test database alongside production
-   - Tailscale access or public endpoint
-
-3. **Docker Cloud Environments**:
-   - Fly.io, Railway, Render
-   - On-demand Neo4j instances
-   - Good for ephemeral testing
-   - Cost: ~$5-10/month per instance
-
-**Testing Matrix**:
-
-```
-Environment          | Neo4j Location    | Test Type
----------------------|-------------------|---------------------------
-Local Claude Code    | Local Docker      | Development ✅
-Local Claude Desktop | Local Docker      | Development ✅
-Claude Code Web      | Neo4j Aura        | Production-like ⏳
-Codex Web           | Neo4j Aura        | Integration ⏳
-CI/CD Pipeline      | GitHub Actions    | Automated ⏳
-```
-
-**Implementation Steps**:
-
-1. Set up Neo4j Aura free instance
-2. Document connection configuration
-3. Test from Claude Code web environment
-4. Test from Codex web environment
-5. Create testing playbook
-6. Add cloud testing to SETUP.md
-
-**Configuration Example**:
-
-```bash
-# Cloud Neo4j Aura
-NEO4J_URI=neo4j+s://xxxxx.databases.neo4j.io
-NEO4J_USERNAME=neo4j
-NEO4J_PASSWORD=secure_cloud_password
-OPENAI_API_KEY=sk-proj-...
-```
-
----
+**Closed**: Production Neo4j runs on vps-2 via Tailscale. Local Docker covers development testing. CI uses GitHub Actions Neo4j service container. No need for Neo4j Aura or cloud testing environments.
 
 ---
 
@@ -686,52 +488,18 @@ _(No pending medium priority items)_
 
 ```bash
 # 1. Make changes and update CHANGELOG.md
-
-# 2. Bump version
-npm version patch  # or minor/major
-
-# 3. Commit and push (automated publish triggers)
-git commit -am "Release vX.Y.Z"
-git push origin main --follow-tags
+# 2. Bump version in package.json
+# 3. Commit, tag, and push
+git tag vX.Y.Z
+git push origin main --tags
 
 # GitHub Actions automatically:
-# - Builds and tests (287 tests)
-# - Checks version (current vs published)
-# - Publishes to npm via OIDC with provenance
-# - No token rotation ever needed!
-```
-
-### Testing GitHub Actions Locally
-
-Use `act` to test workflows locally before pushing:
-
-```bash
-brew install act
-act push -j build  # Test build job
-act push -j publish --secret NPM_TOKEN=...  # Test publish job
+# - Builds and tests (834 tests) on Node 20.x/22.x/24.x
+# - Publishes to npm via OIDC on v* tags
 ```
 
 ---
 
-**Last Updated:** 2026-02-08
+**Last Updated:** 2026-02-09
 
-**Session Context:**
-
-- ✅ **v2.0.0 Breaking Change Release** - FileStorageProvider removal complete
-- ✅ **Infrastructure Cleanup** - Removed ~1,200 lines of dead code
-- ✅ **Documentation Modernization** - All docs updated (npm→pnpm, docker-compose→docker run)
-- ✅ **Neo4j-Only Architecture** - Code now matches enforced architecture
-- ✅ **340 unit tests passing** - All tests green, build successful
-
-**Current State:**
-
-- v2.0.0 ready for release with comprehensive breaking changes
-- Clean codebase: Neo4j-only, no file storage remnants
-- Modern tooling: pnpm, plain Docker commands
-- Documentation aligned with reality
-
-**Next Steps:**
-
-1. Tag and publish v2.0.0 → automated npm publish via GitHub Actions
-2. Monitor for any migration issues from breaking changes
-3. Continue with planned features (Batch Operations API, etc.)
+**Current State:** v2.0.3 — Neo4j-only architecture, 834 tests, pnpm/Vitest/ESLint 9 toolchain.

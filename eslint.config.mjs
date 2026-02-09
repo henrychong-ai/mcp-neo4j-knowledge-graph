@@ -105,7 +105,7 @@ export default tseslint.config(
       'unicorn/prefer-ternary': 'off',
       'unicorn/prefer-number-properties': 'off',
       'unicorn/switch-case-braces': 'off',
-      'unicorn/no-array-sort': 'off', // toSorted is ES2023+, project uses ES2020
+      'unicorn/no-array-sort': 'off', // Prefer in-place .sort() over .toSorted() for this codebase
       'unicorn/text-encoding-identifier-case': 'off',
       'unicorn/no-await-expression-member': 'off',
       'unicorn/no-process-exit': 'off', // This is a CLI tool

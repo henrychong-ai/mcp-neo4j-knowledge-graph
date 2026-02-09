@@ -44,8 +44,8 @@ node --version
 
 **EVALUATE:**
 
-- **If version >= 18.0.0**: ✅ "Great! You have Node.js v[X.X.X] installed." (v20+ recommended for best compatibility)
-- **If version < 18.0.0**: ⚠️ "You have Node.js v[X.X.X], but we need v18.0.0 or higher (v20+ recommended)."
+- **If version >= 24.0.0**: ✅ "Great! You have Node.js v[X.X.X] installed."
+- **If version < 24.0.0**: ⚠️ "You have Node.js v[X.X.X], but we need v24.0.0 or higher."
   - **ACTION**: Provide upgrade instructions for their OS
 - **If not found**: ❌ "Node.js is not installed."
   - **ACTION**: Provide installation instructions:
