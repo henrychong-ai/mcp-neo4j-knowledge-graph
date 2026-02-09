@@ -44,13 +44,13 @@ node --version
 
 **EVALUATE:**
 
-- **If version >= 20.0.0**: ✅ "Great! You have Node.js v[X.X.X] installed."
-- **If version < 20.0.0**: ⚠️ "You have Node.js v[X.X.X], but we need v20.0.0 or higher."
+- **If version >= 18.0.0**: ✅ "Great! You have Node.js v[X.X.X] installed." (v20+ recommended for best compatibility)
+- **If version < 18.0.0**: ⚠️ "You have Node.js v[X.X.X], but we need v18.0.0 or higher (v20+ recommended)."
   - **ACTION**: Provide upgrade instructions for their OS
 - **If not found**: ❌ "Node.js is not installed."
   - **ACTION**: Provide installation instructions:
     - **macOS**: `brew install node`
-    - **Linux**: Recommend nvm: `curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash && nvm install 20`
+    - **Linux**: Recommend nvm: `curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.4/install.sh | bash && nvm install --lts`
     - **Windows**: Download from https://nodejs.org/
 
 **STOP HERE** if Node.js installation is needed. Ask user to install and run this automation again.
@@ -128,7 +128,6 @@ I'm creating a docker-compose.yml file to run Neo4j...
 **CREATE FILE** `docker-compose.yml` in current directory:
 
 ```yaml
-version: '3.8'
 services:
   neo4j:
     image: neo4j:5.26-community
@@ -345,14 +344,10 @@ cp ~/.claude.json ~/.claude.json.backup-$(date +%Y%m%d-%H%M%S)
   "command": "npx",
   "args": ["-y", "@henrychong-ai/mcp-neo4j-knowledge-graph"],
   "env": {
-    "MEMORY_STORAGE_TYPE": "neo4j",
     "NEO4J_URI": "bolt://localhost:7687",
     "NEO4J_USERNAME": "neo4j",
     "NEO4J_PASSWORD": "[NEO4J_PASSWORD]",
     "NEO4J_DATABASE": "neo4j",
-    "NEO4J_VECTOR_INDEX": "entity_embeddings",
-    "NEO4J_VECTOR_DIMENSIONS": "1536",
-    "NEO4J_SIMILARITY_FUNCTION": "cosine",
     "OPENAI_API_KEY": "[OPENAI_API_KEY]",
     "OPENAI_EMBEDDING_MODEL": "text-embedding-3-small"
   }
@@ -363,6 +358,8 @@ cp ~/.claude.json ~/.claude.json.backup-$(date +%Y%m%d-%H%M%S)
 
 - `[NEO4J_PASSWORD]` with user's password
 - `[OPENAI_API_KEY]` with user's API key (or remove line if not provided)
+
+> **Advanced Configuration**: Vector search defaults work out of the box. To customize, add these optional env vars: `NEO4J_VECTOR_INDEX` (default: `entity_embeddings`), `NEO4J_VECTOR_DIMENSIONS` (default: `1536`), `NEO4J_SIMILARITY_FUNCTION` (default: `cosine`).
 
 **WRITE** updated config back to `~/.claude.json`
 
@@ -484,7 +481,7 @@ Would you like me to test it now by creating a sample entity?
 ```
 🎉 Success! I just created a test entity in your knowledge graph!
 
-Try searching for it: "Search the knowledge graph for 'Setup_Test'"
+Try searching for it: "Search the knowledge graph for 'setup-test'"
 ```
 
 **IF FAILS:**
@@ -635,25 +632,14 @@ First, let me create a backup...
 cp ~/.claude/CLAUDE.md ~/.claude/CLAUDE.md.backup-$(date +%Y%m%d-%H%M%S)
 ```
 
-#### Prepare KG Instructions Content
+#### Add KG Instructions
 
-**DETERMINE OPENAI KEY STATUS:**
-Check if user provided OpenAI API key during Section 3 setup.
+**APPEND** the following to `~/.claude/CLAUDE.md`. If the user provided an OpenAI API key during Section 3, include the full template. If they skipped it, add a note that `semantic_search` requires an OpenAI API key to be configured.
 
-**IF OPENAI KEY PROVIDED (Semantic search enabled):**
-
-Create full instructions including semantic_search:
-
-**RUN:**
-
-```bash
-cat >> ~/.claude/CLAUDE.md << 'EOF'
-
+```markdown
 ---
 
 # Knowledge Graph (KG) Usage Instructions
-
-*Added by mcp-neo4j-knowledge-graph setup on $(date +%Y-%m-%d)*
 
 ## Abbreviation
 - **kg**: References the Neo4j knowledge graph and MCP tools (mcp__kg__search_nodes, mcp__kg__semantic_search, etc.)
@@ -662,223 +648,37 @@ cat >> ~/.claude/CLAUDE.md << 'EOF'
 
 ### semantic_search (Recommended for Exploration)
 
-Use `semantic_search` for concept exploration, discovery, and natural language queries:
+Use `semantic_search` for concept exploration, discovery, and natural language queries.
+Requires OpenAI API key configured in MCP server env vars.
 
 **When to use:**
 - Exploring topics without knowing exact terminology
 - Finding related concepts across different domains
 - Natural language queries about abstract ideas
 
-**Parameters:**
-- `limit`: Maximum results (default: 10)
-- `min_similarity`: Similarity threshold 0.0-1.0 (default: 0.6)
-- `entity_types`: Optional filter by type
-- `hybrid_search`: Combine with keyword search (default: true)
-
-**Example queries:**
-```
-
-semantic_search("software architecture patterns") → Finds design patterns, architectural concepts
-semantic_search("database optimization techniques") → Finds performance tuning, indexing strategies
-semantic_search("project management methodologies") → Finds Agile, Scrum, workflow approaches
-
-```
-
-**Benefits:**
-- Finds conceptually related entities even with different terminology
-- Discovers unexpected connections
-- Works well with natural language queries
+**Parameters:** `limit` (default: 10), `min_similarity` (default: 0.6), `entity_types`, `hybrid_search` (default: true)
 
 ### search_nodes (Precision Method)
 
-Use `search_nodes` for exact term matching:
+Use `search_nodes` for exact term matching. Fast, free, no API calls.
 
 **When to use:**
 - Known exact terms or technical names
 - Quick existence checks
 - Technical lookups with specific terminology
-
-**Benefits:**
-- Fast and free (no API calls)
-- Predictable exact matches
-- Efficient for known terms
-
-**Example queries:**
-```
-
-search_nodes("Docker") → Finds entities mentioning Docker
-search_nodes("React") → Finds React-related entities
-search_nodes("PostgreSQL") → Finds PostgreSQL entities
-
-```
-
-**Limitations:**
-- Literal matching only
-- Won't find synonyms or related concepts
-- Requires knowing exact terminology
 
 ## Best Practices
 
-### Hybrid Approach (Recommended):
-1. Start with `semantic_search` for discovery
-2. Review results and identify exact terms used
-3. Use `search_nodes` for precision refinement
-
-### Query Optimization:
-- **Semantic search**: Natural language - "web development frontend frameworks modern"
-- **Keyword search**: Specific terms - "React", "Vue", "Angular"
-- **Escalation**: semantic_search → search_nodes → file search → web search
+**Hybrid Approach:** Start with `semantic_search` for discovery → refine with `search_nodes` for precision.
+**Escalation:** semantic_search → search_nodes → file search → web search
 
 ## Critical Constraints
 
-### NEVER use read_graph()
-- ⚠️ The `read_graph()` tool always exceeds the 25,000 token response limit
-- Response size: ~173,000 tokens (confirmed)
-- **Always use `search_nodes()` or `semantic_search()` instead**
-
-### Token Limit Awareness
-- All MCP tool responses capped at 25,000 tokens maximum
-- Use targeted searches rather than broad retrieval
+- **NEVER use `read_graph()`** — always exceeds 25,000 token MCP response limit (~173k tokens)
+- Use `search_nodes()` or `semantic_search()` instead
 - Apply filters early to reduce response size
 
 ---
-
-EOF
-```
-
-**IF OPENAI KEY NOT PROVIDED (Semantic search disabled):**
-
-**ASK USER:**
-
-```
-You didn't set up an OpenAI API key, so semantic search isn't currently enabled.
-
-Would you like to include the semantic_search instructions anyway (as commented examples for future reference)?
-
-This way, if you add an OpenAI key later, you'll have the instructions ready.
-
-Include semantic_search instructions as comments? (yes/no)
-```
-
-**IF YES (include commented):**
-
-**RUN:**
-
-```bash
-cat >> ~/.claude/CLAUDE.md << 'EOF'
-
----
-
-# Knowledge Graph (KG) Usage Instructions
-
-*Added by mcp-neo4j-knowledge-graph setup on $(date +%Y-%m-%d)*
-
-## Abbreviation
-- **kg**: References the Neo4j knowledge graph and MCP tools
-
-## Search Methods
-
-### search_nodes (Currently Available)
-
-Use `search_nodes` for exact term matching:
-
-**When to use:**
-- Known exact terms or technical names
-- Quick existence checks
-- Technical lookups with specific terminology
-
-**Example queries:**
-```
-
-search_nodes("Docker") → Finds entities mentioning Docker
-search_nodes("React") → Finds React-related entities
-search_nodes("PostgreSQL") → Finds PostgreSQL entities
-
-```
-
-<!--
-### semantic_search (Requires OpenAI API Key)
-
-COMMENTED OUT - Add OpenAI API key to enable semantic search:
-
-Use `semantic_search` for concept exploration and natural language queries:
-
-**When to use:**
-- Exploring topics without knowing exact terminology
-- Finding related concepts across different domains
-- Natural language queries about abstract ideas
-
-**Parameters:**
-- `limit`: Maximum results (default: 10)
-- `min_similarity`: Similarity threshold 0.0-1.0 (default: 0.6)
-
-**Example queries:**
-```
-
-semantic_search("software architecture patterns") → Finds design patterns, architectural concepts
-semantic_search("database optimization techniques") → Finds performance tuning, indexing strategies
-
-```
-
-To enable: Add OPENAI_API_KEY to your ~/.claude.json MCP server config, then uncomment this section.
--->
-
-## Critical Constraints
-
-### NEVER use read_graph()
-- ⚠️ The `read_graph()` tool always exceeds the 25,000 token response limit
-- **Always use `search_nodes()` or `semantic_search()` instead**
-
----
-
-EOF
-```
-
-**IF NO (omit semantic search):**
-
-**RUN:**
-
-```bash
-cat >> ~/.claude/CLAUDE.md << 'EOF'
-
----
-
-# Knowledge Graph (KG) Usage Instructions
-
-*Added by mcp-neo4j-knowledge-graph setup on $(date +%Y-%m-%d)*
-
-## Abbreviation
-- **kg**: References the Neo4j knowledge graph and MCP tools
-
-## Search Method
-
-### search_nodes
-
-Use `search_nodes` for exact term matching:
-
-**When to use:**
-- Known exact terms or technical names
-- Quick existence checks
-- Technical lookups with specific terminology
-
-**Example queries:**
-```
-
-search_nodes("Docker") → Finds entities mentioning Docker
-search_nodes("React") → Finds React-related entities
-search_nodes("PostgreSQL") → Finds PostgreSQL entities
-
-```
-
-## Critical Constraints
-
-### NEVER use read_graph()
-- ⚠️ The `read_graph()` tool always exceeds the 25,000 token response limit
-- **Always use `search_nodes()` instead**
-
----
-
-EOF
 ```
 
 #### Verify Addition
@@ -886,7 +686,7 @@ EOF
 **RUN:**
 
 ```bash
-tail -20 ~/.claude/CLAUDE.md
+tail -10 ~/.claude/CLAUDE.md
 ```
 
 **TELL USER:**
@@ -923,45 +723,6 @@ Next steps:
 
 Happy graphing! 🚀
 ```
-
-### 8.5 Save Setup Summary
-
-**CREATE FILE** `mcp-neo4j-setup-summary.txt`:
-
-```
-MCP Neo4j Knowledge Graph - Setup Summary
-==========================================
-Date: [CURRENT DATE/TIME]
-
-Neo4j:
-- URI: bolt://localhost:7687
-- Username: neo4j
-- Password: [NEO4J_PASSWORD]
-- Browser: http://localhost:7474
-
-Configuration:
-- Claude Code: ~/.claude.json ✅
-- Claude Desktop: [YES/NO]
-
-OpenAI Semantic Search: [ENABLED/SKIPPED]
-
-Backups:
-- ~/.claude.json.backup-[timestamp]
-
-To restart Neo4j (Docker):
-  docker compose restart neo4j
-
-To stop Neo4j (Docker):
-  docker compose stop neo4j
-
-To view logs:
-  docker compose logs -f neo4j
-
-Documentation:
-  https://www.npmjs.com/package/@henrychong-ai/mcp-neo4j-knowledge-graph
-```
-
-**TELL USER:** "I've saved a setup summary to mcp-neo4j-setup-summary.txt"
 
 ---
 

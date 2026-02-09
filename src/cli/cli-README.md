@@ -21,20 +21,20 @@ The project includes a Docker Compose configuration for Neo4j:
 
 ```bash
 # Start Neo4j container
-docker-compose up -d neo4j
+docker compose up -d neo4j
 
 # Stop Neo4j container
-docker-compose stop neo4j
+docker compose stop neo4j
 
 # Remove Neo4j container (preserves data)
-docker-compose rm neo4j
+docker compose rm neo4j
 ```
 
 The Neo4j database will be available at:
 
 - **Bolt URI**: `bolt://localhost:7687` (for driver connections)
 - **HTTP**: `http://localhost:7474` (for Neo4j Browser UI)
-- **Default credentials**: username: `neo4j`, password: `memento_password`
+- **Default credentials**: username: `neo4j`, password: `your_password`
 
 ### Neo4j CLI Utilities
 
@@ -46,10 +46,10 @@ Test the connection to your Neo4j database:
 
 ```bash
 # Test with default settings
-npm run neo4j:test
+pnpm run neo4j:test
 
 # Test with custom settings
-npm run neo4j:test -- --uri bolt://custom-host:7687 --username myuser --password mypass
+pnpm run neo4j:test -- --uri bolt://custom-host:7687 --username myuser --password mypass
 ```
 
 #### Initializing Schema
@@ -58,16 +58,16 @@ Initialize the Neo4j schema with required constraints and indexes:
 
 ```bash
 # Initialize with default settings
-npm run neo4j:init
+pnpm run neo4j:init
 
 # Initialize with custom vector dimensions
-npm run neo4j:init -- --dimensions 768 --similarity euclidean
+pnpm run neo4j:init -- --dimensions 768 --similarity euclidean
 
 # Force recreation of all constraints and indexes
-npm run neo4j:init -- --recreate
+pnpm run neo4j:init -- --recreate
 
 # Combine multiple options
-npm run neo4j:init -- --vector-index custom_index --dimensions 384 --recreate
+pnpm run neo4j:init -- --vector-index custom_index --dimensions 384 --recreate
 ```
 
 ### Configuration Options
@@ -78,7 +78,7 @@ Neo4j support can be configured with these environment variables:
 # Neo4j Connection Settings
 NEO4J_URI=bolt://localhost:7687
 NEO4J_USERNAME=neo4j
-NEO4J_PASSWORD=memento_password
+NEO4J_PASSWORD=your_password
 NEO4J_DATABASE=neo4j
 
 # Vector Search Configuration
@@ -87,7 +87,6 @@ NEO4J_VECTOR_DIMENSIONS=1536
 NEO4J_SIMILARITY_FUNCTION=cosine
 
 # Embedding Service Configuration
-MEMORY_STORAGE_TYPE=neo4j
 OPENAI_API_KEY=your-openai-api-key
 OPENAI_EMBEDDING_MODEL=text-embedding-3-small
 
@@ -95,19 +94,18 @@ OPENAI_EMBEDDING_MODEL=text-embedding-3-small
 DEBUG=true
 ```
 
-Or directly in the Claude Desktop configuration:
+Or directly in the Claude Desktop / Claude Code configuration:
 
 ```json
 {
   "mcpServers": {
-    "neo4j-kg": {
-      "command": "/path/to/node",
-      "args": ["/path/to/mcp-neo4j-knowledge-graph/dist/index.js"],
+    "neo4j-knowledge-graph": {
+      "command": "npx",
+      "args": ["-y", "@henrychong-ai/mcp-neo4j-knowledge-graph"],
       "env": {
-        "MEMORY_STORAGE_TYPE": "neo4j",
         "NEO4J_URI": "bolt://localhost:7687",
         "NEO4J_USERNAME": "neo4j",
-        "NEO4J_PASSWORD": "memento_password",
+        "NEO4J_PASSWORD": "your_password",
         "NEO4J_DATABASE": "neo4j",
         "NEO4J_VECTOR_INDEX": "entity_embeddings",
         "NEO4J_VECTOR_DIMENSIONS": "1536",
@@ -128,7 +126,7 @@ The Neo4j CLI tools support the following options:
 ```
 --uri <uri>              Neo4j server URI (default: bolt://localhost:7687)
 --username <username>    Neo4j username (default: neo4j)
---password <password>    Neo4j password (default: memento_password)
+--password <password>    Neo4j password (default: your_password)
 --database <name>        Neo4j database name (default: neo4j)
 --vector-index <name>    Vector index name (default: entity_embeddings)
 --dimensions <number>    Vector dimensions (default: 1536)
@@ -199,7 +197,7 @@ If you encounter issues with vector search:
    Force recreation of the vector index:
 
    ```bash
-   npm run neo4j:init -- --recreate
+   pnpm run neo4j:init -- --recreate
    ```
 
 4. **Run MCP diagnostic tools**
@@ -304,18 +302,15 @@ Upon setting DEBUG=true:
 If you need to completely reset your Neo4j database during development:
 
 ```bash
-# Stop the container
-docker-compose stop neo4j
+# Stop and remove the container
+docker compose down
 
-# Remove the container
-docker-compose rm -f neo4j
-
-# Delete the data directory
-rm -rf ./neo4j-data/*
+# Remove data volumes (WARNING: destroys all data)
+docker volume rm $(docker volume ls -q --filter name=neo4j)
 
 # Restart the container
-docker-compose up -d neo4j
+docker compose up -d
 
 # Reinitialize the schema
-npm run neo4j:init
+pnpm run neo4j:init
 ```
