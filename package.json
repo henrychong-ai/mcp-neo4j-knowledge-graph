@@ -56,7 +56,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.26.0",
-    "axios": "^1.13.4",
+    "axios": "^1.13.5",
     "dotenv": "^16.6.1",
     "lru-cache": "^11.2.5",
     "neo4j-driver": "^6.0.1",
