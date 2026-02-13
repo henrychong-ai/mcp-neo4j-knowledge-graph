@@ -51,8 +51,8 @@ export class GraphTraversalScorer implements Scorer {
 
   getExplanation(context: ScoringContext, score: number): string {
     const relations = context.relations || [];
-    const inbound = relations.filter((r) => r.to === context.entity.name).length;
-    const outbound = relations.filter((r) => r.from === context.entity.name).length;
+    const inbound = relations.filter(r => r.to === context.entity.name).length;
+    const outbound = relations.filter(r => r.from === context.entity.name).length;
     const total = inbound + outbound;
 
     return `Graph centrality: ${(score * 100).toFixed(1)}% (${total} connections: ${inbound} in, ${outbound} out)`;
@@ -69,7 +69,7 @@ export class GraphTraversalScorer implements Scorer {
   ): number {
     // Count connections for this entity
     const entityConnections = relations.filter(
-      (r) => r.from === entityName || r.to === entityName
+      r => r.from === entityName || r.to === entityName
     ).length;
 
     if (entityConnections === 0) {
@@ -124,7 +124,7 @@ export class GraphTraversalScorer implements Scorer {
     relations: Relation[],
     allRelations: Relation[]
   ): number {
-    const outboundRelations = relations.filter((r) => r.from === entityName);
+    const outboundRelations = relations.filter(r => r.from === entityName);
 
     if (outboundRelations.length === 0) {
       return 0;
@@ -135,7 +135,7 @@ export class GraphTraversalScorer implements Scorer {
     for (const outbound of outboundRelations) {
       // Check if there's a reverse relation
       const hasReverse = allRelations.some(
-        (r) =>
+        r =>
           r.from === outbound.to &&
           r.to === outbound.from &&
           r.relationType === outbound.relationType

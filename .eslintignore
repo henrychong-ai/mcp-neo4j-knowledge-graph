@@ -1,0 +1,11 @@
+dist
+build
+node_modules
+coverage
+*.config.js
+*.config.mjs
+**/__vitest__/**
+**/__test-utils__/**
+**/*.test.ts
+**/*.spec.ts
+vitest.setup.ts

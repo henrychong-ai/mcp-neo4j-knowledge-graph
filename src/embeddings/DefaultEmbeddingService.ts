@@ -59,7 +59,7 @@ export class DefaultEmbeddingService extends EmbeddingService {
     const seed = this._hashString(text);
 
     // Create an array of the specified dimensions
-    const vector = new Array(this.dimensions);
+    const vector = Array.from<number>({ length: this.dimensions });
 
     // Fill with seeded random values
     for (let i = 0; i < this.dimensions; i++) {

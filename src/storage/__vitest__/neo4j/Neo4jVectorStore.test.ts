@@ -43,7 +43,7 @@ vi.mock('../../neo4j/Neo4jConnectionManager.js', () => {
     run: vi.fn().mockResolvedValue({
       records: [
         {
-          get: vi.fn().mockImplementation((key) => {
+          get: vi.fn().mockImplementation(key => {
             if (key === 'id') return 'test-entity';
             if (key === 'similarity') return 0.95;
             if (key === 'metadata') return JSON.stringify({ type: 'test' });
@@ -63,7 +63,7 @@ vi.mock('../../neo4j/Neo4jConnectionManager.js', () => {
           return {
             records: [
               {
-                get: vi.fn().mockImplementation((key) => {
+                get: vi.fn().mockImplementation(key => {
                   if (key === 'id') return 'test-entity';
                   if (key === 'similarity') return 0.95;
                   if (key === 'metadata') return JSON.stringify({ type: 'test' });

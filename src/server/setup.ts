@@ -27,22 +27,12 @@ export function setupServer(knowledgeGraphManager: any): Server {
   );
 
   // Register request handlers
-  server.setRequestHandler(ListToolsRequestSchema, async (_request) => {
-    try {
-      const result = await handleListToolsRequest();
-      return result;
-    } catch (error: unknown) {
-      throw error;
-    }
+  server.setRequestHandler(ListToolsRequestSchema, async _request => {
+    return await handleListToolsRequest();
   });
 
-  server.setRequestHandler(CallToolRequestSchema, async (request) => {
-    try {
-      const result = await handleCallToolRequest(request, knowledgeGraphManager);
-      return result;
-    } catch (error: unknown) {
-      throw error;
-    }
+  server.setRequestHandler(CallToolRequestSchema, async request => {
+    return await handleCallToolRequest(request, knowledgeGraphManager);
   });
 
   return server;

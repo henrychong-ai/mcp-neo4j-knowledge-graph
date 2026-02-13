@@ -54,7 +54,7 @@ describe('PrometheusMetrics Server', () => {
     }
 
     // Small delay to ensure server is fully closed
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    await new Promise(resolve => setTimeout(resolve, 100));
   });
 
   describe('server startup', () => {
@@ -68,14 +68,14 @@ describe('PrometheusMetrics Server', () => {
       metrics.startServer(testPort);
 
       // Give server time to start
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 100));
 
       // Verify server is running by making a request
       const response = await new Promise<{ statusCode: number; body: string }>(
         (resolve, reject) => {
-          const req = http.get(`http://localhost:${testPort}/metrics`, (res) => {
+          const req = http.get(`http://localhost:${testPort}/metrics`, res => {
             let body = '';
-            res.on('data', (chunk) => {
+            res.on('data', chunk => {
               body += chunk;
             });
             res.on('end', () => {
@@ -102,13 +102,13 @@ describe('PrometheusMetrics Server', () => {
       const testPort = 19191 + Math.floor(Math.random() * 1000);
       metrics.startServer(testPort);
 
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 100));
 
       const response = await new Promise<{ statusCode: number; body: string }>(
         (resolve, reject) => {
-          const req = http.get(`http://localhost:${testPort}/invalid`, (res) => {
+          const req = http.get(`http://localhost:${testPort}/invalid`, res => {
             let body = '';
-            res.on('data', (chunk) => {
+            res.on('data', chunk => {
               body += chunk;
             });
             res.on('end', () => {
@@ -135,7 +135,7 @@ describe('PrometheusMetrics Server', () => {
       const testPort = 19291 + Math.floor(Math.random() * 1000);
       metrics.startServer(testPort);
 
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 100));
 
       // Try to start again - should not throw or create second server
       expect(() => metrics.startServer(testPort)).not.toThrow();
@@ -163,13 +163,13 @@ describe('PrometheusMetrics Server', () => {
       const testPort = 19391 + Math.floor(Math.random() * 1000);
       metrics.startServer(testPort);
 
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 100));
 
       // Stop the server
       metrics.stopServer();
 
       // Give server time to close
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 100));
 
       // Server should no longer be accessible
       await expect(

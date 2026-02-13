@@ -35,7 +35,7 @@ describe('SearchResultCache', () => {
     expect(retrieved).toEqual(testData);
 
     // Wait for TTL to expire
-    await new Promise((resolve) => setTimeout(resolve, 200));
+    await new Promise(resolve => setTimeout(resolve, 200));
 
     // Retrieve after expiration should fail
     retrieved = cache.get('testQuery');
@@ -144,7 +144,7 @@ describe('SearchResultCache', () => {
     expect(cache.has('key1')).toBe(true);
 
     // Wait for TTL to expire
-    await new Promise((resolve) => setTimeout(resolve, 200));
+    await new Promise(resolve => setTimeout(resolve, 200));
 
     // Key should no longer exist
     expect(cache.has('key1')).toBe(false);

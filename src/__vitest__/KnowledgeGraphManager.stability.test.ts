@@ -66,7 +66,7 @@ describe('KnowledgeGraphManager Stability', () => {
       openNodes: vi.fn().mockResolvedValue({ entities: [], relations: [] }),
       searchNodes: vi.fn().mockResolvedValue({ entities: [], relations: [] }),
       updateEntity: vi.fn().mockImplementation((name: string, updates: Partial<Entity>) => {
-        const entity = mockGraph.entities.find((e) => e.name === name);
+        const entity = mockGraph.entities.find(e => e.name === name);
         if (!entity) {
           return Promise.reject(new Error(`Entity with name ${name} not found`));
         }

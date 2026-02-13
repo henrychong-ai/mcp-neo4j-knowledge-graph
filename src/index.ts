@@ -214,7 +214,7 @@ if (knowledgeGraphManager && typeof knowledgeGraphManager.createEntities === 'fu
       try {
         logger.info('Processing embedding jobs immediately after entity creation', {
           entityCount: entities.length,
-          entityNames: entities.map((e) => e.name).join(', '),
+          entityNames: entities.map(e => e.name).join(', '),
         });
         await embeddingJobManager.processJobs(entities.length);
       } catch (error) {
@@ -294,7 +294,7 @@ if (!process.env.VITEST && !process.env.NODE_ENV?.includes('test')) {
   }
 
   // Start MCP server
-  main().catch((error) => {
+  main().catch(error => {
     // Log error but don't use console.error
     logger.error(`Main process terminated: ${error}`);
     process.exit(1);

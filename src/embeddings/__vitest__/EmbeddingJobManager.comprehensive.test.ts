@@ -791,7 +791,7 @@ describe('EmbeddingJobManager', () => {
 
       // Mock getEntity for scheduling
       storageProvider.getEntity.mockImplementation((name: string) => {
-        return Promise.resolve(entitiesWithMixedEmbeddings.find((e) => e.name === name) || null);
+        return Promise.resolve(entitiesWithMixedEmbeddings.find(e => e.name === name) || null);
       });
 
       const count = await jobManager.scheduleIncrementalRegeneration();

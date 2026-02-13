@@ -17,7 +17,7 @@ export type SchemaManagerFactory = (
 ) => Neo4jSchemaManager;
 
 // Default factories that use the actual implementations
-const defaultConnectionManagerFactory: ConnectionManagerFactory = (config) =>
+const defaultConnectionManagerFactory: ConnectionManagerFactory = config =>
   new Neo4jConnectionManager(config);
 const defaultSchemaManagerFactory: SchemaManagerFactory = (connectionManager, debug) =>
   new Neo4jSchemaManager(connectionManager, undefined, debug);
@@ -299,7 +299,7 @@ const isMainModule = (): boolean => {
 if (isMainModule()) {
   main()
     .then(() => process.exit(0))
-    .catch((error) => {
+    .catch(error => {
       console.error('Fatal error:');
       console.error(error);
       process.exit(1);

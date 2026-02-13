@@ -90,10 +90,10 @@ describe('EmbeddingJobManager Caching', () => {
       saveGraph: vi.fn().mockResolvedValue(undefined),
       searchNodes: vi.fn().mockResolvedValue({ entities: [], relations: [] }),
       openNodes: vi.fn().mockResolvedValue({ entities: [], relations: [] }),
-      createEntities: vi.fn().mockImplementation(async (entities) => entities),
+      createEntities: vi.fn().mockImplementation(async entities => entities),
       createRelations: vi.fn().mockResolvedValue([]),
-      addObservations: vi.fn().mockImplementation(async (observations) => {
-        return observations.map((obs) => ({
+      addObservations: vi.fn().mockImplementation(async observations => {
+        return observations.map(obs => ({
           entityName: obs.entityName,
           addedObservations: obs.contents,
         }));

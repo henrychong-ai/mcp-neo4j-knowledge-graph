@@ -27,8 +27,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | Embeddings      | OpenAI text-embedding-3-small      |
 | Testing         | Vitest 4.x                         |
 | Coverage        | @vitest/coverage-v8                |
-| Linting         | ESLint 9 (strictTypeChecked)       |
-| Formatting      | Prettier                           |
+| Linting         | Oxlint (import, promise, node, vitest plugins) |
+| Formatting      | Biome (formatter-only, linter disabled)         |
 | Git Hooks       | Husky + lint-staged                |
 
 ## Getting Started
@@ -67,9 +67,10 @@ pnpm run test:integration  # Integration tests (requires Neo4j)
 ### Code Quality
 
 ```bash
-pnpm run lint              # ESLint check
-pnpm run lint:fix          # Auto-fix linting issues
-pnpm run format            # Prettier formatting
+pnpm run lint              # Oxlint check
+pnpm run lint:fix          # Oxlint auto-fix
+pnpm run format            # Biome formatting
+pnpm run format:check      # Biome format check (CI)
 pnpm run fix               # lint:fix + format
 ```
 
@@ -273,6 +274,29 @@ Test files use Vitest with comprehensive mocking:
 - **Version Check**: Tag must match `package.json` version
 
 ## Version History & Recent Bugfixes
+
+### v2.1.1 (2026-02-13) - Lint Stack Migration: ESLint/Prettier to Oxlint/Biome
+
+**Lint Stack Replacement:**
+
+- Replaced ESLint 9 (strictTypeChecked) with Oxlint for linting (native Rust, ~100x faster)
+- Replaced Prettier with Biome formatter (linter disabled, formatter-only mode)
+- Oxlint plugins: import, promise, node, vitest
+- Biome config matches previous Prettier settings (single quotes, trailing commas, 100 line width)
+- `.eslintignore` for test file exclusions (oxlint reads this by default)
+
+**Dependency Reduction:**
+
+- Removed 14 ESLint/Prettier packages (eslint, prettier, @typescript-eslint/*, @stylistic/*, eslint-plugin-sonarjs, etc.)
+- Added 2 packages: oxlint, @biomejs/biome
+- Net reduction: 12 dev dependencies
+
+**Code Quality Fixes:**
+
+- Removed useless try/catch wrappers in `setup.ts` and `callToolHandler.ts`
+- Replaced `new Array(n)` with `Array.from({ length: n })` in `DefaultEmbeddingService.ts`
+
+---
 
 ### v1.13.0 (2026-02-02) - Tech Stack Modernization
 

@@ -257,7 +257,7 @@ export class Neo4jVectorStore implements VectorStore {
         logger.debug(`Neo4jVectorStore: Vector search found ${foundResults} results`);
 
         if (foundResults > 0) {
-          return result.records.map((record) => ({
+          return result.records.map(record => ({
             id: record.get('id'),
             similarity: record.get('similarity'),
             metadata: {
@@ -372,7 +372,7 @@ export class Neo4jVectorStore implements VectorStore {
         `Neo4jVectorStore: Fallback search returned ${fallbackResult.records.length} results`
       );
 
-      return fallbackResult.records.map((record) => ({
+      return fallbackResult.records.map(record => ({
         id: record.get('id'),
         similarity: record.get('similarity'),
         metadata: { entityType: record.get('entityType'), domain: record.get('domain') },
@@ -427,7 +427,7 @@ export class Neo4jVectorStore implements VectorStore {
           LIMIT 3
         `;
         const sampleResult = await session.run(sampleQuery);
-        const samples = sampleResult.records.map((record) => ({
+        const samples = sampleResult.records.map(record => ({
           name: record.get('e.name'),
           entityType: record.get('e.entityType'),
           embeddingSize: record.get('embeddingSize'),

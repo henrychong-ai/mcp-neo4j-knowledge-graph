@@ -13,7 +13,7 @@ const isIntegrationTest = process.env.TEST_INTEGRATION === 'true';
 const describeOrSkip = isIntegrationTest ? describe : describe.skip;
 
 // Helper function to wait for a specific amount of time
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 // Helper function to create a test vector with the specified dimensions
 function createTestVector(dimensions: number, seed: number = 0.1): number[] {
@@ -80,7 +80,7 @@ describeOrSkip('Neo4j Vector Index Test', () => {
 
         // Log all indexes for debugging
         console.log('Available indexes:');
-        showResult.records.forEach((record) => {
+        showResult.records.forEach(record => {
           const name = record.get('name');
           const type = record.get('type');
           const labels = record.get('labelsOrTypes');
@@ -174,7 +174,7 @@ describeOrSkip('Neo4j Vector Index Test', () => {
         });
 
         console.log(`Vector search returned ${searchResult.records.length} results`);
-        searchResult.records.forEach((record) => {
+        searchResult.records.forEach(record => {
           console.log(`- ${record.get('name')}: ${record.get('score')}`);
         });
 

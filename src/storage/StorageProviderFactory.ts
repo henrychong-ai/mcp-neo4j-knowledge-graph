@@ -137,7 +137,7 @@ export class StorageProviderFactory {
   async cleanupAllProviders(): Promise<void> {
     const providers = [...this.connectedProviders];
     await Promise.all(
-      providers.map((provider) => this.cleanupProvider(provider as CleanableProvider))
+      providers.map(provider => this.cleanupProvider(provider as CleanableProvider))
     );
   }
 }

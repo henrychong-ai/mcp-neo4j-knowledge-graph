@@ -33,7 +33,7 @@ function createComprehensiveMockProvider(
     addObservations: vi
       .fn()
       .mockImplementation(async (obs: { entityName: string; contents: string[] }[]) =>
-        obs.map((o) => ({ entityName: o.entityName, addedObservations: o.contents }))
+        obs.map(o => ({ entityName: o.entityName, addedObservations: o.contents }))
       ),
     deleteEntities: vi.fn().mockResolvedValue(undefined),
     deleteObservations: vi.fn().mockResolvedValue(undefined),

@@ -35,72 +35,547 @@ export async function handleCallToolRequest(
     throw new Error(`No arguments provided for tool: ${name}`);
   }
 
-  try {
-    switch (name) {
-      case 'create_entities': {
-        return await toolHandlers.handleCreateEntities(args, knowledgeGraphManager);
-      }
+  switch (name) {
+    case 'create_entities': {
+      return await toolHandlers.handleCreateEntities(args, knowledgeGraphManager);
+    }
 
-      case 'read_graph': {
-        return await toolHandlers.handleReadGraph(args, knowledgeGraphManager);
-      }
+    case 'read_graph': {
+      return await toolHandlers.handleReadGraph(args, knowledgeGraphManager);
+    }
 
-      case 'create_relations': {
-        return await toolHandlers.handleCreateRelations(args, knowledgeGraphManager);
-      }
+    case 'create_relations': {
+      return await toolHandlers.handleCreateRelations(args, knowledgeGraphManager);
+    }
 
-      case 'add_observations': {
-        return await toolHandlers.handleAddObservations(args, knowledgeGraphManager);
-      }
+    case 'add_observations': {
+      return await toolHandlers.handleAddObservations(args, knowledgeGraphManager);
+    }
 
-      case 'delete_entities': {
-        return await toolHandlers.handleDeleteEntities(args, knowledgeGraphManager);
-      }
+    case 'delete_entities': {
+      return await toolHandlers.handleDeleteEntities(args, knowledgeGraphManager);
+    }
 
-      case 'delete_observations': {
-        await knowledgeGraphManager.deleteObservations(args.deletions);
-        return { content: [{ type: 'text', text: 'Observations deleted successfully' }] };
-      }
+    case 'delete_observations': {
+      await knowledgeGraphManager.deleteObservations(args.deletions);
+      return { content: [{ type: 'text', text: 'Observations deleted successfully' }] };
+    }
 
-      case 'delete_relations': {
-        await knowledgeGraphManager.deleteRelations(args.relations);
-        return { content: [{ type: 'text', text: 'Relations deleted successfully' }] };
-      }
+    case 'delete_relations': {
+      await knowledgeGraphManager.deleteRelations(args.relations);
+      return { content: [{ type: 'text', text: 'Relations deleted successfully' }] };
+    }
 
-      case 'get_relation': {
-        const relation = await knowledgeGraphManager.getRelation(
+    case 'get_relation': {
+      const relation = await knowledgeGraphManager.getRelation(
+        args.from,
+        args.to,
+        args.relationType
+      );
+      if (!relation) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Relation not found: ${args.from} -> ${args.relationType} -> ${args.to}`,
+            },
+          ],
+        };
+      }
+      return { content: [{ type: 'text', text: JSON.stringify(relation, null, 2) }] };
+    }
+
+    case 'update_relation': {
+      await knowledgeGraphManager.updateRelation(args.relation);
+      return { content: [{ type: 'text', text: 'Relation updated successfully' }] };
+    }
+
+    case 'search_nodes': {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(
+              await knowledgeGraphManager.searchNodes(args.query, {
+                domain: args.domain,
+                includeNullDomain: args.include_null_domain,
+              }),
+              null,
+              2
+            ),
+          },
+        ],
+      };
+    }
+
+    case 'open_nodes': {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(await knowledgeGraphManager.openNodes(args.names), null, 2),
+          },
+        ],
+      };
+    }
+
+    case 'get_entity_history': {
+      try {
+        const history = await knowledgeGraphManager.getEntityHistory(args.entityName);
+        return { content: [{ type: 'text', text: JSON.stringify(history, null, 2) }] };
+      } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        return {
+          content: [{ type: 'text', text: `Error retrieving entity history: ${errorMessage}` }],
+        };
+      }
+    }
+
+    case 'get_relation_history': {
+      try {
+        const history = await knowledgeGraphManager.getRelationHistory(
           args.from,
           args.to,
           args.relationType
         );
-        if (!relation) {
-          return {
-            content: [
-              {
-                type: 'text',
-                text: `Relation not found: ${args.from} -> ${args.relationType} -> ${args.to}`,
-              },
-            ],
-          };
+        return { content: [{ type: 'text', text: JSON.stringify(history, null, 2) }] };
+      } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        return {
+          content: [{ type: 'text', text: `Error retrieving relation history: ${errorMessage}` }],
+        };
+      }
+    }
+
+    case 'get_graph_at_time': {
+      try {
+        const graph = await knowledgeGraphManager.getGraphAtTime(args.timestamp);
+        return { content: [{ type: 'text', text: JSON.stringify(graph, null, 2) }] };
+      } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        return {
+          content: [{ type: 'text', text: `Error retrieving graph at time: ${errorMessage}` }],
+        };
+      }
+    }
+
+    case 'get_decayed_graph': {
+      try {
+        // Extract optional parameters if provided by client
+        const options: {
+          referenceTime?: number;
+          decayFactor?: number;
+        } = {};
+
+        if (args.reference_time) {
+          options.referenceTime = Number(args.reference_time);
         }
-        return { content: [{ type: 'text', text: JSON.stringify(relation, null, 2) }] };
+
+        if (args.decay_factor) {
+          options.decayFactor = Number(args.decay_factor);
+        }
+
+        // Pass options to getDecayedGraph if any are provided
+        const graph =
+          Object.keys(options).length > 0
+            ? await knowledgeGraphManager.getDecayedGraph(options)
+            : await knowledgeGraphManager.getDecayedGraph();
+
+        return { content: [{ type: 'text', text: JSON.stringify(graph, null, 2) }] };
+      } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        return {
+          content: [{ type: 'text', text: `Error retrieving decayed graph: ${errorMessage}` }],
+        };
+      }
+    }
+
+    case 'force_generate_embedding': {
+      // Validate arguments
+      if (!args.entity_name) {
+        throw new Error('Missing required parameter: entity_name');
       }
 
-      case 'update_relation': {
-        await knowledgeGraphManager.updateRelation(args.relation);
-        return { content: [{ type: 'text', text: 'Relation updated successfully' }] };
-      }
+      try {
+        // First determine if the input looks like a UUID
+        const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        const isUUID = uuidPattern.test(String(args.entity_name));
 
-      case 'search_nodes': {
+        // Try to get all entities first to locate the correct one
+        const allEntities = await knowledgeGraphManager.openNodes([]);
+
+        let entity = null;
+
+        if (allEntities?.entities && allEntities.entities.length > 0) {
+          // Try different methods to find the entity
+          // 1. Direct match by name
+          entity = allEntities.entities.find((e: { name: string }) => e.name === args.entity_name);
+
+          // 2. If not found and input is UUID, try matching by ID
+          if (!entity && isUUID) {
+            entity = allEntities.entities.find(
+              (e: Record<string, unknown>) => 'id' in e && e.id === args.entity_name
+            );
+          }
+        }
+
+        // If still not found, try explicit lookup by name
+        if (!entity) {
+          const openedEntities = await knowledgeGraphManager.openNodes([String(args.entity_name)]);
+
+          if (openedEntities?.entities && openedEntities.entities.length > 0) {
+            entity = openedEntities.entities[0];
+          }
+        }
+
+        // If still not found, check if we can query by ID through the storage provider
+        if (
+          !entity &&
+          isUUID &&
+          knowledgeGraphManager.storageProvider &&
+          typeof knowledgeGraphManager.storageProvider.getEntityById === 'function'
+        ) {
+          try {
+            entity = await knowledgeGraphManager.storageProvider.getEntityById(args.entity_name);
+          } catch {
+            // Ignore lookup errors, we'll throw entity not found below
+          }
+        }
+
+        // Final check
+        if (!entity) {
+          throw new Error(`Entity not found: ${args.entity_name}`);
+        }
+
+        // Check if embedding service and job manager are available
+        if (!knowledgeGraphManager.embeddingJobManager) {
+          throw new Error('EmbeddingJobManager not initialized');
+        }
+
+        // Directly get the text for the entity
+        const embeddingText = knowledgeGraphManager.embeddingJobManager._prepareEntityText(entity);
+
+        // Generate embedding directly
+        const embeddingService = knowledgeGraphManager.embeddingJobManager.embeddingService;
+        if (!embeddingService) {
+          throw new Error('Embedding service not available');
+        }
+
+        const vector = await embeddingService.generateEmbedding(embeddingText);
+
+        // Store embedding directly
+        const embedding = {
+          vector,
+          model: embeddingService.getModelInfo().name,
+          lastUpdated: Date.now(),
+        };
+
+        // Store the embedding with both name and ID for redundancy
+        await knowledgeGraphManager.storageProvider.storeEntityVector(entity.name, embedding);
+
+        const entityId = (entity as Record<string, unknown>).id;
+        if (entityId && typeof entityId === 'string') {
+          try {
+            await knowledgeGraphManager.storageProvider.storeEntityVector(entityId, embedding);
+          } catch {
+            // Ignore ID storage errors if name storage succeeded
+          }
+        }
+
         return {
           content: [
             {
               type: 'text',
               text: JSON.stringify(
-                await knowledgeGraphManager.searchNodes(args.query, {
-                  domain: args.domain,
-                  includeNullDomain: args.include_null_domain,
-                }),
+                {
+                  success: true,
+                  entity: entity.name,
+                  entity_id: (entity as Record<string, unknown>).id,
+                  vector_length: vector.length,
+                  model: embeddingService.getModelInfo().name,
+                },
+                null,
+                2
+              ),
+            },
+          ],
+        };
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } catch (error: any) {
+        return {
+          content: [{ type: 'text', text: `Failed to generate embedding: ${error.message}` }],
+        };
+      }
+    }
+
+    case 'semantic_search': {
+      try {
+        // Extract hybrid search configuration if provided
+        const hybridConfigRaw = args.hybrid_config as
+          | {
+              vector_weight?: number;
+              graph_weight?: number;
+              temporal_weight?: number;
+              connection_weight?: number;
+              enable_score_debug?: boolean;
+              reference_time?: number;
+              temporal_half_life?: number;
+            }
+          | undefined;
+
+        const hybridConfig = hybridConfigRaw
+          ? {
+              vectorWeight: hybridConfigRaw.vector_weight,
+              graphWeight: hybridConfigRaw.graph_weight,
+              temporalWeight: hybridConfigRaw.temporal_weight,
+              connectionWeight: hybridConfigRaw.connection_weight,
+              enableScoreDebug: hybridConfigRaw.enable_score_debug,
+              referenceTime: hybridConfigRaw.reference_time,
+              temporalHalfLife: hybridConfigRaw.temporal_half_life,
+            }
+          : undefined;
+
+        // Extract search options from args
+        const searchOptions = {
+          limit: args.limit || 10,
+          minSimilarity: args.min_similarity || 0.6,
+          entityTypes: args.entity_types || [],
+          hybridSearch: args.hybrid_search === undefined ? true : args.hybrid_search,
+          semanticWeight: args.semantic_weight || 0.6,
+          semanticSearch: true,
+          hybridConfig,
+          enableHybridRetrieval: args.enable_hybrid_retrieval !== false,
+          domain: args.domain,
+          includeNullDomain: args.include_null_domain,
+        };
+
+        // Call the search method with semantic search options
+        const results = await knowledgeGraphManager.search(String(args.query), searchOptions);
+
+        return { content: [{ type: 'text', text: JSON.stringify(results, null, 2) }] };
+      } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        return {
+          content: [{ type: 'text', text: `Error performing semantic search: ${errorMessage}` }],
+        };
+      }
+    }
+
+    case 'get_entity_embedding': {
+      try {
+        // Check if entity exists
+        const entity = await knowledgeGraphManager.openNodes([String(args.entity_name)]);
+        if (!entity.entities || entity.entities.length === 0) {
+          return { content: [{ type: 'text', text: `Entity not found: ${args.entity_name}` }] };
+        }
+
+        // Access the embedding using appropriate interface
+        if (
+          knowledgeGraphManager.storageProvider &&
+          typeof (knowledgeGraphManager.storageProvider as Record<string, unknown>)
+            .getEntityEmbedding === 'function'
+        ) {
+          interface EntityEmbedding {
+            vector: number[];
+            model?: string;
+            lastUpdated?: number;
+          }
+
+          const embedding = await (
+            knowledgeGraphManager.storageProvider as Record<
+              string,
+              (entityName: string) => Promise<EntityEmbedding | null>
+            >
+          ).getEntityEmbedding(String(args.entity_name));
+
+          if (!embedding) {
+            return {
+              content: [
+                { type: 'text', text: `No embedding found for entity: ${args.entity_name}` },
+              ],
+            };
+          }
+
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify(
+                  {
+                    entityName: args.entity_name,
+                    embedding: embedding.vector,
+                    model: embedding.model || 'unknown',
+                    dimensions: embedding.vector ? embedding.vector.length : 0,
+                    lastUpdated: embedding.lastUpdated || Date.now(),
+                  },
+                  null,
+                  2
+                ),
+              },
+            ],
+          };
+        } else {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Embedding retrieval not supported by this storage provider`,
+              },
+            ],
+          };
+        }
+      } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        return {
+          content: [{ type: 'text', text: `Error retrieving entity embedding: ${errorMessage}` }],
+        };
+      }
+    }
+
+    case 'debug_embedding_config': {
+      // Diagnostic tool to check embedding configuration
+      try {
+        // Check for OpenAI API key
+        const hasOpenAIKey = !!process.env.OPENAI_API_KEY;
+        const embeddingModel = process.env.OPENAI_EMBEDDING_MODEL || 'text-embedding-3-small';
+
+        // Check if embedding job manager is initialized
+        const hasEmbeddingJobManager = !!knowledgeGraphManager.embeddingJobManager;
+
+        // Get storage provider info
+        const storageType = process.env.MEMORY_STORAGE_TYPE || 'neo4j';
+        const storageProvider = knowledgeGraphManager.storageProvider;
+
+        // Get Neo4j specific configuration
+        const neo4jInfo: {
+          uri: string;
+          username: string;
+          database: string;
+          vectorIndex: string;
+          vectorDimensions: string;
+          similarityFunction: string;
+          connectionStatus: string;
+          vectorStoreStatus?: string;
+        } = {
+          uri: process.env.NEO4J_URI || 'default',
+          username: process.env.NEO4J_USERNAME ? 'configured' : 'not configured',
+          database: process.env.NEO4J_DATABASE || 'neo4j',
+          vectorIndex: process.env.NEO4J_VECTOR_INDEX || 'entity_embeddings',
+          vectorDimensions: process.env.NEO4J_VECTOR_DIMENSIONS || '1536',
+          similarityFunction: process.env.NEO4J_SIMILARITY_FUNCTION || 'cosine',
+          connectionStatus: 'unknown',
+        };
+
+        // Check if Neo4j connection manager is available
+        if (storageProvider && typeof storageProvider.getConnectionManager === 'function') {
+          try {
+            const connectionManager = storageProvider.getConnectionManager();
+            if (connectionManager) {
+              neo4jInfo.connectionStatus = 'available';
+
+              // Check if vector store is initialized
+              neo4jInfo.vectorStoreStatus = storageProvider.vectorStore
+                ? 'available'
+                : 'not initialized';
+            }
+          } catch (error: unknown) {
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            neo4jInfo.connectionStatus = `error: ${errorMessage}`;
+          }
+        }
+
+        // Count entities with embeddings via Neo4j vector store
+        let entitiesWithEmbeddings = 0;
+        if (storageProvider?.countEntitiesWithEmbeddings) {
+          try {
+            entitiesWithEmbeddings = await storageProvider.countEntitiesWithEmbeddings();
+          } catch (error) {
+            logger.error('Error checking embeddings count', error);
+          }
+        }
+
+        // Get embedding service information
+        let embeddingServiceInfo = null;
+        if (hasEmbeddingJobManager && knowledgeGraphManager.embeddingJobManager.embeddingService) {
+          try {
+            embeddingServiceInfo = (
+              knowledgeGraphManager.embeddingJobManager as Record<
+                string,
+                Record<string, () => unknown>
+              >
+            ).embeddingService.getModelInfo();
+          } catch (error: unknown) {
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            logger.error(`Error getting embedding service info: ${errorMessage}`);
+          }
+        }
+
+        // Get embedding service provider info if available
+        let embeddingProviderInfo = null;
+        if (storageProvider?.embeddingService) {
+          try {
+            embeddingProviderInfo = (
+              storageProvider as Record<string, Record<string, () => unknown>>
+            ).embeddingService.getProviderInfo();
+          } catch (error: unknown) {
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            logger.error(`Error getting embedding provider info: ${errorMessage}`);
+          }
+        }
+
+        // Check pending embedding jobs if available
+        let pendingJobs = 0;
+        if (hasEmbeddingJobManager && knowledgeGraphManager.embeddingJobManager.getPendingJobs) {
+          try {
+            pendingJobs = (
+              knowledgeGraphManager.embeddingJobManager as Record<string, () => unknown[]>
+            ).getPendingJobs().length;
+          } catch (error: unknown) {
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            logger.error(`Error getting pending jobs: ${errorMessage}`);
+          }
+        }
+
+        // Return diagnostic information with proper formatting
+        const diagnosticInfo = {
+          storage_type: storageType,
+          openai_api_key_present: hasOpenAIKey,
+          embedding_model: embeddingModel,
+          embedding_job_manager_initialized: hasEmbeddingJobManager,
+          embedding_service_initialized: !!embeddingProviderInfo,
+          embedding_service_info: embeddingServiceInfo,
+          embedding_provider_info: embeddingProviderInfo,
+          neo4j_config: neo4jInfo,
+          entities_with_embeddings: entitiesWithEmbeddings,
+          pending_embedding_jobs: pendingJobs,
+          environment_variables: {
+            DEBUG: process.env.DEBUG === 'true',
+            NODE_ENV: process.env.NODE_ENV,
+            MEMORY_STORAGE_TYPE: process.env.MEMORY_STORAGE_TYPE || 'neo4j',
+          },
+        };
+
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(diagnosticInfo, null, 2),
+            },
+          ],
+        };
+      } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        const errorStack = error instanceof Error ? error.stack : undefined;
+        logger.error(`Error in debug_embedding_config: ${errorMessage}`);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(
+                {
+                  error: errorMessage,
+                  stack: errorStack,
+                },
                 null,
                 2
               ),
@@ -108,551 +583,61 @@ export async function handleCallToolRequest(
           ],
         };
       }
-
-      case 'open_nodes': {
-        return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify(await knowledgeGraphManager.openNodes(args.names), null, 2),
-            },
-          ],
-        };
-      }
-
-      case 'get_entity_history': {
-        try {
-          const history = await knowledgeGraphManager.getEntityHistory(args.entityName);
-          return { content: [{ type: 'text', text: JSON.stringify(history, null, 2) }] };
-        } catch (error: Error | unknown) {
-          const errorMessage = error instanceof Error ? error.message : String(error);
-          return {
-            content: [{ type: 'text', text: `Error retrieving entity history: ${errorMessage}` }],
-          };
-        }
-      }
-
-      case 'get_relation_history': {
-        try {
-          const history = await knowledgeGraphManager.getRelationHistory(
-            args.from,
-            args.to,
-            args.relationType
-          );
-          return { content: [{ type: 'text', text: JSON.stringify(history, null, 2) }] };
-        } catch (error: Error | unknown) {
-          const errorMessage = error instanceof Error ? error.message : String(error);
-          return {
-            content: [{ type: 'text', text: `Error retrieving relation history: ${errorMessage}` }],
-          };
-        }
-      }
-
-      case 'get_graph_at_time': {
-        try {
-          const graph = await knowledgeGraphManager.getGraphAtTime(args.timestamp);
-          return { content: [{ type: 'text', text: JSON.stringify(graph, null, 2) }] };
-        } catch (error: Error | unknown) {
-          const errorMessage = error instanceof Error ? error.message : String(error);
-          return {
-            content: [{ type: 'text', text: `Error retrieving graph at time: ${errorMessage}` }],
-          };
-        }
-      }
-
-      case 'get_decayed_graph': {
-        try {
-          // Extract optional parameters if provided by client
-          const options: {
-            referenceTime?: number;
-            decayFactor?: number;
-          } = {};
-
-          if (args.reference_time) {
-            options.referenceTime = Number(args.reference_time);
-          }
-
-          if (args.decay_factor) {
-            options.decayFactor = Number(args.decay_factor);
-          }
-
-          // Pass options to getDecayedGraph if any are provided
-          const graph =
-            Object.keys(options).length > 0
-              ? await knowledgeGraphManager.getDecayedGraph(options)
-              : await knowledgeGraphManager.getDecayedGraph();
-
-          return { content: [{ type: 'text', text: JSON.stringify(graph, null, 2) }] };
-        } catch (error: Error | unknown) {
-          const errorMessage = error instanceof Error ? error.message : String(error);
-          return {
-            content: [{ type: 'text', text: `Error retrieving decayed graph: ${errorMessage}` }],
-          };
-        }
-      }
-
-      case 'force_generate_embedding': {
-        // Validate arguments
-        if (!args.entity_name) {
-          throw new Error('Missing required parameter: entity_name');
-        }
-
-        try {
-          // First determine if the input looks like a UUID
-          const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-          const isUUID = uuidPattern.test(String(args.entity_name));
-
-          // Try to get all entities first to locate the correct one
-          const allEntities = await knowledgeGraphManager.openNodes([]);
-
-          let entity = null;
-
-          if (allEntities?.entities && allEntities.entities.length > 0) {
-            // Try different methods to find the entity
-            // 1. Direct match by name
-            entity = allEntities.entities.find(
-              (e: { name: string }) => e.name === args.entity_name
-            );
-
-            // 2. If not found and input is UUID, try matching by ID
-            if (!entity && isUUID) {
-              entity = allEntities.entities.find(
-                (e: Record<string, unknown>) => 'id' in e && e.id === args.entity_name
-              );
-            }
-          }
-
-          // If still not found, try explicit lookup by name
-          if (!entity) {
-            const openedEntities = await knowledgeGraphManager.openNodes([
-              String(args.entity_name),
-            ]);
-
-            if (openedEntities?.entities && openedEntities.entities.length > 0) {
-              entity = openedEntities.entities[0];
-            }
-          }
-
-          // If still not found, check if we can query by ID through the storage provider
-          if (
-            !entity &&
-            isUUID &&
-            knowledgeGraphManager.storageProvider &&
-            typeof knowledgeGraphManager.storageProvider.getEntityById === 'function'
-          ) {
-            try {
-              entity = await knowledgeGraphManager.storageProvider.getEntityById(args.entity_name);
-            } catch {
-              // Ignore lookup errors, we'll throw entity not found below
-            }
-          }
-
-          // Final check
-          if (!entity) {
-            throw new Error(`Entity not found: ${args.entity_name}`);
-          }
-
-          // Check if embedding service and job manager are available
-          if (!knowledgeGraphManager.embeddingJobManager) {
-            throw new Error('EmbeddingJobManager not initialized');
-          }
-
-          // Directly get the text for the entity
-          const embeddingText =
-            knowledgeGraphManager.embeddingJobManager._prepareEntityText(entity);
-
-          // Generate embedding directly
-          const embeddingService = knowledgeGraphManager.embeddingJobManager.embeddingService;
-          if (!embeddingService) {
-            throw new Error('Embedding service not available');
-          }
-
-          const vector = await embeddingService.generateEmbedding(embeddingText);
-
-          // Store embedding directly
-          const embedding = {
-            vector,
-            model: embeddingService.getModelInfo().name,
-            lastUpdated: Date.now(),
-          };
-
-          // Store the embedding with both name and ID for redundancy
-          await knowledgeGraphManager.storageProvider.storeEntityVector(entity.name, embedding);
-
-          const entityId = (entity as Record<string, unknown>).id;
-          if (entityId && typeof entityId === 'string') {
-            try {
-              await knowledgeGraphManager.storageProvider.storeEntityVector(entityId, embedding);
-            } catch {
-              // Ignore ID storage errors if name storage succeeded
-            }
-          }
-
-          return {
-            content: [
-              {
-                type: 'text',
-                text: JSON.stringify(
-                  {
-                    success: true,
-                    entity: entity.name,
-                    entity_id: (entity as Record<string, unknown>).id,
-                    vector_length: vector.length,
-                    model: embeddingService.getModelInfo().name,
-                  },
-                  null,
-                  2
-                ),
-              },
-            ],
-          };
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        } catch (error: any) {
-          return {
-            content: [{ type: 'text', text: `Failed to generate embedding: ${error.message}` }],
-          };
-        }
-      }
-
-      case 'semantic_search': {
-        try {
-          // Extract hybrid search configuration if provided
-          const hybridConfigRaw = args.hybrid_config as
-            | {
-                vector_weight?: number;
-                graph_weight?: number;
-                temporal_weight?: number;
-                connection_weight?: number;
-                enable_score_debug?: boolean;
-                reference_time?: number;
-                temporal_half_life?: number;
-              }
-            | undefined;
-
-          const hybridConfig = hybridConfigRaw
-            ? {
-                vectorWeight: hybridConfigRaw.vector_weight,
-                graphWeight: hybridConfigRaw.graph_weight,
-                temporalWeight: hybridConfigRaw.temporal_weight,
-                connectionWeight: hybridConfigRaw.connection_weight,
-                enableScoreDebug: hybridConfigRaw.enable_score_debug,
-                referenceTime: hybridConfigRaw.reference_time,
-                temporalHalfLife: hybridConfigRaw.temporal_half_life,
-              }
-            : undefined;
-
-          // Extract search options from args
-          const searchOptions = {
-            limit: args.limit || 10,
-            minSimilarity: args.min_similarity || 0.6,
-            entityTypes: args.entity_types || [],
-            hybridSearch: args.hybrid_search === undefined ? true : args.hybrid_search,
-            semanticWeight: args.semantic_weight || 0.6,
-            semanticSearch: true,
-            hybridConfig,
-            enableHybridRetrieval: args.enable_hybrid_retrieval !== false,
-            domain: args.domain,
-            includeNullDomain: args.include_null_domain,
-          };
-
-          // Call the search method with semantic search options
-          const results = await knowledgeGraphManager.search(String(args.query), searchOptions);
-
-          return { content: [{ type: 'text', text: JSON.stringify(results, null, 2) }] };
-        } catch (error: Error | unknown) {
-          const errorMessage = error instanceof Error ? error.message : String(error);
-          return {
-            content: [{ type: 'text', text: `Error performing semantic search: ${errorMessage}` }],
-          };
-        }
-      }
-
-      case 'get_entity_embedding': {
-        try {
-          // Check if entity exists
-          const entity = await knowledgeGraphManager.openNodes([String(args.entity_name)]);
-          if (!entity.entities || entity.entities.length === 0) {
-            return { content: [{ type: 'text', text: `Entity not found: ${args.entity_name}` }] };
-          }
-
-          // Access the embedding using appropriate interface
-          if (
-            knowledgeGraphManager.storageProvider &&
-            typeof (knowledgeGraphManager.storageProvider as Record<string, unknown>)
-              .getEntityEmbedding === 'function'
-          ) {
-            interface EntityEmbedding {
-              vector: number[];
-              model?: string;
-              lastUpdated?: number;
-            }
-
-            const embedding = await (
-              knowledgeGraphManager.storageProvider as Record<
-                string,
-                (entityName: string) => Promise<EntityEmbedding | null>
-              >
-            ).getEntityEmbedding(String(args.entity_name));
-
-            if (!embedding) {
-              return {
-                content: [
-                  { type: 'text', text: `No embedding found for entity: ${args.entity_name}` },
-                ],
-              };
-            }
-
-            return {
-              content: [
-                {
-                  type: 'text',
-                  text: JSON.stringify(
-                    {
-                      entityName: args.entity_name,
-                      embedding: embedding.vector,
-                      model: embedding.model || 'unknown',
-                      dimensions: embedding.vector ? embedding.vector.length : 0,
-                      lastUpdated: embedding.lastUpdated || Date.now(),
-                    },
-                    null,
-                    2
-                  ),
-                },
-              ],
-            };
-          } else {
-            return {
-              content: [
-                {
-                  type: 'text',
-                  text: `Embedding retrieval not supported by this storage provider`,
-                },
-              ],
-            };
-          }
-        } catch (error: Error | unknown) {
-          const errorMessage = error instanceof Error ? error.message : String(error);
-          return {
-            content: [{ type: 'text', text: `Error retrieving entity embedding: ${errorMessage}` }],
-          };
-        }
-      }
-
-      case 'debug_embedding_config': {
-        // Diagnostic tool to check embedding configuration
-        try {
-          // Check for OpenAI API key
-          const hasOpenAIKey = !!process.env.OPENAI_API_KEY;
-          const embeddingModel = process.env.OPENAI_EMBEDDING_MODEL || 'text-embedding-3-small';
-
-          // Check if embedding job manager is initialized
-          const hasEmbeddingJobManager = !!knowledgeGraphManager.embeddingJobManager;
-
-          // Get storage provider info
-          const storageType = process.env.MEMORY_STORAGE_TYPE || 'neo4j';
-          const storageProvider = knowledgeGraphManager.storageProvider;
-
-          // Get Neo4j specific configuration
-          const neo4jInfo: {
-            uri: string;
-            username: string;
-            database: string;
-            vectorIndex: string;
-            vectorDimensions: string;
-            similarityFunction: string;
-            connectionStatus: string;
-            vectorStoreStatus?: string;
-          } = {
-            uri: process.env.NEO4J_URI || 'default',
-            username: process.env.NEO4J_USERNAME ? 'configured' : 'not configured',
-            database: process.env.NEO4J_DATABASE || 'neo4j',
-            vectorIndex: process.env.NEO4J_VECTOR_INDEX || 'entity_embeddings',
-            vectorDimensions: process.env.NEO4J_VECTOR_DIMENSIONS || '1536',
-            similarityFunction: process.env.NEO4J_SIMILARITY_FUNCTION || 'cosine',
-            connectionStatus: 'unknown',
-          };
-
-          // Check if Neo4j connection manager is available
-          if (storageProvider && typeof storageProvider.getConnectionManager === 'function') {
-            try {
-              const connectionManager = storageProvider.getConnectionManager();
-              if (connectionManager) {
-                neo4jInfo.connectionStatus = 'available';
-
-                // Check if vector store is initialized
-                neo4jInfo.vectorStoreStatus = storageProvider.vectorStore
-                  ? 'available'
-                  : 'not initialized';
-              }
-            } catch (error: Error | unknown) {
-              const errorMessage = error instanceof Error ? error.message : String(error);
-              neo4jInfo.connectionStatus = `error: ${errorMessage}`;
-            }
-          }
-
-          // Count entities with embeddings via Neo4j vector store
-          let entitiesWithEmbeddings = 0;
-          if (storageProvider?.countEntitiesWithEmbeddings) {
-            try {
-              entitiesWithEmbeddings = await storageProvider.countEntitiesWithEmbeddings();
-            } catch (error) {
-              logger.error('Error checking embeddings count', error);
-            }
-          }
-
-          // Get embedding service information
-          let embeddingServiceInfo = null;
-          if (
-            hasEmbeddingJobManager &&
-            knowledgeGraphManager.embeddingJobManager.embeddingService
-          ) {
-            try {
-              embeddingServiceInfo = (
-                knowledgeGraphManager.embeddingJobManager as Record<
-                  string,
-                  Record<string, () => unknown>
-                >
-              ).embeddingService.getModelInfo();
-            } catch (error: Error | unknown) {
-              const errorMessage = error instanceof Error ? error.message : String(error);
-              logger.error(`Error getting embedding service info: ${errorMessage}`);
-            }
-          }
-
-          // Get embedding service provider info if available
-          let embeddingProviderInfo = null;
-          if (storageProvider?.embeddingService) {
-            try {
-              embeddingProviderInfo = (
-                storageProvider as Record<string, Record<string, () => unknown>>
-              ).embeddingService.getProviderInfo();
-            } catch (error: Error | unknown) {
-              const errorMessage = error instanceof Error ? error.message : String(error);
-              logger.error(`Error getting embedding provider info: ${errorMessage}`);
-            }
-          }
-
-          // Check pending embedding jobs if available
-          let pendingJobs = 0;
-          if (hasEmbeddingJobManager && knowledgeGraphManager.embeddingJobManager.getPendingJobs) {
-            try {
-              pendingJobs = (
-                knowledgeGraphManager.embeddingJobManager as Record<string, () => unknown[]>
-              ).getPendingJobs().length;
-            } catch (error: Error | unknown) {
-              const errorMessage = error instanceof Error ? error.message : String(error);
-              logger.error(`Error getting pending jobs: ${errorMessage}`);
-            }
-          }
-
-          // Return diagnostic information with proper formatting
-          const diagnosticInfo = {
-            storage_type: storageType,
-            openai_api_key_present: hasOpenAIKey,
-            embedding_model: embeddingModel,
-            embedding_job_manager_initialized: hasEmbeddingJobManager,
-            embedding_service_initialized: !!embeddingProviderInfo,
-            embedding_service_info: embeddingServiceInfo,
-            embedding_provider_info: embeddingProviderInfo,
-            neo4j_config: neo4jInfo,
-            entities_with_embeddings: entitiesWithEmbeddings,
-            pending_embedding_jobs: pendingJobs,
-            environment_variables: {
-              DEBUG: process.env.DEBUG === 'true',
-              NODE_ENV: process.env.NODE_ENV,
-              MEMORY_STORAGE_TYPE: process.env.MEMORY_STORAGE_TYPE || 'neo4j',
-            },
-          };
-
-          return {
-            content: [
-              {
-                type: 'text',
-                text: JSON.stringify(diagnosticInfo, null, 2),
-              },
-            ],
-          };
-        } catch (error: Error | unknown) {
-          const errorMessage = error instanceof Error ? error.message : String(error);
-          const errorStack = error instanceof Error ? error.stack : undefined;
-          logger.error(`Error in debug_embedding_config: ${errorMessage}`);
-          return {
-            content: [
-              {
-                type: 'text',
-                text: JSON.stringify(
-                  {
-                    error: errorMessage,
-                    stack: errorStack,
-                  },
-                  null,
-                  2
-                ),
-              },
-            ],
-          };
-        }
-      }
-
-      case 'diagnose_vector_search': {
-        return knowledgeGraphManager.storageProvider &&
-          typeof (knowledgeGraphManager.storageProvider as Record<string, unknown>)
-            .diagnoseVectorSearch === 'function'
-          ? {
-              content: [
-                {
-                  type: 'text',
-                  text: JSON.stringify(
-                    await (
-                      knowledgeGraphManager.storageProvider as Record<
-                        string,
-                        () => Promise<unknown>
-                      >
-                    ).diagnoseVectorSearch()
-                  ),
-                },
-              ],
-            }
-          : {
-              content: [
-                {
-                  type: 'text',
-                  text: JSON.stringify(
-                    {
-                      error: 'Diagnostic method not available',
-                      storageType: knowledgeGraphManager.storageProvider
-                        ? knowledgeGraphManager.storageProvider.constructor.name
-                        : 'unknown',
-                    },
-                    null,
-                    2
-                  ),
-                },
-              ],
-            };
-      }
-
-      case 'create_entities_batch': {
-        return await toolHandlers.handleCreateEntitiesBatch(args, knowledgeGraphManager);
-      }
-
-      case 'create_relations_batch': {
-        return await toolHandlers.handleCreateRelationsBatch(args, knowledgeGraphManager);
-      }
-
-      case 'add_observations_batch': {
-        return await toolHandlers.handleAddObservationsBatch(args, knowledgeGraphManager);
-      }
-
-      case 'update_entities_batch': {
-        return await toolHandlers.handleUpdateEntitiesBatch(args, knowledgeGraphManager);
-      }
-
-      default: {
-        throw new Error(`Unknown tool: ${name}`);
-      }
     }
-  } catch (error: Error | unknown) {
-    throw error;
+
+    case 'diagnose_vector_search': {
+      return knowledgeGraphManager.storageProvider &&
+        typeof (knowledgeGraphManager.storageProvider as Record<string, unknown>)
+          .diagnoseVectorSearch === 'function'
+        ? {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify(
+                  await (
+                    knowledgeGraphManager.storageProvider as Record<string, () => Promise<unknown>>
+                  ).diagnoseVectorSearch()
+                ),
+              },
+            ],
+          }
+        : {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify(
+                  {
+                    error: 'Diagnostic method not available',
+                    storageType: knowledgeGraphManager.storageProvider
+                      ? knowledgeGraphManager.storageProvider.constructor.name
+                      : 'unknown',
+                  },
+                  null,
+                  2
+                ),
+              },
+            ],
+          };
+    }
+
+    case 'create_entities_batch': {
+      return await toolHandlers.handleCreateEntitiesBatch(args, knowledgeGraphManager);
+    }
+
+    case 'create_relations_batch': {
+      return await toolHandlers.handleCreateRelationsBatch(args, knowledgeGraphManager);
+    }
+
+    case 'add_observations_batch': {
+      return await toolHandlers.handleAddObservationsBatch(args, knowledgeGraphManager);
+    }
+
+    case 'update_entities_batch': {
+      return await toolHandlers.handleUpdateEntitiesBatch(args, knowledgeGraphManager);
+    }
+
+    default: {
+      throw new Error(`Unknown tool: ${name}`);
+    }
   }
 }

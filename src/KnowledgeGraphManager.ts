@@ -132,7 +132,7 @@ export class KnowledgeGraphManager {
 
     // Initialize vector store if options provided
     if (options?.vectorStoreOptions) {
-      this.initializeVectorStore(options.vectorStoreOptions).catch((error) => {
+      this.initializeVectorStore(options.vectorStoreOptions).catch(error => {
         logger.error('Failed to initialize vector store during construction', error);
       });
     }
@@ -424,7 +424,7 @@ export class KnowledgeGraphManager {
 
     // Extract only the fields needed by storage providers
     // Keep the simplified format for compatibility with existing storage providers
-    const simplifiedObservations = observations.map((obs) => ({
+    const simplifiedObservations = observations.map(obs => ({
       entityName: obs.entityName,
       contents: obs.contents,
     }));
@@ -482,7 +482,7 @@ export class KnowledgeGraphManager {
         });
 
         // Convert to the expected format
-        return results.map((result) => ({
+        return results.map(result => ({
           name: result.id.toString(),
           score: result.similarity,
         }));
@@ -650,12 +650,12 @@ export class KnowledgeGraphManager {
     }
 
     // Get full entity details
-    const entityNames = similarEntities.map((e) => e.name);
+    const entityNames = similarEntities.map(e => e.name);
     const graph = await this.openNodes(entityNames);
 
     // Add scores to entities for client use
-    const scoredEntities = graph.entities.map((entity) => {
-      const matchScore = similarEntities.find((e) => e.name === entity.name)?.score || 0;
+    const scoredEntities = graph.entities.map(entity => {
+      const matchScore = similarEntities.find(e => e.name === entity.name)?.score || 0;
       return {
         ...entity,
         score: matchScore,
@@ -815,7 +815,7 @@ export class KnowledgeGraphManager {
     }
 
     // Check for null/undefined entries (UNWIND edge case #2)
-    const nullCount = entities.filter((e) => e == null).length;
+    const nullCount = entities.filter(e => e == null).length;
     if (nullCount > 0) {
       throw new Error(`Found ${nullCount} null/undefined entries in entities array`);
     }
@@ -887,7 +887,7 @@ export class KnowledgeGraphManager {
     }
 
     // Check for null/undefined entries
-    const nullCount = relations.filter((r) => r == null).length;
+    const nullCount = relations.filter(r => r == null).length;
     if (nullCount > 0) {
       throw new Error(`Found ${nullCount} null/undefined entries in relations array`);
     }
@@ -949,7 +949,7 @@ export class KnowledgeGraphManager {
     }
 
     // Check for null/undefined entries
-    const nullCount = batches.filter((b) => b == null).length;
+    const nullCount = batches.filter(b => b == null).length;
     if (nullCount > 0) {
       throw new Error(`Found ${nullCount} null/undefined entries in observation batches array`);
     }
@@ -1008,7 +1008,7 @@ export class KnowledgeGraphManager {
     }
 
     // Check for null/undefined entries
-    const nullCount = updates.filter((u) => u == null).length;
+    const nullCount = updates.filter(u => u == null).length;
     if (nullCount > 0) {
       throw new Error(`Found ${nullCount} null/undefined entries in entity updates array`);
     }

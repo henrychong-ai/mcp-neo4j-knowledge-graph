@@ -143,7 +143,7 @@ describe('OpenAIEmbeddingService', () => {
     expect(embeddings.length).toBe(3);
 
     // Check each embedding
-    embeddings.forEach((embedding) => {
+    embeddings.forEach(embedding => {
       expect(Array.isArray(embedding)).toBe(true);
       expect(embedding.length).toBe(1536);
 

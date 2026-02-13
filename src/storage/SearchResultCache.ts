@@ -145,7 +145,7 @@ export class SearchResultCache<T> {
     // Sort keys for consistent key generation regardless of parameter order
     const sortedParams = Object.keys(params)
       .sort()
-      .map((key) => `${key}:${JSON.stringify(params[key])}`)
+      .map(key => `${key}:${JSON.stringify(params[key])}`)
       .join(',');
 
     return `${query}|${sortedParams}`;

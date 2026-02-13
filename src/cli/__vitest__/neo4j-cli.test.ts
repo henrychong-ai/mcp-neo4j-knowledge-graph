@@ -69,7 +69,7 @@ describe('Neo4j CLI Utility', () => {
         run: vi.fn().mockResolvedValue({
           records: [
             {
-              get: vi.fn().mockImplementation((key) => ({
+              get: vi.fn().mockImplementation(key => ({
                 toNumber: () => 1,
               })),
             },

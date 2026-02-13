@@ -78,7 +78,7 @@ describe('KnowledgeGraphManager integration with EmbeddingJobManager', () => {
       storeEntityVector: vi.fn().mockResolvedValue(undefined),
       createEntities: vi.fn().mockImplementation((entities: Entity[]) => {
         return Promise.resolve(
-          entities.map((e) => ({
+          entities.map(e => ({
             ...e,
             id: `id-${e.name}`,
           }))
@@ -112,8 +112,8 @@ describe('KnowledgeGraphManager integration with EmbeddingJobManager', () => {
       searchNodes: vi.fn().mockResolvedValue({ entities: [], relations: [] }),
       openNodes: vi.fn().mockResolvedValue({ entities: [], relations: [] }),
       createRelations: vi.fn().mockResolvedValue([]),
-      addObservations: vi.fn().mockImplementation(async (observations) => {
-        return observations.map((obs) => ({
+      addObservations: vi.fn().mockImplementation(async observations => {
+        return observations.map(obs => ({
           entityName: obs.entityName,
           addedObservations: obs.contents,
         }));

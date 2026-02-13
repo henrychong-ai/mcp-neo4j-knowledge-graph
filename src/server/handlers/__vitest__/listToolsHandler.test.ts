@@ -17,7 +17,7 @@ describe('handleListToolsRequest', () => {
     expect(result.tools.length).toBeGreaterThan(0);
 
     // Check that each tool has the required properties
-    result.tools.forEach((tool) => {
+    result.tools.forEach(tool => {
       expect(tool.name).toBeDefined();
       expect(typeof tool.name).toBe('string');
       expect(tool.description).toBeDefined();
@@ -26,7 +26,7 @@ describe('handleListToolsRequest', () => {
     });
 
     // Check if specific tools are present
-    const toolNames = result.tools.map((tool) => tool.name);
+    const toolNames = result.tools.map(tool => tool.name);
     expect(toolNames).toContain('create_entities');
     expect(toolNames).toContain('read_graph');
     expect(toolNames).toContain('search_nodes');

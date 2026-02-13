@@ -177,7 +177,7 @@ export class Neo4jStorageProvider implements StorageProvider {
       max: 500, // Cache up to 500 unique queries
       ttl: 1000 * 60 * 5, // 5 minute TTL for cache entries
       maxSize: 10_000, // Maximum 10K entities across all cached results
-      sizeCalculation: (graph) => {
+      sizeCalculation: graph => {
         // Guard against undefined entities/relations
         const entityCount = Array.isArray(graph.entities) ? graph.entities.length : 0;
         const relationCount = Array.isArray(graph.relations) ? graph.relations.length : 0;
@@ -191,7 +191,7 @@ export class Neo4jStorageProvider implements StorageProvider {
     });
 
     // Initialize the schema and vector store
-    this.initializeSchema().catch((error) => {
+    this.initializeSchema().catch(error => {
       logger.error('Failed to initialize Neo4j schema', error);
     });
   }
@@ -393,7 +393,7 @@ export class Neo4jStorageProvider implements StorageProvider {
       const entityResult = await this.connectionManager.executeQuery(entityQuery, {});
 
       // Process entity results
-      const entities = entityResult.records.map((record) => {
+      const entities = entityResult.records.map(record => {
         const node = record.get('e').properties;
         return this.nodeToEntity(node);
       });
@@ -409,7 +409,7 @@ export class Neo4jStorageProvider implements StorageProvider {
       const relationResult = await this.connectionManager.executeQuery(relationQuery, {});
 
       // Process relation results
-      const relations = relationResult.records.map((record) => {
+      const relations = relationResult.records.map(record => {
         const fromName = record.get('fromName');
         const toName = record.get('toName');
         const rel = record.get('r').properties;
@@ -604,13 +604,13 @@ export class Neo4jStorageProvider implements StorageProvider {
       const result = await this.connectionManager.executeQuery(searchQuery, parameters);
 
       // Process entity results
-      const entities = result.records.map((record) => {
+      const entities = result.records.map(record => {
         const node = record.get('e').properties;
         return this.nodeToEntity(node);
       });
 
       // Get relations between found entities
-      const entityNames = entities.map((e) => e.name);
+      const entityNames = entities.map(e => e.name);
       if (entityNames.length > 0) {
         const relationsQuery = `
           MATCH (from:Entity)-[r:RELATES_TO]->(to:Entity)
@@ -625,7 +625,7 @@ export class Neo4jStorageProvider implements StorageProvider {
         });
 
         // Process relation results
-        const relations = relationsResult.records.map((record) => {
+        const relations = relationsResult.records.map(record => {
           const fromName = record.get('fromName');
           const toName = record.get('toName');
           const rel = record.get('r').properties;
@@ -694,7 +694,7 @@ export class Neo4jStorageProvider implements StorageProvider {
       const entityResult = await this.connectionManager.executeQuery(entityQuery, { names });
 
       // Process entity results
-      const entities = entityResult.records.map((record) => {
+      const entities = entityResult.records.map(record => {
         const node = record.get('e').properties;
         return this.nodeToEntity(node);
       });
@@ -712,7 +712,7 @@ export class Neo4jStorageProvider implements StorageProvider {
       const relationsResult = await this.connectionManager.executeQuery(relationsQuery, { names });
 
       // Process relation results
-      const relations = relationsResult.records.map((record) => {
+      const relations = relationsResult.records.map(record => {
         const fromName = record.get('fromName');
         const toName = record.get('toName');
         const rel = record.get('r').properties;
@@ -1043,7 +1043,7 @@ export class Neo4jStorageProvider implements StorageProvider {
 
             // Filter out duplicates
             const newObservations = obs.contents.filter(
-              (content) => !currentObservations.includes(content)
+              content => !currentObservations.includes(content)
             );
 
             // Skip if no new observations
@@ -1785,7 +1785,7 @@ export class Neo4jStorageProvider implements StorageProvider {
       }
 
       // Convert nodes to entities
-      return result.records.map((record) => {
+      return result.records.map(record => {
         const node = record.get('e').properties;
         return this.nodeToEntity(node);
       });
@@ -1825,7 +1825,7 @@ export class Neo4jStorageProvider implements StorageProvider {
       }
 
       // Convert relationships to relations
-      return result.records.map((record) => {
+      return result.records.map(record => {
         const rel = record.get('r').properties;
         const fromNode = record.get('from').properties;
         const toNode = record.get('to').properties;
@@ -1858,7 +1858,7 @@ export class Neo4jStorageProvider implements StorageProvider {
       const entityResult = await this.connectionManager.executeQuery(entityQuery, { timestamp });
 
       // Convert nodes to entities
-      const entities = entityResult.records.map((record) => {
+      const entities = entityResult.records.map(record => {
         const node = record.get('e').properties;
         return this.nodeToEntity(node);
       });
@@ -1877,7 +1877,7 @@ export class Neo4jStorageProvider implements StorageProvider {
       });
 
       // Convert relationships to relations
-      const relations = relationResult.records.map((record) => {
+      const relations = relationResult.records.map(record => {
         const rel = record.get('r').properties;
         const fromName = record.get('fromName');
         const toName = record.get('toName');
@@ -1922,7 +1922,7 @@ export class Neo4jStorageProvider implements StorageProvider {
 
       const entityResult = await this.connectionManager.executeQuery(entityQuery, {});
 
-      const entities = entityResult.records.map((record) => {
+      const entities = entityResult.records.map(record => {
         const node = record.get('e').properties;
         return this.nodeToEntity(node);
       });
@@ -1940,7 +1940,7 @@ export class Neo4jStorageProvider implements StorageProvider {
 
       const relationResult = await this.connectionManager.executeQuery(relationQuery, {});
 
-      const relations = relationResult.records.map((record) => {
+      const relations = relationResult.records.map(record => {
         const rel = record.get('r').properties;
         const fromName = record.get('fromName');
         const toName = record.get('toName');
@@ -2134,7 +2134,7 @@ export class Neo4jStorageProvider implements StorageProvider {
 
         if (foundResults > 0) {
           // Convert to entity objects
-          const entityPromises = result.records.map(async (record) => {
+          const entityPromises = result.records.map(async record => {
             const entityName = record.get('name');
             const score = record.get('score');
             const entity = await this.getEntity(entityName);
@@ -2150,7 +2150,7 @@ export class Neo4jStorageProvider implements StorageProvider {
           const entities = (await Promise.all(entityPromises)).filter(Boolean);
 
           // Return only valid entities
-          return entities.filter((entity) => entity?.validTo === null).slice(0, limit);
+          return entities.filter(entity => entity?.validTo === null).slice(0, limit);
         }
 
         logger.debug('Neo4jStorageProvider: No results from vector search');
@@ -2388,7 +2388,7 @@ export class Neo4jStorageProvider implements StorageProvider {
 
             if (foundResults > 0) {
               // Convert to EntityData objects with similarity scores
-              const vectorSearchResults = vectorResult.records.map((record) => ({
+              const vectorSearchResults = vectorResult.records.map(record => ({
                 id: record.get('name'),
                 similarity: record.get('score'),
                 metadata: {
@@ -2397,7 +2397,7 @@ export class Neo4jStorageProvider implements StorageProvider {
                 },
               }));
 
-              const entityPromises = vectorSearchResults.map(async (result) => {
+              const entityPromises = vectorSearchResults.map(async result => {
                 return this.getEntity(result.id as string);
               });
 
@@ -2430,7 +2430,7 @@ export class Neo4jStorageProvider implements StorageProvider {
                 (options.hybridSearch === true || options.hybridSearch === undefined);
 
               let _finalEntities = entities;
-              let finalEntityNames = entities.map((e) => e.name);
+              let finalEntityNames = entities.map(e => e.name);
 
               if (enableHybridRetrieval) {
                 diagnostics.stepsTaken.push({
@@ -2471,12 +2471,12 @@ export class Neo4jStorageProvider implements StorageProvider {
                   );
 
                   // Extract reranked entities (finalEntities used for potential future expansion)
-                  _finalEntities = hybridResults.map((r) => r.entity);
-                  finalEntityNames = hybridResults.map((r) => r.entity.name);
+                  _finalEntities = hybridResults.map(r => r.entity);
+                  finalEntityNames = hybridResults.map(r => r.entity.name);
 
                   // Add hybrid scores to diagnostics if debug mode
                   if (process.env.DEBUG === 'true') {
-                    diagnostics.hybridScores = hybridResults.map((r) => ({
+                    diagnostics.hybridScores = hybridResults.map(r => ({
                       entityName: r.entity.name,
                       scores: r.scores,
                       explanation: r.scores.explanation,
@@ -2581,8 +2581,8 @@ export class Neo4jStorageProvider implements StorageProvider {
 
         // Filter by min similarity and entity types
         const filteredResults = results
-          .filter((result) => result.score >= minSimilarity)
-          .filter((result) => {
+          .filter(result => result.score >= minSimilarity)
+          .filter(result => {
             if (!options.entityTypes || options.entityTypes.length === 0) {
               return true;
             }
@@ -2618,7 +2618,7 @@ export class Neo4jStorageProvider implements StorageProvider {
         }
 
         // Get the entities and relations
-        const entityNames = filteredResults.map((r) => r.name);
+        const entityNames = filteredResults.map(r => r.name);
 
         diagnostics.stepsTaken.push({
           step: 'openNodes',
@@ -2759,7 +2759,7 @@ export class Neo4jStorageProvider implements StorageProvider {
       for (const chunk of chunks) {
         // Generate embeddings if service available (parallel processing controlled by Promise.all)
         const entitiesWithEmbeddings = await Promise.all(
-          chunk.map(async (entity) => {
+          chunk.map(async entity => {
             let embedding = null;
             if (this.embeddingService) {
               try {
@@ -2885,7 +2885,7 @@ export class Neo4jStorageProvider implements StorageProvider {
 
           try {
             const now = Date.now();
-            const relationsWithMetadata = chunk.map((rel) => ({
+            const relationsWithMetadata = chunk.map(rel => ({
               id: uuidv4(),
               from: rel.from,
               to: rel.to,
@@ -2991,7 +2991,7 @@ export class Neo4jStorageProvider implements StorageProvider {
 
           try {
             // Step 1: Fetch all current entities in bulk
-            const entityNames = chunk.map((b) => b.entityName);
+            const entityNames = chunk.map(b => b.entityName);
             const fetchQuery = `
               UNWIND $names AS name
               MATCH (e:Entity {name: name})
@@ -3025,7 +3025,7 @@ export class Neo4jStorageProvider implements StorageProvider {
                 : JSON.parse(currentEntity.observations || '[]');
 
               const newObservations = batch.observations.filter(
-                (obs) => !currentObservations.includes(obs)
+                obs => !currentObservations.includes(obs)
               );
 
               if (newObservations.length === 0) {
@@ -3248,12 +3248,12 @@ export class Neo4jStorageProvider implements StorageProvider {
 
     try {
       // Batch process entityType updates using UNWIND
-      const entityTypeUpdates = updates.filter((u) => u.entityType);
+      const entityTypeUpdates = updates.filter(u => u.entityType);
       if (entityTypeUpdates.length > 0) {
         const session = await this.connectionManager.getSession();
         try {
           const now = Date.now();
-          const updateData = entityTypeUpdates.map((u) => ({
+          const updateData = entityTypeUpdates.map(u => ({
             name: u.name,
             entityType: u.entityType,
             now: now,
@@ -3283,12 +3283,12 @@ export class Neo4jStorageProvider implements StorageProvider {
       }
 
       // Batch process domain updates using UNWIND
-      const domainUpdates = updates.filter((u) => u.domain !== undefined);
+      const domainUpdates = updates.filter(u => u.domain !== undefined);
       if (domainUpdates.length > 0) {
         const session = await this.connectionManager.getSession();
         try {
           const now = Date.now();
-          const updateData = domainUpdates.map((u) => ({
+          const updateData = domainUpdates.map(u => ({
             name: u.name,
             domain: u.domain,
             now: now,
@@ -3319,8 +3319,8 @@ export class Neo4jStorageProvider implements StorageProvider {
 
       // Batch process observation additions
       const addObsBatches = updates
-        .filter((u) => u.addObservations && u.addObservations.length > 0)
-        .map((u) => ({
+        .filter(u => u.addObservations && u.addObservations.length > 0)
+        .map(u => ({
           entityName: u.name,
           observations: u.addObservations!,
         }));
@@ -3332,7 +3332,7 @@ export class Neo4jStorageProvider implements StorageProvider {
           // Propagate failures from batch operation
           for (const failure of addObsResult.failed) {
             // Find the corresponding EntityUpdate
-            const failedUpdate = updates.find((u) => u.name === failure.item.entityName);
+            const failedUpdate = updates.find(u => u.name === failure.item.entityName);
             if (failedUpdate) {
               failed.push({
                 item: failedUpdate,
@@ -3343,7 +3343,7 @@ export class Neo4jStorageProvider implements StorageProvider {
         } catch (error) {
           // Mark all observation additions as failed on exception
           for (const update of updates.filter(
-            (u) => u.addObservations && u.addObservations.length > 0
+            u => u.addObservations && u.addObservations.length > 0
           )) {
             failed.push({
               item: update,
@@ -3366,7 +3366,7 @@ export class Neo4jStorageProvider implements StorageProvider {
           }
 
           // Only add to successful if not already in failed
-          if (!failed.find((f) => f.item.name === update.name)) {
+          if (!failed.find(f => f.item.name === update.name)) {
             successful.push(update);
           }
 
@@ -3389,8 +3389,8 @@ export class Neo4jStorageProvider implements StorageProvider {
       // Mark remaining updates as successful if not in failed
       for (const update of updates) {
         if (
-          !failed.find((f) => f.item.name === update.name) &&
-          !successful.find((s) => s.name === update.name)
+          !failed.find(f => f.item.name === update.name) &&
+          !successful.find(s => s.name === update.name)
         ) {
           successful.push(update);
         }

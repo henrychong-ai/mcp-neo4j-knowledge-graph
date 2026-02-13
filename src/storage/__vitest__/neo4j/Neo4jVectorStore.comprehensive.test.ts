@@ -749,7 +749,7 @@ describe('Neo4jVectorStore', () => {
       const normalizedVector = createValidVector();
       // Normalize the vector
       const magnitude = Math.sqrt(normalizedVector.reduce((sum, val) => sum + val * val, 0));
-      const normalized = normalizedVector.map((v) => v / magnitude);
+      const normalized = normalizedVector.map(v => v / magnitude);
 
       const searchRecords = [
         {

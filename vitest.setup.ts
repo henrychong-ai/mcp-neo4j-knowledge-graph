@@ -32,5 +32,5 @@ afterAll(async () => {
 
   // Force exit after a short delay to ensure all async operations complete
   // This prevents hanging vitest workers
-  await new Promise((resolve) => setTimeout(resolve, 100));
+  await new Promise(resolve => setTimeout(resolve, 100));
 });

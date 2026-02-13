@@ -152,9 +152,7 @@ describe('setupServer', () => {
 
     // Get the handler function that was registered
     const calls = mockServerInstance.setRequestHandler.mock.calls;
-    const listToolsHandlerCall = calls.find(
-      (call) => call[0] === typesModule.ListToolsRequestSchema
-    );
+    const listToolsHandlerCall = calls.find(call => call[0] === typesModule.ListToolsRequestSchema);
     expect(listToolsHandlerCall).toBeDefined();
 
     if (listToolsHandlerCall) {
@@ -181,7 +179,7 @@ describe('setupServer', () => {
 
     // Get the handler function that was registered
     const calls = mockServerInstance.setRequestHandler.mock.calls;
-    const callToolHandlerCall = calls.find((call) => call[0] === typesModule.CallToolRequestSchema);
+    const callToolHandlerCall = calls.find(call => call[0] === typesModule.CallToolRequestSchema);
     expect(callToolHandlerCall).toBeDefined();
 
     if (callToolHandlerCall) {

@@ -27,7 +27,7 @@ vi.mock('../storage/VectorStoreFactory.js', () => {
 
 // Mock storage provider
 const createMockStorageProvider = () => ({
-  getEntity: vi.fn().mockImplementation((name) => {
+  getEntity: vi.fn().mockImplementation(name => {
     return Promise.resolve({
       name,
       entityType: 'Test',
@@ -58,16 +58,16 @@ const createMockStorageProvider = () => ({
   }),
   loadGraph: vi.fn().mockResolvedValue({ entities: [], relations: [] }),
   saveGraph: vi.fn().mockResolvedValue(undefined),
-  createEntities: vi.fn().mockImplementation((entities) => Promise.resolve(entities)),
+  createEntities: vi.fn().mockImplementation(entities => Promise.resolve(entities)),
   createRelations: vi.fn().mockResolvedValue([]),
   updateEntityEmbedding: vi.fn().mockResolvedValue(undefined),
   deleteEntities: vi.fn().mockResolvedValue(undefined),
   deleteObservations: vi.fn().mockResolvedValue(undefined),
   deleteRelations: vi.fn().mockResolvedValue(undefined),
   searchNodes: vi.fn().mockResolvedValue({ entities: [], relations: [] }),
-  addObservations: vi.fn().mockImplementation((observations) => {
+  addObservations: vi.fn().mockImplementation(observations => {
     return Promise.resolve(
-      observations.map((obs) => ({
+      observations.map(obs => ({
         entityName: obs.entityName,
         addedObservations: obs.contents,
       }))

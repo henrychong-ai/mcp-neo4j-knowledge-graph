@@ -1,6 +1,6 @@
 {
   "name": "@henrychong-ai/mcp-neo4j-knowledge-graph",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "description": "Neo4j-based knowledge graph MCP server with temporal versioning and semantic search",
   "license": "MIT",
   "author": "Henry Chong <henry@henrychong.ai>",
@@ -43,10 +43,10 @@
     "test:coverage": "vitest run --coverage",
     "test:verbose": "clear && vitest run --reporter verbose",
     "test:integration": "TEST_INTEGRATION=true pnpm test",
-    "lint": "eslint 'src/**/*.ts'",
-    "lint:fix": "eslint 'src/**/*.ts' --fix",
-    "format": "prettier --write \"**/*.{ts,json,md,yml,yaml}\"",
-    "format:check": "prettier --check .",
+    "lint": "oxlint --max-warnings=0",
+    "lint:fix": "oxlint --fix --max-warnings=0",
+    "format": "biome format --write .",
+    "format:check": "biome format .",
     "check": "pnpm lint && pnpm format:check && pnpm typecheck",
     "fix": "pnpm run lint:fix && pnpm run format",
     "neo4j:init": "tsx src/cli/neo4j-setup.ts init",
@@ -66,29 +66,17 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
-    "@stylistic/eslint-plugin": "^5.7.1",
+    "@biomejs/biome": "^2.3.15",
     "@types/node": "^24.10.9",
     "@types/node-cron": "^3.0.11",
     "@types/uuid": "^10.0.0",
-    "@typescript-eslint/eslint-plugin": "^8.54.0",
-    "@typescript-eslint/parser": "^8.54.0",
     "@vitest/coverage-v8": "^4.0.18",
-    "eslint": "^9.39.2",
-    "eslint-config-prettier": "^10.1.8",
-    "eslint-plugin-import": "^2.32.0",
-    "eslint-plugin-n": "^17.23.2",
-    "eslint-plugin-prettier": "^5.5.5",
-    "eslint-plugin-promise": "^7.2.1",
-    "eslint-plugin-sonarjs": "^3.0.6",
-    "eslint-plugin-unicorn": "^62.0.0",
-    "eslint-plugin-vitest": "^0.5.4",
     "husky": "^9.1.7",
     "lint-staged": "^16.2.7",
-    "prettier": "^3.8.1",
+    "oxlint": "^1.47.0",
     "shx": "^0.4.0",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
-    "typescript-eslint": "^8.54.0",
     "vitest": "^4.0.18"
   },
   "packageManager": "pnpm@10.28.2",
@@ -101,12 +89,12 @@
     }
   },
   "lint-staged": {
-    "src/**/*.ts": [
-      "eslint --fix",
-      "prettier --write"
+    "*.{ts,tsx,js,jsx}": [
+      "oxlint --fix --max-warnings=0",
+      "biome format --write"
     ],
     "*.{json,md,yml,yaml}": [
-      "prettier --write"
+      "biome format --write"
     ]
   }
 }

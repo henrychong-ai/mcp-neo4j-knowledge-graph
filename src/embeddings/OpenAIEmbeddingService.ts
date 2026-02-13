@@ -215,7 +215,7 @@ export class OpenAIEmbeddingService extends EmbeddingService {
         }
       );
 
-      const embeddings = response.data.data.map((item) => item.embedding);
+      const embeddings = response.data.data.map(item => item.embedding);
 
       // Normalize each embedding vector
       for (const embedding of embeddings) {

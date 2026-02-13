@@ -67,7 +67,7 @@ vi.mock('../../neo4j/Neo4jConnectionManager', () => {
             run: vi.fn().mockResolvedValue({
               records: [
                 {
-                  get: vi.fn().mockImplementation((key) => {
+                  get: vi.fn().mockImplementation(key => {
                     if (key === 'e') {
                       return {
                         properties: {
@@ -178,7 +178,7 @@ vi.mock('../../neo4j/Neo4jConnectionManager', () => {
           return {
             records: [
               {
-                get: vi.fn().mockImplementation((key) => {
+                get: vi.fn().mockImplementation(key => {
                   if (key === 'e') {
                     return {
                       properties: {

@@ -750,7 +750,7 @@ export class EmbeddingJobManager {
 
       // Add each observation to the text
       if (observationsArray.length > 0) {
-        lines.push(...observationsArray.map((obs) => `- ${obs}`));
+        lines.push(...observationsArray.map(obs => `- ${obs}`));
       } else {
         lines.push('  (No observations)');
       }
@@ -799,7 +799,7 @@ export class EmbeddingJobManager {
       });
 
       // Filter for entities without embeddings
-      const entitiesWithoutEmbeddings = allEntities.filter((entity) => !entity.embedding);
+      const entitiesWithoutEmbeddings = allEntities.filter(entity => !entity.embedding);
 
       this.logger.info('Found entities without embeddings', {
         count: entitiesWithoutEmbeddings.length,

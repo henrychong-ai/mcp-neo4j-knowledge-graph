@@ -147,7 +147,7 @@ export const testEmbeddings = {
     vector: (() => {
       const v = new Array(1536).fill(0).map(() => Math.random());
       const magnitude = Math.sqrt(v.reduce((sum, x) => sum + x * x, 0));
-      return v.map((x) => x / magnitude);
+      return v.map(x => x / magnitude);
     })(),
     model: 'text-embedding-3-small',
     lastUpdated: BASE_TIMESTAMP,

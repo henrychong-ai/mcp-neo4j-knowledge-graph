@@ -16,7 +16,7 @@ describe('EmbeddingService Interface', () => {
     const expectedMethods = ['generateEmbedding', 'generateEmbeddings', 'getModelInfo'];
 
     // Check that all expected methods are defined on the interface
-    expectedMethods.forEach((method) => {
+    expectedMethods.forEach(method => {
       expect(EmbeddingService.prototype).toHaveProperty(method);
     });
   });
@@ -78,7 +78,7 @@ describe('EmbeddingService Interface', () => {
     expect(embeddings.length).toBe(texts.length);
 
     // Check that each embedding is a properly formatted vector
-    embeddings.forEach((embedding) => {
+    embeddings.forEach(embedding => {
       expect(Array.isArray(embedding)).toBe(true);
       expect(embedding.length).toBe(service.getModelInfo().dimensions);
 

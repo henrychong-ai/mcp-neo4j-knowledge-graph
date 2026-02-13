@@ -103,10 +103,10 @@ describe('EmbeddingJobManager', () => {
       saveGraph: vi.fn().mockResolvedValue(undefined),
       searchNodes: vi.fn().mockResolvedValue({ entities: [], relations: [] }),
       openNodes: vi.fn().mockResolvedValue({ entities: [], relations: [] }),
-      createEntities: vi.fn().mockImplementation(async (entities) => entities),
+      createEntities: vi.fn().mockImplementation(async entities => entities),
       createRelations: vi.fn().mockResolvedValue([]),
-      addObservations: vi.fn().mockImplementation(async (observations) => {
-        return observations.map((obs) => ({
+      addObservations: vi.fn().mockImplementation(async observations => {
+        return observations.map(obs => ({
           entityName: obs.entityName,
           addedObservations: obs.contents,
         }));
@@ -168,7 +168,7 @@ describe('EmbeddingJobManager', () => {
       ];
 
       // Check that all expected methods are defined on the class
-      expectedMethods.forEach((method) => {
+      expectedMethods.forEach(method => {
         expect(EmbeddingJobManager.prototype).toHaveProperty(method);
       });
     });
@@ -289,7 +289,7 @@ describe('EmbeddingJobManager', () => {
       ];
 
       // Create a mock implementation for db.prepare to return pending jobs
-      mockDb.prepare.mockImplementation((sql) => {
+      mockDb.prepare.mockImplementation(sql => {
         if (sql.includes("SELECT * FROM embedding_jobs WHERE status = 'pending'")) {
           return {
             all: vi.fn().mockReturnValue(mockJobs),
@@ -367,7 +367,7 @@ describe('EmbeddingJobManager', () => {
       ];
 
       // Create a mock implementation for db.prepare to return pending jobs
-      mockDb.prepare.mockImplementation((sql) => {
+      mockDb.prepare.mockImplementation(sql => {
         if (sql.includes("SELECT * FROM embedding_jobs WHERE status = 'pending'")) {
           return {
             all: vi.fn().mockReturnValue(mockJobs),
@@ -431,7 +431,7 @@ describe('EmbeddingJobManager', () => {
       }));
 
       // Create a mock implementation for db.prepare to return pending jobs
-      mockDb.prepare.mockImplementation((sql) => {
+      mockDb.prepare.mockImplementation(sql => {
         if (sql.includes("SELECT * FROM embedding_jobs WHERE status = 'pending'")) {
           return {
             all: vi.fn().mockReturnValue(mockJobs),
@@ -480,10 +480,10 @@ describe('EmbeddingJobManager', () => {
       };
 
       // Implement a more flexible mock that can handle parameterized queries
-      mockDb.prepare.mockImplementation((sql) => {
+      mockDb.prepare.mockImplementation(sql => {
         if (sql.includes('SELECT COUNT(*) as count FROM embedding_jobs WHERE status =')) {
           return {
-            get: vi.fn().mockImplementation((status) => {
+            get: vi.fn().mockImplementation(status => {
               // Return count based on the status parameter
               if (status === 'pending') return { count: mockCounts.pending };
               if (status === 'processing') return { count: mockCounts.processing };
@@ -623,7 +623,7 @@ describe('EmbeddingJobManager', () => {
       }));
 
       // Create a mock implementation for db.prepare to return pending jobs
-      mockDb.prepare.mockImplementation((sql) => {
+      mockDb.prepare.mockImplementation(sql => {
         if (sql.includes("SELECT * FROM embedding_jobs WHERE status = 'pending'")) {
           return {
             all: vi.fn().mockReturnValue(mockJobs),
@@ -707,7 +707,7 @@ describe('EmbeddingJobManager', () => {
       ];
 
       // Create a mock implementation for db.prepare to return pending jobs
-      mockDb.prepare.mockImplementation((sql) => {
+      mockDb.prepare.mockImplementation(sql => {
         if (sql.includes("SELECT * FROM embedding_jobs WHERE status = 'pending'")) {
           return {
             all: vi.fn().mockReturnValue(mockJobs),
@@ -772,7 +772,7 @@ describe('EmbeddingJobManager', () => {
       };
 
       // Create a mock implementation for db.prepare to return pending job
-      mockDb.prepare.mockImplementation((sql) => {
+      mockDb.prepare.mockImplementation(sql => {
         if (sql.includes("SELECT * FROM embedding_jobs WHERE status = 'pending'")) {
           return {
             all: vi.fn().mockReturnValue([mockJob]),
@@ -790,7 +790,7 @@ describe('EmbeddingJobManager', () => {
       await manager.processJobs(1);
 
       // Wait for cache to expire
-      await new Promise((resolve) => setTimeout(resolve, 50));
+      await new Promise(resolve => setTimeout(resolve, 50));
 
       // Process same job again
       await manager.processJobs(1);

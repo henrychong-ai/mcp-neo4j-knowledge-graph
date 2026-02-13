@@ -47,7 +47,7 @@ export class Neo4jSchemaManager {
   async listConstraints(): Promise<Record<string, unknown>[]> {
     this.log('Listing existing constraints...');
     const result = await this.connectionManager.executeQuery('SHOW CONSTRAINTS', {});
-    const constraints = result.records.map((record) => record.toObject());
+    const constraints = result.records.map(record => record.toObject());
     this.log(`Found ${constraints.length} constraints`);
     return constraints;
   }
@@ -59,7 +59,7 @@ export class Neo4jSchemaManager {
   async listIndexes(): Promise<Record<string, unknown>[]> {
     this.log('Listing existing indexes...');
     const result = await this.connectionManager.executeQuery('SHOW INDEXES', {});
-    const indexes = result.records.map((record) => record.toObject());
+    const indexes = result.records.map(record => record.toObject());
     this.log(`Found ${indexes.length} indexes`);
     return indexes;
   }
@@ -107,7 +107,7 @@ export class Neo4jSchemaManager {
 
     // Check for conflicting constraints on Entity nodes with 'name' property
     const allConstraints = await this.listConstraints();
-    const entityConstraints = allConstraints.filter((c) => {
+    const entityConstraints = allConstraints.filter(c => {
       // Neo4j returns either 'labelsOrTypes' or 'entityType' depending on version
       const label = c.labelsOrTypes || c.entityType;
       const properties = c.properties;
@@ -158,7 +158,7 @@ export class Neo4jSchemaManager {
 
     // Verify the constraint was created
     const constraints = await this.listConstraints();
-    const found = constraints.some((c) => c.name === constraintName);
+    const found = constraints.some(c => c.name === constraintName);
     this.log(`Constraint verification: ${found ? 'FOUND' : 'NOT FOUND'}`);
   }
 

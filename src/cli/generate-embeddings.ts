@@ -140,7 +140,7 @@ async function generateEmbeddings(options: GenerateEmbeddingsOptions = {}): Prom
 
     const connectionManager = storageProvider.getConnectionManager();
     const result = await connectionManager.executeQuery(query, {});
-    const entities = result.records.map((record) => ({
+    const entities = result.records.map(record => ({
       name: record.get('name'),
       observations: record.get('observations'),
       entityType: record.get('entityType'),
@@ -215,7 +215,7 @@ async function generateEmbeddings(options: GenerateEmbeddingsOptions = {}): Prom
 
       // Rate limiting: small delay between batches
       if (i + batchSize < entities.length) {
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        await new Promise(resolve => setTimeout(resolve, 1000));
       }
     }
 
@@ -249,7 +249,7 @@ async function generateEmbeddings(options: GenerateEmbeddingsOptions = {}): Prom
 // Main execution
 if (import.meta.url === `file://${process.argv[1]}`) {
   const options = parseArgs();
-  generateEmbeddings(options).catch((error) => {
+  generateEmbeddings(options).catch(error => {
     console.error('Unhandled error:', error);
     process.exit(1);
   });

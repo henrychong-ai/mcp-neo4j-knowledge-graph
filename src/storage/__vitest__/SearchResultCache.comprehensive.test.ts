@@ -234,7 +234,7 @@ describe('SearchResultCache Comprehensive', () => {
       cache.set('key2', 'value2');
 
       // Wait for expiration
-      return new Promise<void>((resolve) => {
+      return new Promise<void>(resolve => {
         setTimeout(() => {
           cache.removeExpired();
           expect(cache.size()).toBe(0);
@@ -251,7 +251,7 @@ describe('SearchResultCache Comprehensive', () => {
       expect(initialSize).toBeGreaterThan(0);
 
       // Wait for expiration
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 100));
 
       // Get should remove expired entry and update size
       cache.get('key');
@@ -267,7 +267,7 @@ describe('SearchResultCache Comprehensive', () => {
       expect(initialSize).toBeGreaterThan(0);
 
       // Wait for expiration
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 100));
 
       // has should remove expired entry and update size
       cache.has('key');

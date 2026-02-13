@@ -32,7 +32,7 @@ describe('Automatic Embedding Generation', () => {
       // Basic storage provider methods
       loadGraph: vi.fn().mockResolvedValue({ entities: [], relations: [] }),
       saveGraph: vi.fn().mockResolvedValue(undefined),
-      createEntities: vi.fn().mockImplementation(async (entities) => {
+      createEntities: vi.fn().mockImplementation(async entities => {
         return entities;
       }),
       createRelations: vi.fn().mockResolvedValue([]),
@@ -47,7 +47,7 @@ describe('Automatic Embedding Generation', () => {
           get: vi.fn().mockReturnValue({ count: 0 }),
         }),
       },
-      getEntity: vi.fn().mockImplementation(async (entityName) => {
+      getEntity: vi.fn().mockImplementation(async entityName => {
         // Return a mock entity that matches what would be returned by storageProvider
         return {
           name: entityName,
@@ -58,7 +58,7 @@ describe('Automatic Embedding Generation', () => {
       storeEntityVector: vi.fn().mockResolvedValue(undefined),
 
       // Additional methods needed for tests
-      getEntityEmbedding: vi.fn().mockImplementation(async (entityName) => {
+      getEntityEmbedding: vi.fn().mockImplementation(async entityName => {
         return {
           vector: Array(128)
             .fill(0)
@@ -193,7 +193,7 @@ describe('Automatic Embedding Generation', () => {
     expect(results.entities.length).toBeGreaterThan(0);
 
     // Check if our entity is in the results
-    const foundEntity = results.entities.find((e) => e.name === 'SearchableEntity');
+    const foundEntity = results.entities.find(e => e.name === 'SearchableEntity');
     expect(foundEntity).toBeDefined();
   });
 });

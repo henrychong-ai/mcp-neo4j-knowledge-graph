@@ -1,0 +1,55 @@
+{
+  "$schema": "https://raw.githubusercontent.com/nicolo-ribaudo/oxlint-config-schema/refs/heads/main/schema.json",
+
+  "plugins": ["import", "promise", "node", "vitest"],
+
+  "categories": {
+    "correctness": "error",
+    "suspicious": "warn",
+    "pedantic": "off",
+    "style": "warn",
+    "restriction": "off",
+    "nursery": "off"
+  },
+
+  "rules": {
+    "no-unused-vars": ["error", { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_" }],
+    "no-useless-catch": "off",
+
+    "import/no-duplicates": "error",
+    "import/no-cycle": "warn",
+    "import/no-self-import": "error",
+
+    "unicorn/filename-case": [
+      "error",
+      {
+        "cases": { "kebabCase": true, "pascalCase": true, "camelCase": true },
+        "ignore": ["^OpenAI.*\\.ts$"]
+      }
+    ],
+    "unicorn/prevent-abbreviations": "off",
+    "unicorn/no-null": "off",
+    "unicorn/no-array-reduce": "off",
+    "unicorn/no-array-for-each": "off",
+    "unicorn/prefer-spread": "off",
+    "unicorn/prefer-top-level-await": "off",
+    "unicorn/prefer-array-some": "off",
+    "unicorn/prefer-ternary": "off",
+    "unicorn/prefer-number-properties": "off",
+    "unicorn/switch-case-braces": "off",
+    "unicorn/no-array-sort": "off",
+    "unicorn/text-encoding-identifier-case": "off",
+    "unicorn/no-await-expression-member": "off",
+    "unicorn/no-process-exit": "off",
+    "unicorn/no-new-array": "off",
+    "unicorn/prefer-code-point": "off",
+    "unicorn/explicit-length-check": "off",
+    "unicorn/consistent-function-scoping": "off",
+    "unicorn/no-useless-switch-case": "off",
+    "unicorn/no-immediate-mutation": "off",
+    "unicorn/prefer-single-call": "off",
+
+    "typescript/no-explicit-any": "warn",
+    "typescript/no-non-null-assertion": "warn"
+  }
+}

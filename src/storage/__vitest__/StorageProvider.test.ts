@@ -45,7 +45,7 @@ describe('StorageProvider Interface', () => {
       loadGraph: async () => {
         return { entities: [], relations: [] };
       },
-      saveGraph: async (graph) => {
+      saveGraph: async graph => {
         // Mock implementation
       },
       searchNodes: async () => {
@@ -117,10 +117,10 @@ describe('StorageProvider Interface', () => {
       searchNodes: async () => {
         return { entities: [], relations: [] };
       },
-      openNodes: async (names) => {
+      openNodes: async names => {
         // Mock implementation that returns entities with matching names
         return {
-          entities: names.map((name) => ({ name, entityType: 'test', observations: [] })),
+          entities: names.map(name => ({ name, entityType: 'test', observations: [] })),
           relations: [],
         };
       },
@@ -160,9 +160,9 @@ describe('StorageProvider Interface', () => {
       createRelations: async () => {
         return [];
       },
-      addObservations: async (observations) => {
+      addObservations: async observations => {
         // Mock implementation that returns added observations
-        return observations.map((o) => ({
+        return observations.map(o => ({
           entityName: o.entityName,
           addedObservations: o.contents,
         }));
@@ -200,7 +200,7 @@ describe('StorageProvider Interface', () => {
       addObservations: async () => {
         return [];
       },
-      deleteEntities: async (entityNames) => {
+      deleteEntities: async entityNames => {
         // Mock implementation that deletes entities
       },
     };
@@ -232,7 +232,7 @@ describe('StorageProvider Interface', () => {
         return [];
       },
       deleteEntities: async () => {},
-      deleteObservations: async (deletions) => {
+      deleteObservations: async deletions => {
         // Mock implementation that deletes observations
       },
     };
@@ -267,7 +267,7 @@ describe('StorageProvider Interface', () => {
       },
       deleteEntities: async () => {},
       deleteObservations: async () => {},
-      deleteRelations: async (relationIds) => {
+      deleteRelations: async relationIds => {
         // Mock implementation that deletes relations
       },
     };
@@ -292,7 +292,7 @@ describe('StorageProvider Interface', () => {
       openNodes: async () => {
         return { entities: [], relations: [] };
       },
-      createRelations: async (relations) => {
+      createRelations: async relations => {
         // Mock implementation that returns created relations
         return relations.map((r, i) => ({ ...r, id: `relation-${i}` }));
       },
@@ -335,7 +335,7 @@ describe('StorageProvider Interface', () => {
       deleteEntities: async () => {},
       deleteObservations: async () => {},
       deleteRelations: async () => {},
-      getHistory: async (options) => {
+      getHistory: async options => {
         // Mock implementation that returns history
         return {
           entities: [
@@ -379,9 +379,9 @@ describe('StorageProvider Interface', () => {
       getHistory: async () => {
         return { entities: [], relations: [] };
       },
-      storeVectors: async (vectors) => {
+      storeVectors: async vectors => {
         // Mock implementation that returns stored vectors
-        return vectors.map((v) => ({ ...v, id: 'vector-id' }));
+        return vectors.map(v => ({ ...v, id: 'vector-id' }));
       },
       searchVectors: async (embedding, options) => {
         // Mock implementation that returns search results

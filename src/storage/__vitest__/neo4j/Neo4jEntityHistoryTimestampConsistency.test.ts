@@ -16,7 +16,7 @@ interface EntityWithHistory extends Entity {
 }
 
 // Sleep function to introduce delays
-const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
+const sleep = (ms: number): Promise<void> => new Promise(resolve => setTimeout(resolve, ms));
 
 // Mock Neo4j dependencies
 vi.mock('neo4j-driver', () => {

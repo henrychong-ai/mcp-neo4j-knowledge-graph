@@ -57,9 +57,9 @@ export class ConnectionStrengthScorer implements Scorer {
 
     const avgQuality = this.calculateAverageQuality(relations);
     const highQualityCount = relations.filter(
-      (r) => (r.confidence ?? r.strength ?? 0.5) >= 0.7
+      r => (r.confidence ?? r.strength ?? 0.5) >= 0.7
     ).length;
-    const relationTypes = new Set(relations.map((r) => r.relationType)).size;
+    const relationTypes = new Set(relations.map(r => r.relationType)).size;
 
     return `Connection strength: ${(score * 100).toFixed(1)}% (avg quality: ${(avgQuality * 100).toFixed(0)}%, ${highQualityCount}/${relations.length} strong, ${relationTypes} types)`;
   }
@@ -93,7 +93,7 @@ export class ConnectionStrengthScorer implements Scorer {
       return 0;
     }
 
-    const highQualityCount = relations.filter((r) => {
+    const highQualityCount = relations.filter(r => {
       const quality = r.confidence ?? r.strength ?? 0.5;
       return quality >= 0.7;
     }).length;

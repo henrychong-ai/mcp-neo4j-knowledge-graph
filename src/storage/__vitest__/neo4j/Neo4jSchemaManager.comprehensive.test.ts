@@ -468,7 +468,7 @@ describe('Neo4jSchemaManager - Initialize Schema', () => {
     // Should NOT call CREATE VECTOR INDEX for community edition
     const createVectorCalls = (
       connectionManager.executeQuery as ReturnType<typeof vi.fn>
-    ).mock.calls.filter((call) => call[0].includes('CREATE VECTOR INDEX'));
+    ).mock.calls.filter(call => call[0].includes('CREATE VECTOR INDEX'));
     expect(createVectorCalls).toHaveLength(0);
   });
 
@@ -492,7 +492,7 @@ describe('Neo4jSchemaManager - Initialize Schema', () => {
     // Should NOT call CREATE VECTOR INDEX for older versions
     const createVectorCalls = (
       connectionManager.executeQuery as ReturnType<typeof vi.fn>
-    ).mock.calls.filter((call) => call[0].includes('CREATE VECTOR INDEX'));
+    ).mock.calls.filter(call => call[0].includes('CREATE VECTOR INDEX'));
     expect(createVectorCalls).toHaveLength(0);
   });
 
@@ -516,7 +516,7 @@ describe('Neo4jSchemaManager - Initialize Schema', () => {
     // Should NOT call CREATE VECTOR INDEX for experimental versions
     const createVectorCalls = (
       connectionManager.executeQuery as ReturnType<typeof vi.fn>
-    ).mock.calls.filter((call) => call[0].includes('CREATE VECTOR INDEX'));
+    ).mock.calls.filter(call => call[0].includes('CREATE VECTOR INDEX'));
     expect(createVectorCalls).toHaveLength(0);
   });
 
@@ -540,7 +540,7 @@ describe('Neo4jSchemaManager - Initialize Schema', () => {
     // Should call CREATE VECTOR INDEX for supported versions
     const createVectorCalls = (
       connectionManager.executeQuery as ReturnType<typeof vi.fn>
-    ).mock.calls.filter((call) => call[0].includes('CREATE VECTOR INDEX'));
+    ).mock.calls.filter(call => call[0].includes('CREATE VECTOR INDEX'));
     expect(createVectorCalls).toHaveLength(1);
   });
 
@@ -564,7 +564,7 @@ describe('Neo4jSchemaManager - Initialize Schema', () => {
     // Should still attempt to create vector index when version is unknown
     const createVectorCalls = (
       connectionManager.executeQuery as ReturnType<typeof vi.fn>
-    ).mock.calls.filter((call) => call[0].includes('CREATE VECTOR INDEX'));
+    ).mock.calls.filter(call => call[0].includes('CREATE VECTOR INDEX'));
     expect(createVectorCalls).toHaveLength(1);
   });
 
@@ -614,7 +614,7 @@ describe('Neo4jSchemaManager - Initialize Schema', () => {
     const dropCalls = (
       connectionManager.executeQuery as ReturnType<typeof vi.fn>
     ).mock.calls.filter(
-      (call) => call[0].includes('DROP INDEX') && call[0].includes('entity_embeddings')
+      call => call[0].includes('DROP INDEX') && call[0].includes('entity_embeddings')
     );
     expect(dropCalls.length).toBeGreaterThan(0);
   });
@@ -639,7 +639,7 @@ describe('Neo4jSchemaManager - Initialize Schema', () => {
     // Should NOT call CREATE VECTOR INDEX for Neo4j 4.x
     const createVectorCalls = (
       connectionManager.executeQuery as ReturnType<typeof vi.fn>
-    ).mock.calls.filter((call) => call[0].includes('CREATE VECTOR INDEX'));
+    ).mock.calls.filter(call => call[0].includes('CREATE VECTOR INDEX'));
     expect(createVectorCalls).toHaveLength(0);
   });
 });
