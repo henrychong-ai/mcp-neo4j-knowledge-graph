@@ -1,13 +1,23 @@
-# Neo4j Knowledge Graph MCP Server
+<p align="center">
+  <img src="https://assets.henrychong.com/mcp-neo4j-knowledge-graph/logo-readme.png" alt="Neo4j Knowledge Graph MCP Server" width="800">
+</p>
 
+<h1 align="center">Neo4j Knowledge Graph MCP Server</h1>
+
+<p align="center">
 Scalable, high-performance knowledge graph memory system with semantic retrieval, contextual recall, and temporal awareness. Provides any LLM client supporting MCP (e.g., Claude Desktop, Cursor, GitHub Copilot) with resilient, adaptive, and persistent long-term ontological memory.
+</p>
 
-**Maintained by** [Henry Chong](https://github.com/henrychong-ai)
+<p align="center">
+<strong>Maintained by</strong> <a href="https://github.com/henrychong-ai">Henry Chong</a>
+</p>
 
-[![npm version](https://img.shields.io/npm/v/@henrychong-ai/mcp-neo4j-knowledge-graph)](https://www.npmjs.com/package/@henrychong-ai/mcp-neo4j-knowledge-graph)
-[![CI](https://github.com/henrychong-ai/mcp-neo4j-knowledge-graph/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/henrychong-ai/mcp-neo4j-knowledge-graph/actions/workflows/ci-cd.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Node.js](https://img.shields.io/badge/Node.js-%3E%3D24-green)](https://nodejs.org/)
+<p align="center">
+<a href="https://www.npmjs.com/package/@henrychong-ai/mcp-neo4j-knowledge-graph"><img src="https://img.shields.io/npm/v/@henrychong-ai/mcp-neo4j-knowledge-graph" alt="npm version"></a>
+<a href="https://github.com/henrychong-ai/mcp-neo4j-knowledge-graph/actions/workflows/ci-cd.yml"><img src="https://github.com/henrychong-ai/mcp-neo4j-knowledge-graph/actions/workflows/ci-cd.yml/badge.svg" alt="CI"></a>
+<a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
+<a href="https://nodejs.org/"><img src="https://img.shields.io/badge/Node.js-%3E%3D24-green" alt="Node.js"></a>
+</p>
 
 ---
 
