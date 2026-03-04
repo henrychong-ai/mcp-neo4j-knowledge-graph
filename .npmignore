@@ -21,6 +21,5 @@ docker-compose.yml
 eslint.config.js
 vitest.config.ts
 .DS_Store
-example.env
 .npmrc
 assets/

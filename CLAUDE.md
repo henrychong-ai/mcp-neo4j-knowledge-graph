@@ -33,16 +33,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Getting Started
 
-**First time setup?** See **[SETUP_AUTOMATION.md](SETUP_AUTOMATION.md)** for complete step-by-step instructions covering:
-
-- Prerequisites (Node.js, Neo4j, Docker)
-- Environment configuration
-- MCP server installation
-- Claude Desktop and Claude Code configuration
-- First entity creation and verification
-- Troubleshooting common issues
-
-This guide ensures new users can get the MCP server running in 10-15 minutes.
+See **[README.md](README.md)** for complete setup instructions covering installation, Neo4j setup, MCP client configuration, and testing.
 
 ## Development Commands
 

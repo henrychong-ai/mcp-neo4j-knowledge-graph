@@ -21,30 +21,15 @@ Scalable, high-performance knowledge graph memory system with semantic retrieval
 
 ---
 
-## 🚀 Quick Start with Claude Code
+## Quick Start
 
-**Already have Claude Code running?** Paste this into your session:
+Get up and running in ~10 minutes:
 
-```
-Read and execute the setup guide at henrychong.com/mcp-neo4j-kg/setup
-```
+1. [Install Node.js](#installation) (v24+) and [start Neo4j](#storage-backend) (Docker or Desktop)
+2. [Configure your MCP client](#configuration) (Claude Desktop, Claude Code, Cursor, etc.)
+3. [Test the setup](#testing-your-setup) by creating your first entity
 
-Claude Code will guide you through:
-
-- ✓ Prerequisites check (Node.js, Docker)
-- ✓ Neo4j database setup
-- ✓ Configuration and environment variables
-- ✓ Integration with Claude Desktop/Code
-- ✓ Testing and verification
-
-**Expected time:** 10-15 minutes
-**No prior installation needed** - the automation handles everything!
-
----
-
-### Manual Setup
-
-If you prefer manual installation, see the detailed sections below for:
+**Sections:**
 
 - [Installation](#installation) - npm/npx setup
 - [Neo4j Setup](#storage-backend) - Docker or local database
@@ -52,8 +37,6 @@ If you prefer manual installation, see the detailed sections below for:
 - [Claude Desktop](#integration-with-claude-desktop) - MCP client setup
 - [Claude Code](#integration-with-claude-code) - CLI client setup
 - [Testing](#testing-your-setup) - Verification steps
-
-**Expected manual setup time:** 10-15 minutes
 
 ---
 
