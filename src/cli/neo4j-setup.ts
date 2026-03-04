@@ -219,7 +219,7 @@ Usage:
 Options:
   --uri <uri>              Neo4j server URI (default: ${DEFAULT_NEO4J_CONFIG.uri})
   --username <username>    Neo4j username (default: ${DEFAULT_NEO4J_CONFIG.username})
-  --password <password>    Neo4j password (default: ${DEFAULT_NEO4J_CONFIG.password})
+  --password <password>    Neo4j password (default: ****)
   --database <name>        Neo4j database name (default: ${DEFAULT_NEO4J_CONFIG.database})
   --vector-index <name>    Vector index name (default: ${DEFAULT_NEO4J_CONFIG.vectorIndexName})
   --dimensions <number>    Vector dimensions (default: ${DEFAULT_NEO4J_CONFIG.vectorDimensions})
@@ -243,7 +243,7 @@ export async function main(): Promise<void> {
 
   const { config, options } = parseArgs(args);
   console.log('Configuration:');
-  console.log(JSON.stringify(config, null, 2));
+  console.log(JSON.stringify({ ...config, password: '****' }, null, 2));
 
   // Only mention debug mode if explicitly disabled
   if (!options.debug) {
