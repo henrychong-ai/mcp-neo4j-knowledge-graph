@@ -30,6 +30,7 @@ yarn-error.log*
 
 # Environment variables and secrets
 .env
+CLAUDE.local.md
 .env.local
 .env.development.local
 .env.test.local

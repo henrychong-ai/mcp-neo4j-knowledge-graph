@@ -20,15 +20,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | --------------- | ---------------------------------- |
 | Runtime         | Node.js >=24 LTS                   |
 | Language        | TypeScript 5.x (ES2024 target)     |
-| Package Manager | pnpm 10.28.2                       |
+| Package Manager | pnpm 10.30.0                       |
 | Database        | Neo4j 5.13+ (Community/Enterprise) |
 | Protocol        | MCP SDK 1.x                        |
 | Validation      | Zod 4.x                            |
 | Embeddings      | OpenAI text-embedding-3-small      |
 | Testing         | Vitest 4.x                         |
 | Coverage        | @vitest/coverage-v8                |
-| Linting         | Oxlint (import, promise, node, vitest plugins) |
-| Formatting      | Biome (formatter-only, linter disabled)         |
+| Linting         | Oxlint 1.48.0 (import, promise, node, vitest plugins) |
+| Formatting      | Biome 2.4.2 (formatter-only, linter disabled)          |
 | Git Hooks       | Husky + lint-staged                |
 
 ## Getting Started
@@ -249,31 +249,66 @@ Test files use Vitest with comprehensive mocking:
 
 ### GitHub Actions (`ci-cd.yml`)
 
-| Job                | Trigger           | Node Versions |
-| ------------------ | ----------------- | ------------- |
-| **Build and Test** | All pushes, PRs   | 24.x          |
-| **Publish to npm** | Tags matching v\* | 24.x          |
+| Job                                  | Trigger           | Node |
+| ------------------------------------ | ----------------- | ---- |
+| **Lint-Format-Typecheck-Test-Build** | All pushes, PRs   | 24.x |
+| **Publish to npm**                   | Tags matching v\* | 24.x |
 
 **Build Job Steps:**
 
 1. Checkout code
-2. Install pnpm 10
-3. Setup Node.js with pnpm cache
-4. Install dependencies
+2. Install pnpm (from packageManager field)
+3. Setup Node.js 24.x with pnpm cache
+4. Install dependencies (`--frozen-lockfile`)
 5. Lint (`pnpm lint`)
-6. Type check (`pnpm typecheck`)
-7. Build project
-8. Initialize Neo4j schema (service container)
-9. Run tests
-10. Run test coverage
+6. Format check (`pnpm format:check`)
+7. Type check (`pnpm typecheck`)
+8. Build project
+9. Initialize Neo4j schema (service container)
+10. Run tests
 
 **Publish Job:**
 
-- **Trigger**: Only on version tags (e.g., `v1.12.3`)
-- **Authentication**: OIDC (scoped packages @henrychong-ai/\* support automatic auth)
+- **Trigger**: Only on version tags (e.g., `v2.2.0`)
+- **Authentication**: npm publish on v\* tags (NPM_TOKEN secret)
 - **Version Check**: Tag must match `package.json` version
 
 ## Version History & Recent Bugfixes
+
+### v2.2.0 (2026-03-04) - Public Release Preparation
+
+**Public Release:**
+
+- Git history sanitised (author emails normalised)
+- Infrastructure references generalised (no private IPs/hostnames)
+- Private deployment config moved to `CLAUDE.local.md` (gitignored)
+
+**CI/CD Alignment:**
+
+- Updated actions/checkout and actions/setup-node to v6
+- Added concurrency group, timeout, workflow_dispatch, top-level permissions
+- Added format:check step, removed duplicate test:coverage step
+- Frozen lockfile for CI installs
+
+**Dependency Updates:**
+
+- uuid 11→13 (built-in TypeScript types, removed @types/uuid)
+- node-cron 3→4 (ESM-only, zero code changes needed)
+- dotenv 16→17, lru-cache 11.2.6, MCP SDK 1.27.1, axios 1.13.6
+- biome 2.4.2, oxlint 1.48.0, lint-staged 16.3.2
+- pnpm 10.28.2→10.30.0
+
+**Community Files:**
+
+- Added LICENSE (MIT dual copyright), SECURITY.md, CODE_OF_CONDUCT.md
+- Updated CONTRIBUTING.md with current lint stack
+- Added GitHub issue/PR templates, dependabot.yml
+
+**Fixes:**
+
+- lint-staged: Removed unsupported yml/yaml/md globs from biome format
+
+---
 
 ### v2.1.1 (2026-02-13) - Lint Stack Migration: ESLint/Prettier to Oxlint/Biome
 
@@ -490,20 +525,9 @@ REQUIRE (e.name, e.validTo) IS UNIQUE;
 
 See `INVESTIGATION.md` for detailed technical analysis.
 
-## Production Deployment
+## Deployment
 
-### Neo4j Docker Configuration (vps-2)
-
-**Current Production Setup:**
-
-- Host: vps-2 (Singapore VPS, 4C/12GB RAM)
-- Container: neo4j-kg
-- Neo4j Version: 5.26.21 (community edition)
-- Memory: 2G heap, 1G pagecache, 512M transaction max
-- Database: 1,354 entities, 3,077 relations (as of 2026-02-09)
-- Managed via: `/opt/neo4j-kg/docker-compose.yml` (systemd service `docker-containers-tailscale.service`)
-
-**Production Docker Compose Configuration:**
+### Docker Compose Example
 
 ```yaml
 services:
@@ -517,69 +541,27 @@ services:
       NEO4J_server_memory_heap_max__size: 2G
       NEO4J_server_memory_pagecache_size: 1G
       NEO4J_db_memory_transaction_max: 512M
-      NEO4J_db_checkpoint_interval_time: '30s'
     ports:
-      - '100.72.126.98:7474:7474' # HTTP (Tailscale only)
-      - '100.72.126.98:7687:7687' # Bolt (Tailscale only)
+      - '7474:7474' # HTTP
+      - '7687:7687' # Bolt
     volumes:
       - neo4j_data:/data
       - neo4j_logs:/logs
-      - ./backups:/backups
     restart: unless-stopped
-    mem_limit: 4G
-    mem_reservation: 2.5G
 ```
 
-**Configuration Notes:**
+**For upgrade procedures**, see [docs/UPGRADE.md](docs/UPGRADE.md).
 
-- Environment variables use Neo4j 5.26 naming convention (migrated from deprecated `dbms.*` format 2026-02-09)
-- Zero deprecation warnings in logs
-- Ports bound to Tailscale IP only (not 0.0.0.0)
-- Volumes preserve data across container recreations
+### Vector Embeddings
 
-**For upgrade procedures**, see [docs/UPGRADE.md](docs/UPGRADE.md) which covers:
-
-- When and why to upgrade Neo4j versions
-- Complete 5-phase upgrade procedure with go/no-go checkpoints
-- Configuration management and deprecated settings migration
-- Troubleshooting and rollback procedures
-- Real-world example with verified commands
-
-### Vector Embeddings Status
-
-**Production Embeddings:**
-
-- Generated: 2025-10-20
-- Total entities embedded: 630 entities (99.8% of database)
-- Failed: 1 entity (VECTOR KO - deleted, empty observations)
 - Model: OpenAI text-embedding-3-small (1536 dimensions)
-- Total cost: ~$0.0025 USD
-- Status: ✅ Operational
-
-**Semantic Search:**
-
-- Method: `mcp__kg__semantic_search`
-- Configuration: `limit=10`, `min_similarity=0.6` (default)
-- Performance: Sub-second query responses
-- Neo4j index: ONLINE (Enterprise feature not available in Community Edition, but embeddings stored)
-- Fallback: Standard property search when vector index unavailable
-
-**Usage Guidelines:**
-
-- **Default**: Use `semantic_search` for exploration, discovery, natural language queries
-- **Precision**: Use `search_nodes` for exact term lookups
-- **Hybrid**: Start semantic → refine with keywords
-- See AXIS.md v3.10.1 for complete KG Search Protocol
+- Semantic search: `limit=10`, `min_similarity=0.6` (default)
 
 **Automated Maintenance (v1.3.0+):**
 
-- **Daily Cron**: Automatic incremental embedding generation at 3 AM Singapore time (19:00 UTC)
+- **Daily Cron**: Automatic incremental embedding generation at configurable schedule
 - **Method**: `EmbeddingJobManager.scheduleIncrementalRegeneration()`
 - **Behavior**: Checks all entities, schedules jobs only for those missing embeddings
-- **Execution**: Processed by existing 10-second job queue
-- **Deployment**: Running on vps-2 production via systemd service `mcp-neo4j-kg.service`
-- **Logging**: Info/debug logs in service journal (`journalctl -u mcp-neo4j-kg -f`)
-- **Status**: Active since 2025-10-29
 
 **Manual Maintenance:**
 

@@ -5,6 +5,40 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.0] - 2026-03-04
+
+### Changed
+
+- **Public Release Preparation**: Repository prepared for public GitHub visibility
+  - Git history sanitised (author emails normalised to henrychong-ai)
+  - Infrastructure references generalised (removed private IPs and hostnames)
+  - Private deployment config moved to `CLAUDE.local.md` (gitignored)
+
+- **CI/CD Alignment**: Modernised GitHub Actions workflow
+  - Updated actions/checkout and actions/setup-node to v6
+  - Added concurrency group, timeout-minutes, workflow_dispatch, top-level permissions
+  - Added format:check step, removed duplicate test:coverage step
+  - Use `pnpm install --frozen-lockfile` for reproducible CI builds
+  - Renamed CI job to "Lint-Format-Typecheck-Test-Build"
+
+- **Dependency Updates**:
+  - uuid 11→13 (built-in TypeScript types, removed @types/uuid)
+  - node-cron 3→4 (ESM-only, zero code changes needed)
+  - dotenv 16→17, lru-cache 11.2.6, MCP SDK 1.27.1, axios 1.13.6
+  - biome 2.3→2.4.2, oxlint 1.47→1.48.0, lint-staged 16.2→16.3.2
+  - pnpm 10.28.2→10.30.0
+
+### Added
+
+- **Community Files**: LICENSE (MIT dual copyright with Gannon Hall), SECURITY.md, CODE_OF_CONDUCT.md
+- Updated CONTRIBUTING.md with current lint stack (Oxlint/Biome)
+- GitHub issue templates (bug report, feature request), PR template
+- README badges (npm version, CI, license, Node.js)
+
+### Fixed
+
+- lint-staged: Removed unsupported `*.{yml,yaml,md}` globs from biome format (biome doesn't support these formats)
+
 ## [2.0.0] - 2026-02-08
 
 ### BREAKING CHANGES
@@ -551,7 +585,7 @@ await knowledgeGraph.createEntitiesBatch(entities, {
     - `mcp_cache_size_current`: Gauge for current cache size
   - Default Node.js process metrics (CPU, memory, event loop, etc.)
   - Instrumented query operations: `loadGraph`, `searchNodes`, `openNodes`, `semanticSearch`
-  - Designed for vps-2 production deployment with minimal local machine overhead
+  - Designed for production deployment with minimal local machine overhead
 
 ### Technical Details
 
@@ -570,9 +604,9 @@ await knowledgeGraph.createEntitiesBatch(entities, {
 - Try/finally pattern ensures metrics recorded even on errors
 - Zero performance impact when metrics disabled (environment check only)
 
-**Integration with vps-2 Monitoring Stack**:
+**Integration with Monitoring Stack**:
 
-- Metrics designed for Prometheus scraping (existing stack: Prometheus 9090, Grafana 3000)
+- Metrics designed for Prometheus scraping
 - Port 9091 chosen to avoid conflicts with existing exporters (neo4j-exporter: 9099, node-exporter: 9100)
 - Ready for Prometheus configuration update: `scrape_configs` → `mcp-kg-server:9091`
 
@@ -583,7 +617,7 @@ await knowledgeGraph.createEntitiesBatch(entities, {
 ### Impact
 
 - **Production Observability**: Full visibility into query performance and cache effectiveness
-- **Zero Local Overhead**: Metrics collection disabled by default, only enabled on vps-2 deployment
+- **Zero Local Overhead**: Metrics collection disabled by default, only enabled in production
 - **Future Cache Integration**: Instrumentation ready for query result caching PR (#3)
 - **Grafana Dashboards**: Enables creation of MCP server performance dashboards
 
@@ -646,7 +680,7 @@ curl http://localhost:9091/metrics
   - Checks all entities and schedules embedding jobs only for those missing embeddings
   - Integrates with existing 10-second job processor for execution
   - Uses node-cron library for reliable scheduling
-  - Production-ready: Deployed and running on vps-2 production server
+  - Production-ready: Deployed and running on production server
 
 ### Fixed
 
@@ -666,8 +700,7 @@ curl http://localhost:9091/metrics
 
 ### Production Deployment
 
-- **Server**: vps-2 (Singapore, 4C/12GB RAM)
-- **Service**: systemd service `mcp-neo4j-kg.service`
+- **Service**: Runs as systemd service
 - **Status**: Active and running since 2025-10-29
 - **First Run**: 2025-10-30 03:00 SGT (2025-10-29 19:00 UTC)
 

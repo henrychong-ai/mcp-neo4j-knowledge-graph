@@ -10,9 +10,9 @@ This guide provides comprehensive instructions for upgrading Neo4j database vers
 
 **Target Audience:** DevOps engineers, system administrators, and developers managing Neo4j knowledge graph deployments
 
-**Tested Upgrade Path:** Neo4j 5.13.0 → 5.26.13 LTS (2025-10-20, jp-vps-1)
+**Tested Upgrade Path:** Neo4j 5.13.0 → 5.26.13 LTS
 
-**Note:** This upgrade was originally tested on jp-vps-1. Production Neo4j has since been migrated to **vps-2** (Singapore, 4C/12GB RAM). Historical references to jp-vps-1 in this document reflect the original upgrade testing environment.
+**Note:** This guide includes a real-world upgrade example. Server-specific references reflect the original testing environment.
 
 ---
 
@@ -1064,10 +1064,10 @@ docker exec $NEO4J_CONTAINER cypher-shell -u $NEO4J_USER -p "$NEO4J_PASS" \
 
 ## Real-World Example
 
-### jp-vps-1: Neo4j 5.13.0 → 5.26.13 LTS Upgrade
+### Example: Neo4j 5.13.0 → 5.26.13 LTS Upgrade
 
 **Date:** 2025-10-20
-**Host:** jp-vps-1 VPS (Tailscale IP: 100.109.177.39)
+**Host:** VPS (4C/12GB RAM)
 **Executor:** Automated with human approval (Claude Code + sequential thinking)
 
 #### Pre-Upgrade State
@@ -1124,8 +1124,8 @@ Uptime: 13 hours before upgrade
 docker run -d \
   --name neo4j-kg \
   --restart unless-stopped \
-  -p 100.109.177.39:7474:7474 \
-  -p 100.109.177.39:7687:7687 \
+  -p 7474:7474 \
+  -p 7687:7687 \
   -v neo4j-kg_neo4j_data:/data \
   -v neo4j-kg_neo4j_logs:/logs \
   -v /opt/neo4j-kg/backups:/backups \
@@ -1141,7 +1141,7 @@ docker run -d \
 
 **Result:** No deprecation warnings after settings update
 
-#### Lessons from jp-vps-1 Upgrade
+#### Lessons Learned
 
 1. **LTS Choice Validated:** 5.26 LTS provides stability without bleeding-edge risks
 2. **Sequential Thinking Effective:** 20-thought analysis (s3) identified all risks upfront
@@ -1429,10 +1429,10 @@ echo "Upgrade completed successfully: $(date -u)" >> /root/neo4j-upgrade-success
 
 | Version | Date       | Changes                                                 |
 | ------- | ---------- | ------------------------------------------------------- |
-| 1.0.0   | 2025-10-20 | Initial release based on jp-vps-1 upgrade (5.13 → 5.26) |
+| 1.0.0   | 2025-10-20 | Initial release based on production upgrade (5.13 → 5.26) |
 
 ---
 
 **Document maintained by:** Henry Chong (henry@henrychong.ai)
 **Last Updated:** 2025-10-20
-**Status:** Production-tested on jp-vps-1
+**Status:** Production-tested

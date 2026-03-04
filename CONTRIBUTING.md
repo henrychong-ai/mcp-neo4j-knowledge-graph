@@ -42,16 +42,39 @@ Note: We require all code to have appropriate test coverage. Writing tests that 
 - Reference issue numbers in your commit messages when applicable
 - Reference your PR from an issue comment and the issue from your PR; also feel free to open a draft PR if you want feedback before working on something
 
+## Quality Requirements
+
+All contributions must pass:
+
+```bash
+# Linting (zero warnings)
+pnpm lint
+
+# Formatting
+pnpm format:check
+
+# Type checking
+pnpm typecheck
+
+# All checks at once
+pnpm check
+```
+
+## Code Style
+
+- **TypeScript**: Strict mode, ES2024 target
+- **Linting**: Oxlint (import, promise, node, vitest plugins)
+- **Formatting**: Biome (formatter-only, linter disabled)
+- **Tests**: Vitest with comprehensive mocking
+
 ## Pull Request Process
 
 1. Update documentation to reflect any changes
-2. Ensure all tests pass: `pnpm test`
-3. Verify code coverage: `pnpm run test:coverage`
-4. Run linting: `pnpm run lint`
-5. Make sure your code follows project conventions
-6. Update the README.md if needed with details of changes
-7. Your PR will be reviewed by the maintainers
-8. Address any requested changes promptly
+2. Ensure all checks pass: `pnpm check` (lint, format, typecheck)
+3. Ensure all tests pass: `pnpm test`
+4. Update the README.md if needed with details of changes
+5. Your PR will be reviewed by the maintainers
+6. Address any requested changes promptly
 
 ## Testing
 

@@ -28,7 +28,7 @@ _(No open items - all clear!)_
 
 ### Cloud Testing Environments
 
-**Closed**: Production Neo4j runs on vps-2 via Tailscale. Local Docker covers development testing. CI uses GitHub Actions Neo4j service container. No need for Neo4j Aura or cloud testing environments.
+**Closed**: Production Neo4j runs on a dedicated server. Local Docker covers development testing. CI uses GitHub Actions Neo4j service container. No need for Neo4j Aura or cloud testing environments.
 
 ---
 
@@ -125,7 +125,7 @@ _(No open items - all clear!)_
 
 ### v1.3.0 Daily Embedding Automation (2025-10-29)
 
-**Status**: ✅ **COMPLETED** - Running in production on vps-2
+**Status**: ✅ **COMPLETED** - Running in production
 
 **Goal**: Automated incremental vector embedding regeneration to keep semantic search accuracy high without manual intervention
 
@@ -135,7 +135,7 @@ _(No open items - all clear!)_
 - **Incremental Regeneration**: `EmbeddingJobManager.scheduleIncrementalRegeneration()`
 - **Smart Processing**: Checks all entities, schedules jobs only for those missing embeddings
 - **Existing Infrastructure**: Integrates with existing 10-second job processor
-- **Production Deployment**: Running on vps-2 via systemd service `mcp-neo4j-kg.service`
+- **Production Deployment**: Running via systemd service
 
 **Implementation**:
 
@@ -502,4 +502,4 @@ git push origin main --tags
 
 **Last Updated:** 2026-02-09
 
-**Current State:** v2.1.0 — Neo4j-only architecture, ES2024/Node 24, 834 tests, pnpm/Vitest/ESLint 9 toolchain.
+**Current State:** v2.2.0 — Neo4j-only architecture, ES2024/Node 24, 834 tests, pnpm/Vitest/Oxlint/Biome toolchain.

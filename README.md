@@ -4,7 +4,10 @@ Scalable, high-performance knowledge graph memory system with semantic retrieval
 
 **Maintained by** [Henry Chong](https://github.com/henrychong-ai)
 
-[![CI/CD](https://github.com/henrychong-ai/mcp-neo4j-knowledge-graph/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/henrychong-ai/mcp-neo4j-knowledge-graph/actions/workflows/ci-cd.yml)
+[![npm version](https://img.shields.io/npm/v/@henrychong-ai/mcp-neo4j-knowledge-graph)](https://www.npmjs.com/package/@henrychong-ai/mcp-neo4j-knowledge-graph)
+[![CI](https://github.com/henrychong-ai/mcp-neo4j-knowledge-graph/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/henrychong-ai/mcp-neo4j-knowledge-graph/actions/workflows/ci-cd.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Node.js](https://img.shields.io/badge/Node.js-%3E%3D24-green)](https://nodejs.org/)
 
 ---
 
@@ -640,7 +643,7 @@ curl http://localhost:9091/metrics
 
 #### Production Deployment
 
-For production deployments (e.g., vps-2), configure Prometheus to scrape the metrics endpoint:
+For production deployments, configure Prometheus to scrape the metrics endpoint:
 
 ```yaml
 scrape_configs:
@@ -973,21 +976,13 @@ docker run -d \
 pnpm run neo4j:init
 ```
 
-## Package Information
+## Contributing
 
-This package is maintained in a private GitHub repository but published publicly to npm:
-
-- **npm Package**: [@henrychong-ai/mcp-neo4j-knowledge-graph](https://www.npmjs.com/package/@henrychong-ai/mcp-neo4j-knowledge-graph)
-- **Installation**: `pnpm install @henrychong-ai/mcp-neo4j-knowledge-graph`
-- **Published Contents**: Compiled JavaScript (dist/), documentation, and type definitions
-- **License**: MIT
-- **Automated Publishing**: GitHub Actions with OIDC authentication
-
-The npm package includes everything needed to use this MCP server - compiled code, documentation, and type definitions. Source TypeScript files and development tooling remain in the private repository.
+Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ## License
 
-MIT
+[MIT](LICENSE) - See the LICENSE file for details.
 
 ## Acknowledgments
 
