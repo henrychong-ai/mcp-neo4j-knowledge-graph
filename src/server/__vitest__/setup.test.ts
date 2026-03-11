@@ -11,7 +11,7 @@ vi.mock('@modelcontextprotocol/sdk/server/index.js', () => {
       return {
         _serverInfo: {
           name: 'mcp-neo4j-knowledge-graph',
-          version: '1.0.0',
+          version: '2.2.3',
           description: 'Neo4j Knowledge Graph: Your persistent knowledge graph memory system',
           publisher: 'henrychong-ai',
         },
@@ -106,7 +106,7 @@ describe('setupServer', () => {
     expect(ServerMock).toHaveBeenCalledWith(
       {
         name: 'mcp-neo4j-knowledge-graph',
-        version: '1.0.0',
+        version: '2.2.3',
       },
       {
         capabilities: {
