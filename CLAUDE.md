@@ -27,8 +27,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | Embeddings      | OpenAI text-embedding-3-small      |
 | Testing         | Vitest 4.x                         |
 | Coverage        | @vitest/coverage-v8                |
-| Linting         | Oxlint 1.48.0 (import, promise, node, vitest plugins) |
-| Formatting      | Biome 2.4.2 (formatter-only, linter disabled)          |
+| Linting         | Oxlint 1.53.0 (import, promise, node, vitest plugins) |
+| Formatting      | Biome 2.4.6 (formatter-only, linter disabled)          |
 | Git Hooks       | Husky + lint-staged                |
 
 ## Getting Started

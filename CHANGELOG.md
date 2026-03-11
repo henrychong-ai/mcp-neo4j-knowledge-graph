@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.3] - 2026-03-11
+
+### Security
+
+- Fix 3 Dependabot security alerts via pnpm overrides:
+  - **HIGH**: @hono/node-server authorization bypass via encoded slashes (GHSA-wc8c-qw6v-h7f6) — override to ≥1.19.10
+  - **HIGH**: express-rate-limit IPv4-mapped IPv6 bypass (new override ≥8.2.2)
+  - **MEDIUM**: hono prototype pollution via \_\_proto\_\_ in parseBody (override bumped to ≥4.12.7)
+
+### Changed
+
+- **Dependency Updates**:
+  - @biomejs/biome 2.4.2→2.4.6, @types/node 24.10.9→25.4.0, oxlint 1.48.0→1.53.0
+  - Transitive: hono→4.12.7, @hono/node-server→1.19.11, express-rate-limit→8.3.1
+- Fix stale MCP server version in setup.ts (was hardcoded '1.0.0', now '2.2.3')
+- Close 3 Dependabot PRs (#11–#13) superseded by direct updates
+- 834 tests passing
+
 ## [2.2.0] - 2026-03-04
 
 ### Changed
