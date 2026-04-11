@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.5] - 2026-04-11
+
+### Security
+
+Security patches — dependabot advisories resolved. All 16 open alerts addressed via `pnpm.overrides` (vulnerable packages are transitive-only).
+
+- **hono 4.12.7 → 4.12.12** — 5 advisories: cookie prefix bypass (GHSA-r5rp-j6wh-rvv4), cookie name validation in `setCookie()`, IPv4-mapped IPv6 `ipRestriction()` bypass, `serveStatic` repeated-slash middleware bypass, `toSSG()` path traversal
+- **@hono/node-server 1.19.11 → 1.19.13** — `serveStatic` middleware bypass
+- **vite 7.3.1 → 7.3.2** (via `vitest`) — WebSocket arbitrary file read, `server.fs.deny` query bypass, optimized deps `.map` path traversal
+- **picomatch 2.3.1 → 2.3.2 and 4.0.3 → 4.0.4** — ReDoS via extglob quantifiers and method injection in POSIX character classes
+- **path-to-regexp 8.3.0 → 8.4.2** (via `express` → `@modelcontextprotocol/sdk`) — DoS via sequential optional groups and multiple wildcards
+- **yaml 2.8.2 → 2.8.3** — stack overflow via deeply nested YAML collections
+
+### Changed
+
+- `pnpm.overrides`: bump `hono` override ≥4.12.7 → ≥4.12.12, `@hono/node-server` ≥1.19.10 → ≥1.19.13; add `vite ^7.3.2`, `picomatch ≥4.0.4` (with nested `micromatch>picomatch ^2.3.2` for shelljs/fast-glob compat), `path-to-regexp@>=8.0.0 <8.4.0 ≥8.4.0`, `yaml@>=2.0.0 <2.8.3 ≥2.8.3`
+- 834 tests passing
+
 ## [2.2.3] - 2026-03-11
 
 ### Security

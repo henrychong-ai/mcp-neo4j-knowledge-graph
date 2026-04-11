@@ -1,6 +1,6 @@
 {
   "name": "@henrychong-ai/mcp-neo4j-knowledge-graph",
-  "version": "2.2.4",
+  "version": "2.2.5",
   "description": "Neo4j-based knowledge graph MCP server with temporal versioning and semantic search",
   "license": "MIT",
   "author": "Henry Chong <henry@henrychong.ai>",
@@ -87,10 +87,15 @@
       "@isaacs/brace-expansion": ">=5.0.1",
       "rollup": ">=4.59.0",
       "ajv": ">=8.18.0",
-      "hono": ">=4.12.7",
-      "@hono/node-server": ">=1.19.10",
+      "hono": ">=4.12.12",
+      "@hono/node-server": ">=1.19.13",
       "express-rate-limit": ">=8.2.2",
-      "qs": ">=6.14.2"
+      "qs": ">=6.14.2",
+      "vite": "^7.3.2",
+      "picomatch": ">=4.0.4",
+      "micromatch>picomatch": "^2.3.2",
+      "path-to-regexp@>=8.0.0 <8.4.0": ">=8.4.0",
+      "yaml@>=2.0.0 <2.8.3": ">=2.8.3"
     }
   },
   "lint-staged": {
