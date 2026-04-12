@@ -19,16 +19,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | Layer           | Technology                         |
 | --------------- | ---------------------------------- |
 | Runtime         | Node.js >=24 LTS                   |
-| Language        | TypeScript 5.x (ES2024 target)     |
-| Package Manager | pnpm 10.30.0                       |
+| Language        | TypeScript (ES2024 target)         |
+| Package Manager | pnpm                               |
 | Database        | Neo4j 5.13+ (Community/Enterprise) |
-| Protocol        | MCP SDK 1.x                        |
-| Validation      | Zod 4.x                            |
+| Protocol        | MCP SDK                            |
+| Validation      | Zod                                |
 | Embeddings      | OpenAI text-embedding-3-small      |
-| Testing         | Vitest 4.x                         |
-| Coverage        | @vitest/coverage-v8                |
-| Linting         | Oxlint 1.53.0 (import, promise, node, vitest plugins) |
-| Formatting      | Biome 2.4.6 (formatter-only, linter disabled)          |
+| Testing         | Vitest + @vitest/coverage-v8       |
+| Linting         | Oxlint (import, promise, node, vitest plugins) |
+| Formatting      | Biome (formatter-only, linter disabled)         |
 | Git Hooks       | Husky + lint-staged                |
 
 ## Getting Started
