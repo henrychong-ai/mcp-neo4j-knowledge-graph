@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.6] - 2026-04-15
+
+### Changed
+
+- **Dependency Updates** (minor/patch only, no major bumps):
+  - `@modelcontextprotocol/sdk` ^1.28.0 → ^1.29.0
+  - `axios` ^1.14.0 → ^1.15.0
+  - `dotenv` ^17.3.1 → ^17.4.2
+  - `lru-cache` ^11.2.7 → ^11.3.5
+  - `@biomejs/biome` ^2.4.9 → ^2.4.12
+  - `@types/node` ^25.4.0 → ^25.6.0
+  - `@vitest/coverage-v8` ^4.1.2 → ^4.1.4
+  - `oxlint` ^1.57.0 → ^1.60.0
+  - `vitest` ^4.1.2 → ^4.1.4
+- 828 tests passing; lint, format, typecheck, build all green.
+
+### Deferred
+
+- `typescript` 5.9.3 → 6.0.2 (major bump — deferred for separate review)
+
 ## [2.2.5] - 2026-04-11
 
 ### Security
