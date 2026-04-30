@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.7] - 2026-04-30
+
+### Security
+
+- **follow-redirects** 1.15.11 → 1.16.0 via `pnpm.overrides` (transitive through `axios`). Addresses Dependabot PR #30.
+
+### Changed
+
+- **Dependency Updates** (minor/patch only, no major bumps):
+  - `axios` ^1.15.0 → ^1.15.2 (patch — Dependabot PR #34)
+  - `zod` ^4.3.6 → ^4.4.1 (minor)
+  - `@biomejs/biome` ^2.4.12 → ^2.4.13 (patch)
+  - `@vitest/coverage-v8` ^4.1.4 → ^4.1.5 (patch)
+  - `oxlint` ^1.60.0 → ^1.62.0 (minor)
+  - `vitest` ^4.1.4 → ^4.1.5 (patch — Dependabot PR #35)
+- 828 tests passing; lint, format, typecheck, build all green.
+
+### Deferred
+
+- `typescript` 5.9.3 → 6.0.3 (major bump — Dependabot PR #31, deferred for separate review)
+- `uuid` 13.0.0 → 14.0.0 (major bump — Dependabot PR #33, deferred for separate review)
+
 ## [2.2.6] - 2026-04-15
 
 ### Changed
