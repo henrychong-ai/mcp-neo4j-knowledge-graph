@@ -7,6 +7,7 @@ import { EmbeddingServiceFactory } from './embeddings/EmbeddingServiceFactory.js
 import { KnowledgeGraphManager } from './KnowledgeGraphManager.js';
 import { PrometheusMetrics } from './metrics/PrometheusMetrics.js';
 import { setupServer } from './server/setup.js';
+import { createAdaptedStorageProvider } from './storage/createAdaptedStorageProvider.js';
 import { logger } from './utils/logger.js';
 
 // Re-export the types and classes for use in other modules
@@ -62,64 +63,7 @@ try {
     storageType: process.env.MEMORY_STORAGE_TYPE || 'neo4j',
   });
 
-  // For Neo4j (which is always the storage provider)
-  // Create a compatible wrapper for the Neo4j storage provider
-  const adaptedStorageProvider = {
-    ...storageProvider,
-    // Add a fake db with exec function for compatibility
-    db: {
-      exec: (sql: string) => {
-        logger.debug(`Neo4j adapter: Received SQL: ${sql}`);
-        // No-op, just for compatibility
-        return null;
-      },
-      prepare: () => ({
-        run: () => null,
-        all: () => [],
-        get: () => null,
-      }),
-    },
-    // Make sure getEntity is available
-    getEntity: async (name: string) => {
-      if (typeof storageProvider.getEntity === 'function') {
-        return storageProvider.getEntity(name);
-      }
-      const result = await storageProvider.openNodes([name]);
-      return result.entities[0] || null;
-    },
-    // Make sure storeEntityVector is available
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    storeEntityVector: async (name: string, embedding: any) => {
-      logger.debug(`Neo4j adapter: storeEntityVector called for ${name}`, {
-        embeddingType: typeof embedding,
-        vectorLength: embedding?.vector?.length || 'no vector',
-        model: embedding?.model || 'no model',
-      });
-
-      // Ensure embedding has the correct format
-      const formattedEmbedding = {
-        vector: embedding.vector || embedding,
-        model: embedding.model || 'unknown',
-        lastUpdated: embedding.lastUpdated || Date.now(),
-      };
-
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      if (typeof (storageProvider as any).updateEntityEmbedding === 'function') {
-        try {
-          logger.debug(`Neo4j adapter: Using updateEntityEmbedding for ${name}`);
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          return await (storageProvider as any).updateEntityEmbedding(name, formattedEmbedding);
-        } catch (error) {
-          logger.error(`Neo4j adapter: Error in storeEntityVector for ${name}`, error);
-          throw error;
-        }
-      } else {
-        const errorMsg = `Neo4j adapter: Neither storeEntityVector nor updateEntityEmbedding implemented for ${name}`;
-        logger.error(errorMsg);
-        throw new Error(errorMsg);
-      }
-    },
-  };
+  const adaptedStorageProvider = createAdaptedStorageProvider(storageProvider);
 
   // Create the embedding job manager with adapted storage provider
   embeddingJobManager = new EmbeddingJobManager(
