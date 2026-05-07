@@ -46,6 +46,8 @@ function makeStorage(entities: MockEntity[] = []) {
       return (map.get(name) as Entity | undefined) ?? null;
     }),
     storeEntityVector: vi.fn(async (_name: string, _embedding: EntityEmbedding) => {}),
+    // v2.4.1+ predicate-driven lookup; tests can override via mockResolvedValue
+    getEntityNamesMissingEmbeddings: vi.fn(async (): Promise<string[]> => []),
   };
 }
 
@@ -367,24 +369,12 @@ describe('cache', () => {
 });
 
 describe('scheduleIncrementalRegeneration', () => {
-  it('enqueues only entities lacking embeddings', async () => {
-    const storage = makeStorage([
-      { name: 'A', entityType: 't', observations: ['x'] },
-      { name: 'B', entityType: 't', observations: ['x'] },
-    ]);
-    // B has an embedding already
-    storage.loadGraph.mockResolvedValue({
-      entities: [
-        { name: 'A', entityType: 't', observations: ['x'] } as Entity,
-        {
-          name: 'B',
-          entityType: 't',
-          observations: ['x'],
-          embedding: { vector: [0.1], model: 'test', lastUpdated: Date.now() },
-        } as Entity,
-      ],
-      relations: [],
-    });
+  it('uses storage.getEntityNamesMissingEmbeddings() to enqueue only missing entities', async () => {
+    const storage = makeStorage([{ name: 'A', entityType: 't', observations: ['x'] }]);
+    // The provider's predicate is the source of truth; B has its embedding so
+    // is excluded from the result.
+    storage.getEntityNamesMissingEmbeddings.mockResolvedValue(['A']);
+
     const store = new FakeJobStore();
     const mgr = new EmbeddingJobManager(
       storage as never,
@@ -398,6 +388,63 @@ describe('scheduleIncrementalRegeneration', () => {
     const scheduled = await mgr.scheduleIncrementalRegeneration();
 
     expect(scheduled).toBe(1);
+    expect(storage.getEntityNamesMissingEmbeddings).toHaveBeenCalledOnce();
+    expect(storage.loadGraph).not.toHaveBeenCalled();
+    expect(store._byStatus('pending').map(j => j.entityName)).toEqual(['A']);
+  });
+
+  it('returns 0 when every entity is already embedded — fixes v2.4.0 over-enqueue bug', async () => {
+    const storage = makeStorage([{ name: 'A', entityType: 't', observations: ['x'] }]);
+    storage.getEntityNamesMissingEmbeddings.mockResolvedValue([]);
+
+    const store = new FakeJobStore();
+    const mgr = new EmbeddingJobManager(
+      storage as never,
+      makeEmbeddingService(),
+      null,
+      null,
+      null,
+      store
+    );
+
+    const scheduled = await mgr.scheduleIncrementalRegeneration();
+
+    expect(scheduled).toBe(0);
+    expect(store._byStatus('pending')).toHaveLength(0);
+  });
+
+  it('falls back to loadGraph()+filter when the predicate method is unavailable', async () => {
+    const storage = makeStorage([{ name: 'A', entityType: 't', observations: ['x'] }]);
+    // Drop the predicate method to force the fallback path
+    delete (storage as { getEntityNamesMissingEmbeddings?: unknown })
+      .getEntityNamesMissingEmbeddings;
+    storage.loadGraph.mockResolvedValue({
+      entities: [
+        { name: 'A', entityType: 't', observations: ['x'] } as Entity,
+        {
+          name: 'B',
+          entityType: 't',
+          observations: ['x'],
+          embedding: { vector: [0.1], model: 'test', lastUpdated: Date.now() },
+        } as Entity,
+      ],
+      relations: [],
+    });
+
+    const store = new FakeJobStore();
+    const mgr = new EmbeddingJobManager(
+      storage as never,
+      makeEmbeddingService(),
+      null,
+      null,
+      null,
+      store
+    );
+
+    const scheduled = await mgr.scheduleIncrementalRegeneration();
+
+    expect(scheduled).toBe(1);
+    expect(storage.loadGraph).toHaveBeenCalledOnce();
     expect(store._byStatus('pending').map(j => j.entityName)).toEqual(['A']);
   });
 });

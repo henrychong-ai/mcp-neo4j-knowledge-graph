@@ -386,6 +386,38 @@ describe('Neo4jStorageProvider', () => {
     });
   });
 
+  describe('getEntityNamesMissingEmbeddings (v2.4.1)', () => {
+    it('runs the IS NULL predicate Cypher and maps records to plain strings', async () => {
+      // Override the connection manager mock for this test so the Cypher
+      // hits a fresh executeQuery returning two name records.
+      const cm = storageProvider.getConnectionManager();
+      const exec = cm.executeQuery as unknown as ReturnType<typeof vi.fn>;
+      exec.mockResolvedValueOnce({
+        records: [
+          { get: (k: string) => (k === 'name' ? 'orphan-A' : null) },
+          { get: (k: string) => (k === 'name' ? 'orphan-B' : null) },
+        ],
+      });
+
+      const names = await storageProvider.getEntityNamesMissingEmbeddings();
+
+      expect(names).toEqual(['orphan-A', 'orphan-B']);
+      const lastCall = exec.mock.calls.at(-1);
+      expect(lastCall?.[0]).toMatch(/MATCH \(e:Entity\)/);
+      expect(lastCall?.[0]).toMatch(/e\.embedding IS NULL/);
+      expect(lastCall?.[0]).toMatch(/RETURN e\.name AS name/);
+    });
+
+    it('returns an empty array when no entities are missing embeddings', async () => {
+      const cm = storageProvider.getConnectionManager();
+      const exec = cm.executeQuery as unknown as ReturnType<typeof vi.fn>;
+      exec.mockResolvedValueOnce({ records: [] });
+
+      const names = await storageProvider.getEntityNamesMissingEmbeddings();
+      expect(names).toEqual([]);
+    });
+  });
+
   describe('createEntities', () => {
     it('should create entities in Neo4j', async () => {
       const entities: Entity[] = [

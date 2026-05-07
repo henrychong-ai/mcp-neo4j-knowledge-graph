@@ -99,4 +99,26 @@ describe('createAdaptedStorageProvider', () => {
 
     expect(adapter.db).toBeUndefined();
   });
+
+  it('forwards getEntityNamesMissingEmbeddings (v2.4.1) when present on provider', async () => {
+    class WithPredicate extends FakeProvider {
+      async getEntityNamesMissingEmbeddings(): Promise<string[]> {
+        return ['orphan-1', 'orphan-2'];
+      }
+    }
+    const provider = new WithPredicate() as unknown as StorageProvider;
+    const adapter = createAdaptedStorageProvider(provider);
+
+    const names = await adapter.getEntityNamesMissingEmbeddings();
+    expect(names).toEqual(['orphan-1', 'orphan-2']);
+  });
+
+  it('throws a clear error if getEntityNamesMissingEmbeddings is missing on provider', async () => {
+    const provider = new FakeProvider() as unknown as StorageProvider;
+    const adapter = createAdaptedStorageProvider(provider);
+
+    await expect(adapter.getEntityNamesMissingEmbeddings()).rejects.toThrow(
+      /no getEntityNamesMissingEmbeddings method/
+    );
+  });
 });

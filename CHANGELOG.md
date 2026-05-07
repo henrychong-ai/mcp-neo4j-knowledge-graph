@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.4.1] - 2026-05-07
+
+### Fixed
+
+- **`scheduleIncrementalRegeneration` over-enqueueing all entities every cron tick** — `Neo4jStorageProvider.loadGraph()`'s mapper (`nodeToEntity`) silently strips the `embedding` property from returned entities. The cron's filter `entity => !entity.embedding` was therefore matching ALL entities every minute, regardless of actual embedding state. With the v2.x silent-no-op queue this was invisible; with v2.4.0's working queue it manifested as ~1900 phantom pending jobs being re-enqueued (then deduped on the pending side, but still wasteful).
+
+### Added
+
+- **`Neo4jStorageProvider.getEntityNamesMissingEmbeddings()`** — efficient predicate-driven Cypher (`MATCH (e:Entity) WHERE e.validTo IS NULL AND e.embedding IS NULL RETURN e.name AS name`). Returns only entity names, not full entity objects.
+- **`createAdaptedStorageProvider`** forwards the new method through the adapter.
+- **`EmbeddingStorageProvider` interface** declares the method as optional, with `EmbeddingJobManager` preferring it over the legacy `loadGraph()`-and-filter path. Falls back gracefully if a storage provider doesn't implement it.
+
+### Migration
+
+- No data migration required. The new method is automatically used by the cron tick on first start. Operators running v2.4.0 should upgrade to v2.4.1 to eliminate the phantom-job churn (no correctness impact in v2.4.0 thanks to dedup-on-pending in `Neo4jJobStore.enqueue` plus LRU cache hits in the worker, but it does waste journal lines + a small amount of rate-limiter budget).
+
 ## [2.4.0] - 2026-05-07
 
 ### Added
