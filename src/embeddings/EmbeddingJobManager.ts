@@ -54,6 +54,13 @@ interface Logger {
 interface EmbeddingStorageProvider extends StorageProvider {
   getEntity(entityName: string): Promise<Entity | null>;
   storeEntityVector(entityName: string, embedding: EntityEmbedding): Promise<void>;
+  /**
+   * Optional: efficient predicate-based lookup for entities lacking an embedding.
+   * When present, `scheduleIncrementalRegeneration` prefers it over the
+   * `loadGraph()`-and-filter fallback (which strips the embedding property in
+   * its return mapper and so always reports 100% missing).
+   */
+  getEntityNamesMissingEmbeddings?(): Promise<string[]>;
 }
 
 interface QueueStatus {
@@ -419,39 +426,33 @@ export class EmbeddingJobManager {
   }
 
   /**
-   * Walk every current entity and enqueue jobs for any that are missing
-   * embeddings. Intended for a server-side cron tick to backfill entities
+   * Enqueue embedding jobs for every currently-valid entity that lacks an
+   * embedding. Intended for a server-side cron tick to backfill entities
    * created by thin clients running with `WRITE_EMBEDDINGS_LOCALLY=false`.
+   *
+   * v2.4.1+ — prefers `storageProvider.getEntityNamesMissingEmbeddings()`
+   * when available (a single Cypher predicate, no client-side filtering).
+   * Falls back to the legacy `loadGraph`-and-filter path for compatibility,
+   * but that path is buggy with the current `nodeToEntity` mapper which
+   * strips the embedding property — so it always reports 100% missing.
    */
   async scheduleIncrementalRegeneration(): Promise<number> {
     this.logger.info('Starting incremental embedding regeneration check');
     try {
-      const allEntities = await this._getAllEntitiesFromStorage();
-      this.logger.debug('Retrieved entities for embedding check', {
-        totalCount: allEntities.length,
-      });
+      const missingNames = await this._getEntityNamesMissingEmbeddings();
 
-      const entitiesWithoutEmbeddings = allEntities.filter(entity => !entity.embedding);
-
-      const total = allEntities.length;
-      const coverage =
-        total > 0
-          ? `${Math.round(((total - entitiesWithoutEmbeddings.length) / total) * 100)}%`
-          : '0%';
       this.logger.info('Found entities without embeddings', {
-        count: entitiesWithoutEmbeddings.length,
-        totalEntities: total,
-        coverage,
+        count: missingNames.length,
       });
 
       let scheduledCount = 0;
-      for (const entity of entitiesWithoutEmbeddings) {
+      for (const name of missingNames) {
         try {
-          await this.scheduleEntityEmbedding(entity.name, 1);
+          await this.scheduleEntityEmbedding(name, 1);
           scheduledCount++;
         } catch (error) {
           this.logger.warn('Failed to schedule embedding for entity', {
-            entityName: entity.name,
+            entityName: name,
             error: error instanceof Error ? error.message : String(error),
           });
         }
@@ -459,7 +460,7 @@ export class EmbeddingJobManager {
 
       this.logger.info('Incremental regeneration scheduling complete', {
         scheduled: scheduledCount,
-        missing: entitiesWithoutEmbeddings.length,
+        missing: missingNames.length,
       });
       return scheduledCount;
     } catch (error) {
@@ -469,6 +470,22 @@ export class EmbeddingJobManager {
       });
       throw error;
     }
+  }
+
+  /**
+   * Resolve the list of entity names lacking embeddings. Prefer the storage
+   * provider's dedicated Cypher predicate; otherwise fall back to walking
+   * `loadGraph()` (legacy, suboptimal — see the v2.4.1 notes above).
+   */
+  private async _getEntityNamesMissingEmbeddings(): Promise<string[]> {
+    if (typeof this.storageProvider.getEntityNamesMissingEmbeddings === 'function') {
+      return this.storageProvider.getEntityNamesMissingEmbeddings();
+    }
+    this.logger.warn(
+      'storageProvider.getEntityNamesMissingEmbeddings not available — falling back to loadGraph()'
+    );
+    const allEntities = await this._getAllEntitiesFromStorage();
+    return allEntities.filter(e => !e.embedding).map(e => e.name);
   }
 
   private async _getAllEntitiesFromStorage(): Promise<Entity[]> {

@@ -26,6 +26,21 @@ export function createAdaptedStorageProvider(storageProvider: StorageProvider): 
       throw new Error('Underlying storage provider has no loadGraph method');
     },
 
+    // v2.4.1+: prefer the dedicated Cypher predicate over a full loadGraph
+    // when scheduling incremental regeneration. Falls through to undefined if
+    // the underlying provider doesn't expose this method, in which case the
+    // manager falls back to the loadGraph-and-filter approach.
+    getEntityNamesMissingEmbeddings: async (): Promise<string[]> => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const fn = (storageProvider as any).getEntityNamesMissingEmbeddings;
+      if (typeof fn !== 'function') {
+        throw new Error(
+          'Underlying storage provider has no getEntityNamesMissingEmbeddings method'
+        );
+      }
+      return fn.call(storageProvider);
+    },
+
     getEntity: async (name: string) => {
       if (typeof storageProvider.getEntity === 'function') {
         return storageProvider.getEntity(name);

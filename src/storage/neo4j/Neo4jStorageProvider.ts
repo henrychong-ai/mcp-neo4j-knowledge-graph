@@ -1993,6 +1993,30 @@ export class Neo4jStorageProvider implements StorageProvider {
   }
 
   /**
+   * Return the names of currently-valid entities that have no embedding.
+   *
+   * Direct Cypher predicate (`e.embedding IS NULL`) so the database does the
+   * filtering instead of materialising every entity into memory and inspecting
+   * a stripped-down JS object — `loadGraph()` discards the `embedding` field
+   * via `nodeToEntity`, so consumers that filtered on `entity.embedding` were
+   * always seeing 100% of entities as "missing". This method is the right
+   * primitive for `EmbeddingJobManager.scheduleIncrementalRegeneration`.
+   *
+   * @returns Array of entity names that need an embedding job scheduled.
+   */
+  async getEntityNamesMissingEmbeddings(): Promise<string[]> {
+    const result = await this.connectionManager.executeQuery(
+      `
+      MATCH (e:Entity)
+      WHERE e.validTo IS NULL AND e.embedding IS NULL
+      RETURN e.name AS name
+      `,
+      {}
+    );
+    return result.records.map(r => String(r.get('name')));
+  }
+
+  /**
    * Store or update the embedding vector for an entity
    * @param entityName The name of the entity to update
    * @param embedding The embedding data to store
