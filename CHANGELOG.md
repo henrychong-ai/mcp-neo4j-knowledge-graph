@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.4.2] - 2026-05-07
+
+### Changed
+
+- **Dependency bumps (minor/patch only):**
+  - `axios` 1.15.2 → 1.16.0 (minor; fetch adapter now enforces `maxBodyLength`/`maxContentLength`, proxy preserves user `Host` headers, basic-auth in URLs URL-decoded — see axios v1.16.0 release notes)
+  - `zod` 4.4.1 → 4.4.3 (patch)
+  - `lru-cache` 11.3.5 → 11.3.6 (patch)
+  - `@biomejs/biome` 2.4.13 → 2.4.14 (patch, dev)
+  - `@types/node` 25.6.0 → 25.6.1 (patch, dev)
+  - `oxlint` 1.62.0 → 1.63.0 (minor, dev)
+
+Major-version Dependabot PRs (uuid 13→14 #33, typescript 5→6 #31, group bump #40) deliberately skipped this round; they require code/runtime audits. Dependabot PR #34 (axios 1.15→1.16) is superseded by this bump and can be closed.
+
+### Validated
+
+- `pnpm run check` (oxlint + biome format:check + tsc --noEmit) — clean
+- `pnpm test` — 809 passed, 23 skipped, 0 failures
+- `pnpm run build` — clean
+
 ## [2.4.1] - 2026-05-07
 
 ### Fixed
