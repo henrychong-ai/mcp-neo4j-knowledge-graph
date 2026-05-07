@@ -684,6 +684,68 @@ describe('Neo4jStorageProvider', () => {
 
       expect(storageProvider.getConnectionManager().getSession).toHaveBeenCalled();
     });
+
+    // v2.3.1: provenance metadata stamping
+    it('should pass model + generatedAt params to the Cypher write', async () => {
+      // Capture the txc.run params on the next updateEntityEmbedding call
+      const runSpy = vi.fn().mockResolvedValue({ records: [] });
+      const sessionMock = {
+        beginTransaction: vi.fn().mockReturnValue({
+          run: runSpy,
+          commit: vi.fn().mockResolvedValue(undefined),
+          rollback: vi.fn().mockResolvedValue(undefined),
+        }),
+        close: vi.fn().mockResolvedValue(undefined),
+      };
+      vi.spyOn(storageProvider.getConnectionManager(), 'getSession').mockResolvedValueOnce(
+        sessionMock as never
+      );
+
+      const embedding = {
+        vector: [0.1, -0.2, 0.3],
+        model: 'text-embedding-3-small',
+        lastUpdated: 1_700_000_000_000,
+      };
+
+      await storageProvider.updateEntityEmbedding('test-entity', embedding);
+
+      expect(runSpy).toHaveBeenCalledTimes(1);
+      const [cypher, params] = runSpy.mock.calls[0] as [string, Record<string, unknown>];
+      expect(cypher).toContain('e.embeddingModel = $model');
+      expect(cypher).toContain('e.embeddingGeneratedAt = $generatedAt');
+      expect(params.model).toBe('text-embedding-3-small');
+      expect(params.generatedAt).toBe(1_700_000_000_000);
+      expect(params.embedding).toEqual([0.1, -0.2, 0.3]);
+    });
+
+    it('falls back to current timestamp when embedding.lastUpdated is missing', async () => {
+      const runSpy = vi.fn().mockResolvedValue({ records: [] });
+      const sessionMock = {
+        beginTransaction: vi.fn().mockReturnValue({
+          run: runSpy,
+          commit: vi.fn().mockResolvedValue(undefined),
+          rollback: vi.fn().mockResolvedValue(undefined),
+        }),
+        close: vi.fn().mockResolvedValue(undefined),
+      };
+      vi.spyOn(storageProvider.getConnectionManager(), 'getSession').mockResolvedValueOnce(
+        sessionMock as never
+      );
+
+      const before = Date.now();
+      // lastUpdated omitted (cast to fit type, simulating callers passing a partial object)
+      const embedding = {
+        vector: [0.1],
+        model: 'text-embedding-3-small',
+      } as unknown as Parameters<typeof storageProvider.updateEntityEmbedding>[1];
+
+      await storageProvider.updateEntityEmbedding('test-entity', embedding);
+      const after = Date.now();
+
+      const [, params] = runSpy.mock.calls[0] as [string, Record<string, unknown>];
+      expect(params.generatedAt).toBeGreaterThanOrEqual(before);
+      expect(params.generatedAt).toBeLessThanOrEqual(after);
+    });
   });
 
   // Helper methods
