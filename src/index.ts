@@ -4,10 +4,12 @@ import cron from 'node-cron';
 import { initializeStorageProvider } from './config/storage.js';
 import { EmbeddingJobManager } from './embeddings/EmbeddingJobManager.js';
 import { EmbeddingServiceFactory } from './embeddings/EmbeddingServiceFactory.js';
+import { Neo4jJobStore } from './embeddings/Neo4jJobStore.js';
 import { KnowledgeGraphManager } from './KnowledgeGraphManager.js';
 import { PrometheusMetrics } from './metrics/PrometheusMetrics.js';
 import { setupServer } from './server/setup.js';
 import { createAdaptedStorageProvider } from './storage/createAdaptedStorageProvider.js';
+import type { Neo4jConnectionManager } from './storage/neo4j/Neo4jConnectionManager.js';
 import { logger } from './utils/logger.js';
 
 // Re-export the types and classes for use in other modules
@@ -22,6 +24,9 @@ const storageProvider = initializeStorageProvider();
 // See README "Embedding Pipeline Topology" for what these env flags do.
 const writeEmbeddingsLocally = process.env.WRITE_EMBEDDINGS_LOCALLY !== 'false';
 const embeddingBackfillCron = process.env.EMBEDDING_BACKFILL_CRON ?? '0 19 * * *';
+const staleClaimMs = process.env.EMBEDDING_STALE_CLAIM_MS
+  ? Number.parseInt(process.env.EMBEDDING_STALE_CLAIM_MS, 10)
+  : 5 * 60 * 1000;
 
 // Initialize Prometheus metrics (will be initialized in production environment only)
 let prometheusMetrics: PrometheusMetrics | null = null;
@@ -65,14 +70,30 @@ try {
 
   const adaptedStorageProvider = createAdaptedStorageProvider(storageProvider);
 
-  // Create the embedding job manager with adapted storage provider
+  // Pull the Neo4j connection out of the storage provider so the queue
+  // shares the same driver/pool. Falls back to throwing if missing — we
+  // only support Neo4j storage in v2.x.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const getConnectionManager = (storageProvider as any).getConnectionManager;
+  if (typeof getConnectionManager !== 'function') {
+    throw new Error(
+      'Storage provider does not expose getConnectionManager(); EmbeddingJobManager v2.4.0+ requires Neo4j.'
+    );
+  }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const connectionManager: Neo4jConnectionManager = getConnectionManager.call(storageProvider);
+  const jobStore = new Neo4jJobStore(connectionManager);
+
+  // Create the embedding job manager with adapted storage provider + Neo4j-backed queue
   embeddingJobManager = new EmbeddingJobManager(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     adaptedStorageProvider as any,
     embeddingService,
     rateLimiterOptions,
     null, // Use default cache options
-    logger
+    logger,
+    jobStore,
+    staleClaimMs
   );
 
   logger.info('EmbeddingJobManager initialized (background jobs will start only in production)');

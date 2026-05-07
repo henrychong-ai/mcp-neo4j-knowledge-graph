@@ -3,6 +3,7 @@ import type { EmbeddingService } from '../EmbeddingService.js';
 import type { Entity, KnowledgeGraph } from '../../KnowledgeGraphManager.js';
 import type { EntityEmbedding } from '../../types/entity-embedding.js';
 import type { Relation } from '../../types/relation.js';
+import { FakeJobStore } from './helpers/FakeJobStore.js';
 
 // Define our MockStorageProvider interface
 // Renamed to avoid name collision
@@ -141,7 +142,14 @@ describe('KnowledgeGraphManager integration with EmbeddingJobManager', () => {
     const { KnowledgeGraphManager } = await import('../../KnowledgeGraphManager.js');
 
     // Create instances
-    embeddingJobManager = new EmbeddingJobManager(mockStorageProvider, mockEmbeddingService);
+    embeddingJobManager = new EmbeddingJobManager(
+      mockStorageProvider,
+      mockEmbeddingService,
+      null,
+      null,
+      null,
+      new FakeJobStore()
+    );
 
     // Spy on the embeddings scheduling method
     vi.spyOn(embeddingJobManager, 'scheduleEntityEmbedding');

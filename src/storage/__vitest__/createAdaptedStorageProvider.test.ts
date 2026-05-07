@@ -93,13 +93,10 @@ describe('createAdaptedStorageProvider', () => {
     });
   });
 
-  it('exposes a stub `.db` shim for EmbeddingJobManager initialization', () => {
+  it('does NOT expose a `.db` field — queue persistence moved to JobStore in v2.4.0', () => {
     const provider = new FakeProvider() as unknown as StorageProvider;
     const adapter = createAdaptedStorageProvider(provider);
 
-    expect(typeof adapter.db).toBe('object');
-    expect(typeof adapter.db.exec).toBe('function');
-    expect(typeof adapter.db.prepare).toBe('function');
-    expect(adapter.db.exec('CREATE TABLE test (id INT)')).toBeNull();
+    expect(adapter.db).toBeUndefined();
   });
 });

@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { KnowledgeGraphManager } from '../../KnowledgeGraphManager.js';
-import { SqliteStorageProvider } from '../../storage/SqliteStorageProvider.js';
 import { EmbeddingJobManager } from '../EmbeddingJobManager.js';
 import { DefaultEmbeddingService } from '../DefaultEmbeddingService.js';
+import { FakeJobStore } from './helpers/FakeJobStore.js';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
@@ -88,8 +88,15 @@ describe('Automatic Embedding Generation', () => {
     // Initialize embedding service
     const embeddingService = new DefaultEmbeddingService();
 
-    // Initialize job manager with the mocked storage provider
-    embeddingJobManager = new EmbeddingJobManager(storageProvider, embeddingService);
+    // Initialize job manager with the mocked storage provider + in-memory queue
+    embeddingJobManager = new EmbeddingJobManager(
+      storageProvider,
+      embeddingService,
+      null,
+      null,
+      null,
+      new FakeJobStore()
+    );
 
     // Initialize knowledge graph manager
     knowledgeGraphManager = new KnowledgeGraphManager({

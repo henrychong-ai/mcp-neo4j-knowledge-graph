@@ -595,6 +595,10 @@ WRITE_EMBEDDINGS_LOCALLY=true       # Default true. Set to "false" on thin-clien
 EMBEDDING_BACKFILL_CRON='0 19 * * *' # Cron schedule for scheduleIncrementalRegeneration. Default
                                      # 19:00 UTC daily (= 03:00 SGT). Server-side instances may
                                      # tighten to '*/1 * * * *' for ~1-minute backfill latency.
+EMBEDDING_STALE_CLAIM_MS=300000      # (v2.4.0+) Claims older than this age are auto-released back
+                                     # to 'pending' on the next processJobs tick. Default 5 minutes.
+                                     # Increase if your worker's batch processing time can exceed
+                                     # this; decrease for faster recovery from worker crashes.
 
 # Logging Configuration
 LOG_LEVEL=warn              # Log level: debug, info, warn, error, silent (default: warn)
