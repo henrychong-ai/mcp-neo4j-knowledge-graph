@@ -111,6 +111,8 @@ interface KnowledgeGraphManagerOptions {
   storageProvider?: StorageProvider;
   embeddingJobManager?: EmbeddingJobManager;
   vectorStoreOptions?: VectorStoreFactoryOptions;
+  /** When false, skip queueing embedding jobs locally. See README "Embedding Pipeline Topology". */
+  writeEmbeddingsLocally?: boolean;
 }
 
 // The KnowledgeGraphManager class contains all operations to interact with the knowledge graph
@@ -118,10 +120,12 @@ export class KnowledgeGraphManager {
   private storageProvider?: StorageProvider;
   private embeddingJobManager?: EmbeddingJobManager;
   private vectorStore?: VectorStore;
+  private writeEmbeddingsLocally: boolean;
 
   constructor(options?: KnowledgeGraphManagerOptions) {
     this.storageProvider = options?.storageProvider;
     this.embeddingJobManager = options?.embeddingJobManager;
+    this.writeEmbeddingsLocally = options?.writeEmbeddingsLocally ?? true;
 
     // If no storage provider is given, log a deprecation warning
     if (!this.storageProvider) {
@@ -135,6 +139,13 @@ export class KnowledgeGraphManager {
       this.initializeVectorStore(options.vectorStoreOptions).catch(error => {
         logger.error('Failed to initialize vector store during construction', error);
       });
+    }
+  }
+
+  private async queueEmbeddings(names: string[], priority: number): Promise<void> {
+    if (!this.embeddingJobManager || !this.writeEmbeddingsLocally) return;
+    for (const name of names) {
+      await this.embeddingJobManager.scheduleEntityEmbedding(name, priority);
     }
   }
 
@@ -289,11 +300,10 @@ export class KnowledgeGraphManager {
     }
 
     // Schedule embedding jobs if manager is provided
-    if (this.embeddingJobManager) {
-      for (const entity of createdEntities) {
-        await this.embeddingJobManager.scheduleEntityEmbedding(entity.name, 1);
-      }
-    }
+    await this.queueEmbeddings(
+      createdEntities.map(e => e.name),
+      1
+    );
 
     return createdEntities;
   }
@@ -361,11 +371,10 @@ export class KnowledgeGraphManager {
     await this.storageProvider.deleteObservations(deletions);
 
     // Schedule re-embedding for affected entities if manager is provided
-    if (this.embeddingJobManager) {
-      for (const deletion of deletions) {
-        await this.embeddingJobManager.scheduleEntityEmbedding(deletion.entityName, 1);
-      }
-    }
+    await this.queueEmbeddings(
+      deletions.map(d => d.entityName),
+      1
+    );
   }
 
   async deleteRelations(relations: Relation[]): Promise<void> {
@@ -433,13 +442,10 @@ export class KnowledgeGraphManager {
     const results = await this.storageProvider.addObservations(simplifiedObservations);
 
     // Schedule re-embedding for affected entities if manager is provided
-    if (this.embeddingJobManager) {
-      for (const result of results) {
-        if (result.addedObservations.length > 0) {
-          await this.embeddingJobManager.scheduleEntityEmbedding(result.entityName, 1);
-        }
-      }
-    }
+    await this.queueEmbeddings(
+      results.filter(r => r.addedObservations.length > 0).map(r => r.entityName),
+      1
+    );
 
     return results;
   }
@@ -733,9 +739,8 @@ export class KnowledgeGraphManager {
       }
     ).updateEntity(entityName, updates);
 
-    // Schedule embedding generation if observations were updated
-    if (this.embeddingJobManager && updates.observations) {
-      await this.embeddingJobManager.scheduleEntityEmbedding(entityName, 2);
+    if (updates.observations) {
+      await this.queueEmbeddings([entityName], 2);
     }
 
     return result;
@@ -860,12 +865,10 @@ export class KnowledgeGraphManager {
 
     const result = await createEntitiesBatch.call(this.storageProvider, entities, config);
 
-    // Schedule embedding jobs for successfully created entities
-    if (this.embeddingJobManager && result.successful.length > 0) {
-      for (const entity of result.successful) {
-        await this.embeddingJobManager.scheduleEntityEmbedding(entity.name, 1);
-      }
-    }
+    await this.queueEmbeddings(
+      result.successful.map((e: { name: string }) => e.name),
+      1
+    );
 
     return result;
   }
@@ -977,12 +980,10 @@ export class KnowledgeGraphManager {
 
     const result = await addObservationsBatch.call(this.storageProvider, batches, config);
 
-    // Schedule re-embedding for successfully modified entities
-    if (this.embeddingJobManager && result.successful.length > 0) {
-      for (const batch of result.successful) {
-        await this.embeddingJobManager.scheduleEntityEmbedding(batch.entityName, 1);
-      }
-    }
+    await this.queueEmbeddings(
+      result.successful.map((b: { entityName: string }) => b.entityName),
+      1
+    );
 
     return result;
   }
@@ -1050,12 +1051,10 @@ export class KnowledgeGraphManager {
 
     const result = await updateEntitiesBatch.call(this.storageProvider, updates, config);
 
-    // Schedule re-embedding for successfully updated entities (priority 2 for updates)
-    if (this.embeddingJobManager && result.successful.length > 0) {
-      for (const entity of result.successful) {
-        await this.embeddingJobManager.scheduleEntityEmbedding(entity.name, 2);
-      }
-    }
+    await this.queueEmbeddings(
+      result.successful.map((e: { name: string }) => e.name),
+      2
+    );
 
     return result;
   }

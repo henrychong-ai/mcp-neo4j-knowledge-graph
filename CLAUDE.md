@@ -222,6 +222,13 @@ NEO4J_USERNAME=neo4j
 NEO4J_PASSWORD=your_password
 OPENAI_API_KEY=sk-...              # Optional: for real embeddings
 OPENAI_EMBEDDING_MODEL=text-embedding-3-small  # Optional
+
+# v2.3.0+ — Server/client topology for fleet deployments
+WRITE_EMBEDDINGS_LOCALLY=true      # Default true. Set to "false" on thin-client hosts to skip
+                                    # queueing embedding jobs on entity writes; entities persisted
+                                    # with NULL embedding for a server-side backfiller to handle.
+EMBEDDING_BACKFILL_CRON='0 19 * * *' # Cron for scheduleIncrementalRegeneration. Tighten to
+                                    # '*/1 * * * *' on the server-side instance for ~1-min latency.
 ```
 
 ## Testing Strategy
