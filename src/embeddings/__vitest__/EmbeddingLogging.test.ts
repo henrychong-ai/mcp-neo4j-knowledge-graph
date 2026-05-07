@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, afterAll, vi } from 'vites
 import fs from 'fs';
 import path from 'path';
 import { EmbeddingJobManager } from '../EmbeddingJobManager.js';
+import { FakeJobStore } from './helpers/FakeJobStore.js';
 import type { Entity, KnowledgeGraph } from '../../KnowledgeGraphManager.js';
 import type { EmbeddingService } from '../EmbeddingService.js';
 import type { EntityEmbedding } from '../../types/entity-embedding.js';
@@ -136,7 +137,8 @@ describe('EmbeddingJobManager Logging', () => {
       mockEmbeddingService,
       null,
       null,
-      mockLogger
+      mockLogger,
+      new FakeJobStore()
     );
   });
 
@@ -162,7 +164,7 @@ describe('EmbeddingJobManager Logging', () => {
         embedding: EmbeddingService,
         private mockLogger: Logger
       ) {
-        super(storage, embedding, null, null, mockLogger);
+        super(storage, embedding, null, null, mockLogger, new FakeJobStore());
       }
 
       async processJobs(): Promise<{ processed: number; successful: number; failed: number }> {
@@ -217,7 +219,8 @@ describe('EmbeddingJobManager Logging', () => {
       mockEmbeddingService,
       { tokensPerInterval: 1, interval: 10000 },
       null,
-      mockLogger
+      mockLogger,
+      new FakeJobStore()
     );
 
     // Use the rate limiter twice
@@ -287,7 +290,7 @@ describe('EmbeddingJobManager Logging', () => {
         embedding: EmbeddingService,
         private mockLogger: Logger
       ) {
-        super(storage, embedding, null, null, mockLogger);
+        super(storage, embedding, null, null, mockLogger, new FakeJobStore());
       }
 
       async processJobs(): Promise<{ processed: number; successful: number; failed: number }> {

@@ -5,6 +5,37 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.4.0] - 2026-05-07
+
+### Added
+
+- **`Neo4jJobStore` — Neo4j-backed embedding-job queue** with multi-worker safety. Jobs are stored as `:EmbeddingJob` nodes; the queue is provisioned via three idempotent statements (`CREATE CONSTRAINT embedding_job_id IF NOT EXISTS`, two supporting indexes on `(status, priority, createdAt)` and `entityName`).
+- **Atomic claim under multi-worker contention.** `claim()` uses a CASE-WHEN guard inside the SET clause that re-evaluates `j.status` after the write lock is acquired. Two workers contending for the same row no longer both succeed — exactly one wins, the other's update collapses to a no-op and is filtered out of the RETURN by a trailing `WHERE`. Verified end-to-end against a real Neo4j with a 5-worker × 50-job drain test.
+- **Stuck-claim recovery via `releaseStale(staleClaimMs)`.** Default 5 minutes, configurable via `EMBEDDING_STALE_CLAIM_MS`. Runs every `processJobs(...)` tick before claiming new work, so a worker that crashes mid-claim no longer permanently locks out its claimed rows.
+- **Voluntary release via `releaseClaims(jobIds)`** for non-fault scenarios (rate limit, shutdown). Decrements `attempts` to roll back the budget — a job that never actually ran shouldn't burn a retry.
+- **Worker UUID stamping (`claimedBy`).** Each `EmbeddingJobManager` instance generates a `crypto.randomUUID()` workerId at construction; visible on every claimed `:EmbeddingJob` node for operator-side observability.
+- **Integration test suite** (`Neo4jJobStore.integration.test.ts`, gated on `TEST_INTEGRATION=true`) covering: roundtrip enqueue/claim/complete, dedup-on-pending, multi-worker drain with no duplicates, stuck-claim recovery, voluntary release rolling back attempts, fail-with-retry vs. fail-terminal, retryFailed + cleanup end-to-end.
+- **`FakeJobStore` test helper** (`__vitest__/helpers/FakeJobStore.ts`) — in-memory faithful stand-in for `Neo4jJobStore` used by all unit tests. Preserves dedup/atomic semantics so behavioural assertions match production.
+- New `EMBEDDING_STALE_CLAIM_MS` env flag (default 300000 / 5 min).
+
+### Changed
+
+- **`EmbeddingJobManager` no longer touches `.db`.** Constructor takes a `JobStore` as the 6th argument (required). The previous SQLite-backed queue used `storageProvider.db.exec(...)` and `storageProvider.db.prepare(...)` calls that have been silent no-ops since the v2.x migration to Neo4j (the adapter shim returned `null`/`[]`). Every queue operation — enqueue, claim, complete, fail, count, retry, cleanup — now persists to Neo4j via `JobStore`.
+- **`createAdaptedStorageProvider` no longer exposes a `.db` shim.** The forwarders for `loadGraph`, `getEntity`, `storeEntityVector` remain (they still serve entity access).
+- Rate-limited claims are now released without burning a retry attempt (was: silently sat in `processing` for `staleClaimMs`).
+- Constructor for `EmbeddingJobManager` adds an optional 7th parameter `staleClaimMs`.
+
+### Removed
+
+- `scripts/backfill-embeddings.mjs` and `scripts/test-semantic-search.mjs`. These were workarounds for the broken-queue era; the queue now works.
+- The legacy `EmbeddingJobManager.test.ts` and `.comprehensive.test.ts` SQL-mocking suites (~1,800 LOC of brittle SQL string assertions). Replaced by a single rewritten `EmbeddingJobManager.test.ts` that mocks `JobStore` at the seam plus the new `Neo4jJobStore.test.ts` and `Neo4jJobStore.integration.test.ts`.
+
+### Migration
+
+- No data migration required. The new `:EmbeddingJob` constraint and indexes are created idempotently on first start. Existing entities and embeddings are untouched.
+- Operators should set `EMBEDDING_STALE_CLAIM_MS` if their workers may be longer-running than the 5-minute default. For the standard configuration (60 RPM rate limit, 10s worker tick, batch size 10) the default is comfortably above the worst-case batch processing time.
+- The architectural bug that motivated this release — the v2.x SQLite shim being a silent no-op against Neo4j storage — is captured in CHANGELOG history under v2.3.2 and fully resolved here.
+
 ## [2.3.2] - 2026-05-07
 
 ### Fixed

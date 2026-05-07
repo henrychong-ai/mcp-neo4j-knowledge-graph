@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, afterAll, vi } from 'vites
 import fs from 'fs';
 import path from 'path';
 import { EmbeddingJobManager } from '../EmbeddingJobManager.js';
+import { FakeJobStore } from './helpers/FakeJobStore.js';
 import type { EmbeddingService } from '../EmbeddingService.js';
 import type { Entity, KnowledgeGraph } from '../../KnowledgeGraphManager.js';
 import type { EntityEmbedding } from '../../types/entity-embedding.js';
@@ -126,7 +127,9 @@ describe('EmbeddingJobManager Caching', () => {
       mockStorageProvider,
       mockEmbeddingService,
       null, // default rate limiting
-      { size: 100, ttl: 3600000 } // 1 hour cache TTL
+      { size: 100, ttl: 3600000 }, // 1 hour cache TTL
+      null,
+      new FakeJobStore()
     );
   });
 
@@ -180,7 +183,14 @@ describe('EmbeddingJobManager Caching', () => {
     };
 
     // Create a manager with our mock cache
-    manager = new EmbeddingJobManager(mockStorageProvider, mockEmbeddingService);
+    manager = new EmbeddingJobManager(
+      mockStorageProvider,
+      mockEmbeddingService,
+      null,
+      null,
+      null,
+      new FakeJobStore()
+    );
 
     // Replace the internal cache with our mock
     (manager as any).cache = mockCache;
@@ -202,7 +212,9 @@ describe('EmbeddingJobManager Caching', () => {
       mockStorageProvider,
       mockEmbeddingService,
       null,
-      { size: 2, ttl: 3600000 } // Only 2 items max
+      { size: 2, ttl: 3600000 }, // Only 2 items max
+      null,
+      new FakeJobStore()
     );
 
     // Generate embeddings for 3 different texts

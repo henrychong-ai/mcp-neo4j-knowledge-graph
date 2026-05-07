@@ -108,7 +108,7 @@ npx vitest run --grep "temporal versioning"
 **Embedding System** (`src/embeddings/`)
 
 - **EmbeddingServiceFactory**: Creates OpenAI or mock embedding services
-- **EmbeddingJobManager**: Async job queue for entity embedding generation
+- **EmbeddingJobManager**: Async job queue for entity embedding generation. Backed by `Neo4jJobStore` (v2.4.0+) — jobs are stored as `:EmbeddingJob` nodes with atomic claim semantics suitable for multi-worker deployments. The previous SQLite-backed queue (v2.x) was a silent no-op against Neo4j storage and has been removed.
 - **EmbeddingRateLimiter**: Token bucket rate limiting for OpenAI API
 
 ### Data Model
@@ -229,6 +229,8 @@ WRITE_EMBEDDINGS_LOCALLY=true      # Default true. Set to "false" on thin-client
                                     # with NULL embedding for a server-side backfiller to handle.
 EMBEDDING_BACKFILL_CRON='0 19 * * *' # Cron for scheduleIncrementalRegeneration. Tighten to
                                     # '*/1 * * * *' on the server-side instance for ~1-min latency.
+EMBEDDING_STALE_CLAIM_MS=300000      # v2.4.0+. Claimed jobs older than this auto-release back
+                                    # to 'pending' on the next processJobs tick. Default 5 min.
 ```
 
 ## Testing Strategy

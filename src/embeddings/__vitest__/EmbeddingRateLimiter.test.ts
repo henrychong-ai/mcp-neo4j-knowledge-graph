@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, afterAll, vi } from 'vites
 import fs from 'fs';
 import path from 'path';
 import { EmbeddingJobManager } from '../EmbeddingJobManager.js';
+import { FakeJobStore } from './helpers/FakeJobStore.js';
 import type { Entity, KnowledgeGraph } from '../../KnowledgeGraphManager.js';
 import type { EmbeddingService } from '../EmbeddingService.js';
 import type { Relation } from '../../types/relation.js';
@@ -117,15 +118,26 @@ describe('EmbeddingJobManager Rate Limiting', () => {
     };
 
     // Create a default manager
-    manager = new EmbeddingJobManager(mockStorageProvider, mockEmbeddingService);
+    manager = new EmbeddingJobManager(
+      mockStorageProvider,
+      mockEmbeddingService,
+      null,
+      null,
+      null,
+      new FakeJobStore()
+    );
   });
 
   it('should enforce rate limits for API calls', () => {
     // Create a manager with a specific rate limit
-    manager = new EmbeddingJobManager(mockStorageProvider, mockEmbeddingService, {
-      tokensPerInterval: 3,
-      interval: 1000,
-    });
+    manager = new EmbeddingJobManager(
+      mockStorageProvider,
+      mockEmbeddingService,
+      { tokensPerInterval: 3, interval: 1000 },
+      null,
+      null,
+      new FakeJobStore()
+    );
 
     // Set initial tokens and last refill time manually for predictable testing
     (manager as any).rateLimiter = {
@@ -146,10 +158,14 @@ describe('EmbeddingJobManager Rate Limiting', () => {
 
   it('should refill tokens after an interval passes', () => {
     // Create a manager with a specific rate limit
-    manager = new EmbeddingJobManager(mockStorageProvider, mockEmbeddingService, {
-      tokensPerInterval: 2,
-      interval: 1000,
-    });
+    manager = new EmbeddingJobManager(
+      mockStorageProvider,
+      mockEmbeddingService,
+      { tokensPerInterval: 2, interval: 1000 },
+      null,
+      null,
+      new FakeJobStore()
+    );
 
     // Set initial state
     const now = Date.now();
@@ -182,10 +198,14 @@ describe('EmbeddingJobManager Rate Limiting', () => {
 
   it('should enforce maximum token count', () => {
     // Create a rate limiter with known parameters
-    manager = new EmbeddingJobManager(mockStorageProvider, mockEmbeddingService, {
-      tokensPerInterval: 5,
-      interval: 1000,
-    });
+    manager = new EmbeddingJobManager(
+      mockStorageProvider,
+      mockEmbeddingService,
+      { tokensPerInterval: 5, interval: 1000 },
+      null,
+      null,
+      new FakeJobStore()
+    );
 
     // Set initial state
     const now = Date.now();
@@ -224,7 +244,14 @@ describe('EmbeddingJobManager Rate Limiting', () => {
       processedCount: number;
 
       constructor(storage: EmbeddingStorageProvider, embedding: EmbeddingService) {
-        super(storage, embedding, { tokensPerInterval: 2, interval: 1000 });
+        super(
+          storage,
+          embedding,
+          { tokensPerInterval: 2, interval: 1000 },
+          null,
+          null,
+          new FakeJobStore()
+        );
 
         // Spy on the rate limiter method
         this._checkRateLimiter = vi.fn().mockImplementation(realCheckRateLimiter.bind(this));
@@ -279,10 +306,14 @@ describe('EmbeddingJobManager Rate Limiting', () => {
 
   it('should provide rate limit status information', () => {
     // Create a manager with specific rate limit
-    manager = new EmbeddingJobManager(mockStorageProvider, mockEmbeddingService, {
-      tokensPerInterval: 10,
-      interval: 60000,
-    });
+    manager = new EmbeddingJobManager(
+      mockStorageProvider,
+      mockEmbeddingService,
+      { tokensPerInterval: 10, interval: 60000 },
+      null,
+      null,
+      new FakeJobStore()
+    );
 
     // Set initial state
     const now = Date.now();

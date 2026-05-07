@@ -2,38 +2,23 @@ import { logger } from '../utils/logger.js';
 import type { StorageProvider } from './StorageProvider.js';
 
 /**
- * Wraps a `StorageProvider` (typically `Neo4jStorageProvider`) into a shape
- * `EmbeddingJobManager` expects: a `.db` shim (it was originally written
- * against better-sqlite3) plus explicit method forwarders.
+ * Wraps a `StorageProvider` (typically `Neo4jStorageProvider`) into the shape
+ * `EmbeddingJobManager` expects for entity access: explicit forwarders for
+ * `loadGraph`, `getEntity`, `storeEntityVector`. Queue persistence is no
+ * longer the storage provider's job — that lives on `JobStore` (v2.4.0+).
  *
- * Why method forwarders are explicit: object spread (`...storageProvider`) only
- * copies OWN enumerable properties — class methods defined on the prototype are
- * silently dropped. `EmbeddingJobManager.scheduleIncrementalRegeneration` calls
- * `loadGraph` on the wrapper, and without an explicit forwarder it would throw
- * `Storage provider does not support getAllEntities or loadGraph`. v2.3.2
- * fixed exactly this gap (was silently breaking the daily backfill cron all the
- * way back to v1.x).
+ * Why method forwarders are explicit: object spread (`...storageProvider`)
+ * only copies OWN enumerable properties — class methods on a prototype are
+ * silently dropped. Without these forwarders,
+ * `EmbeddingJobManager.scheduleIncrementalRegeneration` would throw because
+ * `loadGraph` would be `undefined` on the wrapper. The v2.3.2 hotfix
+ * established this pattern; we keep it.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function createAdaptedStorageProvider(storageProvider: StorageProvider): any {
   return {
     ...storageProvider,
 
-    // SQLite-compatible no-op `.db` shim (EmbeddingJobManager initializes its
-    // own embedding_jobs table; with Neo4j there's no SQL DB on this side).
-    db: {
-      exec: (sql: string) => {
-        logger.debug(`Neo4j adapter: Received SQL: ${sql}`);
-        return null;
-      },
-      prepare: () => ({
-        run: () => null,
-        all: () => [],
-        get: () => null,
-      }),
-    },
-
-    // Forward loadGraph so _getAllEntitiesFromStorage works.
     loadGraph: async () => {
       if (typeof storageProvider.loadGraph === 'function') {
         return storageProvider.loadGraph();
@@ -66,7 +51,6 @@ export function createAdaptedStorageProvider(storageProvider: StorageProvider): 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       if (typeof (storageProvider as any).updateEntityEmbedding === 'function') {
         try {
-          logger.debug(`Neo4j adapter: Using updateEntityEmbedding for ${name}`);
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           return await (storageProvider as any).updateEntityEmbedding(name, formattedEmbedding);
         } catch (error) {
@@ -74,7 +58,7 @@ export function createAdaptedStorageProvider(storageProvider: StorageProvider): 
           throw error;
         }
       }
-      const errorMsg = `Neo4j adapter: Neither storeEntityVector nor updateEntityEmbedding implemented for ${name}`;
+      const errorMsg = `Neo4j adapter: updateEntityEmbedding not implemented for ${name}`;
       logger.error(errorMsg);
       throw new Error(errorMsg);
     },
