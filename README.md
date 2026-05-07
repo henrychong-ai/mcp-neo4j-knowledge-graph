@@ -585,6 +585,17 @@ NEO4J_SIMILARITY_FUNCTION=cosine
 OPENAI_API_KEY=your-openai-api-key
 OPENAI_EMBEDDING_MODEL=text-embedding-3-small
 
+# Embedding Pipeline Topology (v2.3.0+)
+WRITE_EMBEDDINGS_LOCALLY=true       # Default true. Set to "false" on thin-client hosts (e.g. laptops)
+                                     # to skip queueing embedding jobs on entity writes; entities are
+                                     # persisted with embedding=NULL and a server-side instance is
+                                     # responsible for backfilling. Read paths still use the embedding
+                                     # service for query embeddings, so OPENAI_API_KEY is still
+                                     # required for semantic_search unless you accept BM25-only fallback.
+EMBEDDING_BACKFILL_CRON='0 19 * * *' # Cron schedule for scheduleIncrementalRegeneration. Default
+                                     # 19:00 UTC daily (= 03:00 SGT). Server-side instances may
+                                     # tighten to '*/1 * * * *' for ~1-minute backfill latency.
+
 # Logging Configuration
 LOG_LEVEL=warn              # Log level: debug, info, warn, error, silent (default: warn)
 DEBUG=true                  # Enable debug mode (enables additional diagnostic tools)

@@ -18,6 +18,10 @@ export { Relation } from './types/relation.js';
 // Initialize storage and create KnowledgeGraphManager
 const storageProvider = initializeStorageProvider();
 
+// See README "Embedding Pipeline Topology" for what these env flags do.
+const writeEmbeddingsLocally = process.env.WRITE_EMBEDDINGS_LOCALLY !== 'false';
+const embeddingBackfillCron = process.env.EMBEDDING_BACKFILL_CRON ?? '0 19 * * *';
+
 // Initialize Prometheus metrics (will be initialized in production environment only)
 let prometheusMetrics: PrometheusMetrics | null = null;
 
@@ -141,10 +145,19 @@ try {
 const knowledgeGraphManager = new KnowledgeGraphManager({
   storageProvider,
   embeddingJobManager,
+  writeEmbeddingsLocally,
   // Pass vector store options from storage provider if available
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   vectorStoreOptions: (storageProvider as any).vectorStoreOptions,
 });
+
+if (!writeEmbeddingsLocally) {
+  logger.info(
+    'WRITE_EMBEDDINGS_LOCALLY=false: entity writes will NOT queue embedding jobs. ' +
+      'A server-side instance with OPENAI_API_KEY must run `scheduleIncrementalRegeneration` ' +
+      'to embed NULL entities.'
+  );
+}
 
 // Ensure the storeEntityVector method is available on KnowledgeGraphManager's storageProvider
 // Cast to any to bypass type checking for internal properties
@@ -209,8 +222,7 @@ if (knowledgeGraphManager && typeof knowledgeGraphManager.createEntities === 'fu
     // First call the original method to create the entities
     const result = await originalCreateEntities(entities);
 
-    // Then process jobs immediately if we have an embedding job manager
-    if (embeddingJobManager) {
+    if (embeddingJobManager && writeEmbeddingsLocally) {
       try {
         logger.info('Processing embedding jobs immediately after entity creation', {
           entityCount: entities.length,
@@ -244,8 +256,8 @@ if (!process.env.VITEST && !process.env.NODE_ENV?.includes('test')) {
   prometheusMetrics = PrometheusMetrics.getInstance();
   prometheusMetrics.startServer(9091);
 
-  // Schedule periodic processing for embedding jobs (production only)
-  if (embeddingJobManager) {
+  // When writeEmbeddingsLocally=false, no jobs are ever queued, so skip the worker tick + cron.
+  if (embeddingJobManager && writeEmbeddingsLocally) {
     const EMBEDDING_PROCESS_INTERVAL = 10_000; // 10 seconds - more frequent processing
     setInterval(async () => {
       try {
@@ -260,21 +272,24 @@ if (!process.env.VITEST && !process.env.NODE_ENV?.includes('test')) {
       }
     }, EMBEDDING_PROCESS_INTERVAL);
 
-    // Schedule daily incremental embedding regeneration
-    // Runs at 3 AM Singapore time (19:00 UTC = 3 AM UTC+8)
+    // Schedule incremental embedding regeneration via configurable cron (default 19:00 UTC daily).
+    // Server-side instances should tighten this (e.g. `EMBEDDING_BACKFILL_CRON='*/1 * * * *'`)
+    // to backfill NULL entities written by client-side instances within ~1 minute.
     cron.schedule(
-      '0 19 * * *',
+      embeddingBackfillCron,
       async () => {
-        logger.info('Starting daily incremental embedding regeneration (3 AM SGT)');
+        logger.info('Starting incremental embedding regeneration', {
+          schedule: embeddingBackfillCron,
+        });
 
         try {
           const scheduledCount = await embeddingJobManager?.scheduleIncrementalRegeneration();
-          logger.info('Daily regeneration completed', {
+          logger.info('Incremental regeneration completed', {
             entitiesScheduled: scheduledCount,
             time: new Date().toISOString(),
           });
         } catch (error) {
-          logger.error('Daily regeneration failed', {
+          logger.error('Incremental regeneration failed', {
             error: error instanceof Error ? error.message : String(error),
             stack: error instanceof Error ? error.stack : undefined,
             time: new Date().toISOString(),
@@ -288,7 +303,7 @@ if (!process.env.VITEST && !process.env.NODE_ENV?.includes('test')) {
 
     logger.info('Embedding automation configured', {
       periodicProcessing: `Every ${EMBEDDING_PROCESS_INTERVAL}ms`,
-      dailyRegeneration: '3 AM Singapore time (19:00 UTC)',
+      backfillSchedule: embeddingBackfillCron,
       timezone: 'UTC',
     });
   }

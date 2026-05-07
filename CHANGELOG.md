@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.0] - 2026-05-07
+
+### Added
+- **`WRITE_EMBEDDINGS_LOCALLY` env flag** (default `true`): when set to `false`, this MCP instance no longer queues embedding jobs on entity writes. Entities are persisted with `embedding=NULL` and a separate server-side instance with `OPENAI_API_KEY` is responsible for backfilling them via `scheduleIncrementalRegeneration`. Use this on "thin client" hosts (e.g. laptops) to keep the OpenAI API key off-device while preserving query-time semantic search.
+- **`EMBEDDING_BACKFILL_CRON` env flag** (default `0 19 * * *`): cron schedule for `scheduleIncrementalRegeneration`. Server-side instances may tighten to `*/1 * * * *` for ~1-minute backfill latency on entities created by thin clients.
+- New `writeEmbeddingsLocally` option on `KnowledgeGraphManagerOptions` (default `true`), wired through to all 7 entity-write paths that previously queued embedding jobs unconditionally.
+
+### Changed
+- `cron.schedule(...)` for incremental embedding regeneration now reads schedule from `EMBEDDING_BACKFILL_CRON` env instead of hardcoded `0 19 * * *`. Default unchanged.
+- `setInterval` worker tick (10s) and the `createEntities` immediate-process wrapper are now skipped when `writeEmbeddingsLocally=false` since no jobs would ever be queued in the local SQLite queue.
+
+### Architecture context
+This release implements the "Option B" deployment pattern for fleets where:
+- A canonical server-side MCP instance owns OpenAI API access and the embedding backfill loop (e.g. `WRITE_EMBEDDINGS_LOCALLY=true`, `EMBEDDING_BACKFILL_CRON='*/1 * * * *'` on a VPS).
+- Thin client instances (laptops, ephemeral CI containers) connect to the same Neo4j and write entities with NULL embeddings (`WRITE_EMBEDDINGS_LOCALLY=false`).
+- Read-side semantic search continues to use the embedding service on every host (so thin clients do still need `OPENAI_API_KEY` for query embeddings, unless they accept BM25-only search).
+
+### Backward compatibility
+- All defaults preserve v2.2.x behavior. No config change required for existing deployments.
+- Previously-queued jobs in SQLite queues are unaffected.
+- Tests: 828+ existing pass, plus 4 new tests covering the env-flag wiring and `writeEmbeddingsLocally` option.
+
 ## [2.2.7] - 2026-04-30
 
 ### Security
