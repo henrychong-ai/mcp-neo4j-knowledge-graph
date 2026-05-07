@@ -16,7 +16,7 @@ export function setupServer(knowledgeGraphManager: any): Server {
   const server = new Server(
     {
       name: 'mcp-neo4j-knowledge-graph',
-      version: '2.3.0',
+      version: '2.3.1',
     },
     {
       capabilities: {

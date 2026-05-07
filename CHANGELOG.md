@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.1] - 2026-05-07
+
+### Fixed
+- **`Neo4jStorageProvider.updateEntityEmbedding` now persists `embeddingModel` and `embeddingGeneratedAt` properties** on the Entity node alongside the embedding vector. Previously these properties were silently dropped — every entity's embedding was stored without provenance metadata, leaving `e.embeddingModel` NULL on every node. Future drift detection and staleness checks can now use clean predicates (e.g. `MATCH (e) WHERE e.embeddingModel IS NULL OR e.embeddingModel <> 'text-embedding-3-small'`) instead of inferring from vector signatures.
+- **`Neo4jStorageProvider.getEntityEmbedding` now reads back `embeddingModel` and `embeddingGeneratedAt`** instead of returning hardcoded `model: 'unknown'`. Falls back to `'unknown'` for entities written before v2.3.1.
+
+### Added
+- 2 new unit tests in `Neo4jStorageProvider.test.ts` (or sibling) verifying the new fields are written on update and read back on retrieve.
+
+### Migration
+- Existing entities written before v2.3.1 retain `embeddingModel: NULL`. They will be transparently re-stamped when the daily/configurable backfill cron next regenerates their embedding, OR when any operation triggers `scheduleEntityEmbedding` on them.
+- No schema changes required; the new fields are simple Cypher SET assignments on existing Entity nodes.
+
 ## [2.3.0] - 2026-05-07
 
 ### Added

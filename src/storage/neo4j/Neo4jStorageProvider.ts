@@ -2012,11 +2012,16 @@ export class Neo4jStorageProvider implements StorageProvider {
         const txc = session.beginTransaction();
 
         try {
-          // Update the entity with the embedding
+          // Update the entity with the embedding + provenance metadata.
+          // `embeddingModel` lets future drift detection use a clean predicate;
+          // `embeddingGeneratedAt` enables staleness detection.
+          const now = Date.now();
           const updateQuery = `
             MATCH (e:Entity {name: $name})
             WHERE e.validTo IS NULL
             SET e.embedding = $embedding,
+                e.embeddingModel = $model,
+                e.embeddingGeneratedAt = $generatedAt,
                 e.updatedAt = $now
             RETURN e
           `;
@@ -2024,7 +2029,9 @@ export class Neo4jStorageProvider implements StorageProvider {
           await txc.run(updateQuery, {
             name: entityName,
             embedding: embedding.vector,
-            now: Date.now(),
+            model: embedding.model,
+            generatedAt: embedding.lastUpdated ?? now,
+            now,
           });
 
           // Commit transaction
@@ -2067,11 +2074,13 @@ export class Neo4jStorageProvider implements StorageProvider {
       const session = await this.connectionManager.getSession();
 
       try {
-        // Query to get the entity with its embedding
+        // Query to get the entity with its embedding + provenance metadata
         const query = `
           MATCH (e:Entity {name: $name})
           WHERE e.validTo IS NULL
-          RETURN e.embedding AS embedding
+          RETURN e.embedding AS embedding,
+                 e.embeddingModel AS model,
+                 e.embeddingGeneratedAt AS generatedAt
         `;
 
         const result = await session.run(query, { name: entityName });
@@ -2081,13 +2090,15 @@ export class Neo4jStorageProvider implements StorageProvider {
           return null;
         }
 
-        const embeddingVector = result.records[0].get('embedding');
+        const record = result.records[0];
+        const generatedAtRaw = record.get('generatedAt');
 
-        // Return the embedding in the expected format
         return {
-          vector: embeddingVector,
-          model: 'unknown', // We don't store the model info in Neo4j
-          lastUpdated: entity.updatedAt || Date.now(),
+          vector: record.get('embedding'),
+          // 'unknown' fallback for entities written before v2.3.1 (which did not stamp model)
+          model: record.get('model') ?? 'unknown',
+          lastUpdated:
+            generatedAtRaw != null ? Number(generatedAtRaw) : entity.updatedAt || Date.now(),
         };
       } finally {
         await session.close();
