@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.2] - 2026-05-07
+
+### Fixed
+- **`scheduleIncrementalRegeneration` was failing with `Storage provider does not support getAllEntities or loadGraph`** because the `adaptedStorageProvider` wrapper in `src/index.ts` used `...storageProvider` spread, which only copies own enumerable properties — class methods on the prototype (`loadGraph`, `openNodes`, etc.) were silently dropped. The daily backfill cron has been failing every run since the wrapper was introduced; the impact was masked because `scheduleEntityEmbedding` (the eager write-time path) does not depend on `loadGraph`. Now the wrapper explicitly forwards `loadGraph` to the underlying storage provider. Backfill now works as documented.
+
+### Note
+This is a hotfix for the v2.3.1 deployment. The bug pre-dates the v2.3.x release line — production deployments on v1.x and v2.2.x have all been silently failing the daily backfill cron, with the only working embedding-creation path being the eager write-time queue. After upgrading to v2.3.2, the daily/configurable cron will catch up any missed entities on its next firing.
+
 ## [2.3.1] - 2026-05-07
 
 ### Fixed
