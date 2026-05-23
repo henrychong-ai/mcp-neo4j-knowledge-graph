@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.4.3] - 2026-05-21
+
+### Changed
+
+- **Dependency bumps (minor/patch only):**
+  - `axios` 1.16.0 → 1.16.1 (patch)
+  - `lru-cache` 11.3.6 → 11.5.0 (minor)
+  - `@biomejs/biome` 2.4.14 → 2.4.15 (patch, dev)
+  - `@types/node` 25.6.1 → 25.9.1 (minor, dev)
+  - `@vitest/coverage-v8` 4.1.5 → 4.1.7 (patch, dev)
+  - `vitest` 4.1.5 → 4.1.7 (patch, dev)
+  - `oxlint` 1.63.0 → 1.66.0 (minor, dev)
+  - `tsx` 4.21.0 → 4.22.3 (minor, dev)
+
+### Security
+
+- **`fast-uri` pinned to `>=3.1.2` via pnpm override** to pick up upstream security fixes GHSA-v39h-62p7-jpjc and GHSA-q3j6-qgpj-74h6 (addresses Dependabot PR #47). `fast-uri` is a transitive dep via `ajv`.
+
+Major-version Dependabot PRs (`typescript` 5→6 #31, `lint-staged` 16→17 #51) deliberately skipped this round; they require code/tooling audits. Dependabot PRs #49 (`tsx`), #50 (`@types/node`), #47 (`fast-uri` transitive) are superseded by this bump and can be closed once this PR merges.
+
+### Validated
+
+- `pnpm run lint` — clean
+- `pnpm run format:check` — clean
+- `pnpm run typecheck` — clean
+- `pnpm run build` — clean
+- `pnpm test` — 809 passed, 23 skipped, 0 failures
+
 ## [2.4.2] - 2026-05-07
 
 ### Changed
