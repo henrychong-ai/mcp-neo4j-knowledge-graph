@@ -5,6 +5,44 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.4.3] - 2026-05-28
+
+### Changed
+
+- **Dependency bumps (minor/patch only):**
+  - `axios` 1.16.0 → 1.16.1 (patch)
+  - `lru-cache` 11.3.6 → 11.5.1 (minor)
+  - `@biomejs/biome` 2.4.14 → 2.4.16 (patch, dev)
+  - `@types/node` 25.6.1 → 25.9.1 (minor, dev)
+  - `@vitest/coverage-v8` 4.1.5 → 4.1.7 (patch, dev)
+  - `vitest` 4.1.5 → 4.1.7 (patch, dev)
+  - `oxlint` 1.63.0 → 1.67.0 (minor, dev)
+  - `tsx` 4.21.0 → 4.22.3 (minor, dev)
+
+### Security
+
+- **pnpm overrides added** to pull transitive security fixes through to leaf
+  packages flagged by `pnpm audit`:
+  - `fast-uri` pinned to `>=3.1.2` — addresses GHSA-q3j6-qgpj-74h6 (path traversal) and GHSA-v39h-62p7-jpjc (host confusion) via `@modelcontextprotocol/sdk > ajv > fast-uri`. Supersedes Dependabot PR #47.
+  - `ip-address` pinned to `>=10.1.1` — addresses GHSA-v2v4-37r5-5v8g (XSS in `Address6` HTML-emitting methods) via `@modelcontextprotocol/sdk > express-rate-limit > ip-address`.
+  - `qs` bumped from `>=6.14.2` to `>=6.15.2` — addresses GHSA-q8mj-m7cp-5q26 (DoS in `qs.stringify` on null/undefined entries in comma-format arrays) via `@modelcontextprotocol/sdk > express > qs`.
+
+`pnpm audit` now reports zero known vulnerabilities.
+
+### Skipped (major bumps deferred)
+
+- `typescript` 5.9.3 → 6.0.3 (Dependabot PR #31) — major, requires toolchain audit.
+- `lint-staged` 16.4.0 → 17.0.5 (Dependabot PR #51) — major.
+
+### Validated
+
+- `pnpm run lint` (oxlint) — clean, 0 warnings.
+- `pnpm run format:check` (biome, 136 files) — clean.
+- `pnpm run typecheck` (`tsc --noEmit`) — clean.
+- `pnpm run build` — clean.
+- `pnpm test` — 809 passed, 23 skipped, 0 failures.
+- `pnpm audit` — 0 vulnerabilities.
+
 ## [2.4.2] - 2026-05-07
 
 ### Changed
