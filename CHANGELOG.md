@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.4.3] - 2026-06-04
+
+### Changed
+
+- **Dependency bumps (minor/patch only):**
+  - `axios` 1.16.0 → 1.17.0 (minor)
+  - `lru-cache` 11.3.6 → 11.5.1 (minor)
+  - `@types/node` 25.6.1 → 25.9.1 (minor, dev)
+  - `oxlint` 1.63.0 → 1.68.0 (minor, dev)
+  - `tsx` 4.21.0 → 4.22.4 (minor, dev)
+  - `@biomejs/biome` 2.4.14 → 2.4.16 (patch, dev)
+  - `@vitest/coverage-v8` 4.1.5 → 4.1.8 (patch, dev)
+  - `vitest` 4.1.5 → 4.1.8 (patch, dev)
+
+### Security
+
+- Added pnpm override `fast-uri` `>=3.1.2` (transitive) — resolves Dependabot security PR #47.
+
+Major-version Dependabot PRs deliberately skipped this round (require code/runtime audits): `typescript` 5→6 (#31), `lint-staged` 16→17 (#51). Minor/patch Dependabot PRs `@types/node` (#50) and `tsx` (#49) are subsumed by the bumps above.
+
+### Validated
+
+- `pnpm run check` (oxlint + biome format:check + tsc --noEmit) — clean
+- `pnpm test` — 809 passed, 23 skipped, 0 failures
+- `pnpm run build` — clean
+
 ## [2.4.2] - 2026-05-07
 
 ### Changed
