@@ -24,7 +24,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | Database        | Neo4j 5.13+ (Community/Enterprise) |
 | Protocol        | MCP SDK                            |
 | Validation      | Zod                                |
-| Embeddings      | OpenAI text-embedding-3-small      |
+| Embeddings      | OpenAI-compatible (OpenAI / Cloudflare Workers AI / any); default text-embedding-3-small; optional bge reranker (v2.5.0+) |
 | Testing         | Vitest + @vitest/coverage-v8       |
 | Linting         | Oxlint (import, promise, node, vitest plugins) |
 | Formatting      | Biome (formatter-only, linter disabled)         |

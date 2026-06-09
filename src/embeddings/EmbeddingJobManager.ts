@@ -7,6 +7,7 @@ import type { StorageProvider } from '../storage/StorageProvider.js';
 import type { EntityEmbedding } from '../types/entity-embedding.js';
 
 import type { EmbeddingService } from './EmbeddingService.js';
+import { prepareEntityText } from './entityText.js';
 import type { JobStore } from './JobStore.js';
 
 interface CacheOptions {
@@ -387,31 +388,9 @@ export class EmbeddingJobManager {
   }
 
   private _prepareEntityText(entity: Entity): string {
-    const lines = [`Name: ${entity.name}`, `Type: ${entity.entityType}`, 'Observations:'];
-
-    if (entity.observations) {
-      let observationsArray: unknown = entity.observations;
-      if (typeof entity.observations === 'string') {
-        try {
-          observationsArray = JSON.parse(entity.observations);
-        } catch {
-          observationsArray = [entity.observations];
-        }
-      }
-      if (!Array.isArray(observationsArray)) {
-        observationsArray = [String(observationsArray)];
-      }
-      const arr = observationsArray as string[];
-      if (arr.length > 0) {
-        lines.push(...arr.map(obs => `- ${obs}`));
-      } else {
-        lines.push('  (No observations)');
-      }
-    } else {
-      lines.push('  (No observations)');
-    }
-
-    const text = lines.join('\n');
+    // Delegates to the shared prepareEntityText() so embedding text and rerank
+    // text never drift (single source of truth in ./entityText.ts).
+    const text = prepareEntityText(entity);
     this.logger.debug('Prepared entity text for embedding', {
       entityName: entity.name,
       entityType: entity.entityType,

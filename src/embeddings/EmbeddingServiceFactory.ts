@@ -12,6 +12,8 @@ export interface EmbeddingServiceConfig {
   model?: string;
   dimensions?: number;
   apiKey?: string;
+  /** Full OpenAI-compatible embeddings endpoint URL (e.g. Cloudflare Workers AI). */
+  apiEndpoint?: string;
   [key: string]: unknown;
 }
 
@@ -98,50 +100,83 @@ export class EmbeddingServiceFactory {
    * @returns An embedding service implementation
    */
   static createFromEnvironment(): EmbeddingService {
-    // Check if we should use mock embeddings (for testing)
+    // Check if we should use mock embeddings (for testing / explicit opt-in)
     const useMockEmbeddings = process.env.MOCK_EMBEDDINGS === 'true';
+
+    // New EMBEDDING_* env vars (provider-neutral) fall back to the legacy OPENAI_* names,
+    // so existing deployments are unaffected. Point EMBEDDING_API_ENDPOINT / EMBEDDING_API_BASE_URL
+    // at any OpenAI-compatible endpoint (e.g. Cloudflare Workers AI) to switch providers.
+    const apiKey = process.env.EMBEDDING_API_KEY || process.env.OPENAI_API_KEY;
+    const embeddingModel =
+      process.env.EMBEDDING_MODEL || process.env.OPENAI_EMBEDDING_MODEL || 'text-embedding-3-small';
+    const apiEndpoint =
+      process.env.EMBEDDING_API_ENDPOINT ||
+      (process.env.EMBEDDING_API_BASE_URL
+        ? `${process.env.EMBEDDING_API_BASE_URL.replace(/\/$/, '')}/embeddings`
+        : undefined);
+    const dimensions = process.env.EMBEDDING_DIMENSIONS
+      ? Number.parseInt(process.env.EMBEDDING_DIMENSIONS, 10)
+      : undefined;
 
     logger.debug('EmbeddingServiceFactory: Creating service from environment variables', {
       mockEmbeddings: useMockEmbeddings,
-      openaiKeyPresent: !!process.env.OPENAI_API_KEY,
-      embeddingModel: process.env.OPENAI_EMBEDDING_MODEL || 'default',
+      apiKeyPresent: !!apiKey,
+      embeddingModel,
+      apiEndpoint: apiEndpoint || 'openai-default',
+      dimensions: dimensions ?? 'default',
     });
 
     if (useMockEmbeddings) {
-      logger.info('EmbeddingServiceFactory: Using mock embeddings for testing');
-      return new DefaultEmbeddingService();
+      logger.info('EmbeddingServiceFactory: Using mock embeddings (MOCK_EMBEDDINGS=true)');
+      return new DefaultEmbeddingService(dimensions);
     }
 
-    const openaiApiKey = process.env.OPENAI_API_KEY;
-    const embeddingModel = process.env.OPENAI_EMBEDDING_MODEL || 'text-embedding-3-small';
-
-    if (openaiApiKey) {
+    if (apiKey) {
       try {
-        logger.debug('EmbeddingServiceFactory: Creating OpenAI embedding service', {
+        logger.debug('EmbeddingServiceFactory: Creating OpenAI-compatible embedding service', {
           model: embeddingModel,
+          apiEndpoint: apiEndpoint || 'openai-default',
         });
         const service = new OpenAIEmbeddingService({
-          apiKey: openaiApiKey,
+          apiKey,
           model: embeddingModel,
+          apiEndpoint,
+          dimensions,
         });
-        logger.info('EmbeddingServiceFactory: OpenAI embedding service created successfully', {
+        logger.info('EmbeddingServiceFactory: OpenAI-compatible embedding service created', {
           model: service.getModelInfo().name,
           dimensions: service.getModelInfo().dimensions,
         });
         return service;
       } catch (error) {
-        logger.error('EmbeddingServiceFactory: Failed to create OpenAI service', error);
+        logger.error('EmbeddingServiceFactory: Failed to create OpenAI-compatible service', error);
         logger.info('EmbeddingServiceFactory: Falling back to default embedding service');
-        // Fallback to default if OpenAI service creation fails
-        return new DefaultEmbeddingService();
+        // Fallback to default if service creation fails
+        return new DefaultEmbeddingService(dimensions);
       }
     }
 
-    // No OpenAI API key, using default embedding service
+    // No API key: default (random) service. Callers should consult hasEmbeddingProvider()
+    // to decide whether to enable semantic search — index.ts runs keyword-only when no
+    // provider is configured rather than generating meaningless random-vector embeddings.
     logger.info(
-      'EmbeddingServiceFactory: No OpenAI API key found, using default embedding service'
+      'EmbeddingServiceFactory: No embedding API key found, using default embedding service'
     );
-    return new DefaultEmbeddingService();
+    return new DefaultEmbeddingService(dimensions);
+  }
+
+  /**
+   * Whether a real embedding provider is configured: an API key (EMBEDDING_API_KEY or
+   * OPENAI_API_KEY) or MOCK_EMBEDDINGS=true. When false, the server should run in
+   * keyword-only mode rather than generate meaningless random-vector embeddings.
+   *
+   * @returns true if embeddings should be enabled
+   */
+  static hasEmbeddingProvider(): boolean {
+    return (
+      process.env.MOCK_EMBEDDINGS === 'true' ||
+      !!(process.env.EMBEDDING_API_KEY || process.env.OPENAI_API_KEY)
+    );
   }
 
   /**
@@ -189,5 +224,6 @@ EmbeddingServiceFactory.registerProvider('openai', (config = {}) => {
     apiKey: config.apiKey,
     model: config.model,
     dimensions: config.dimensions,
+    apiEndpoint: config.apiEndpoint,
   });
 });

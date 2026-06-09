@@ -27,6 +27,13 @@ export interface OpenAIEmbeddingConfig {
    * Optional version string
    */
   version?: string;
+
+  /**
+   * Optional full embeddings endpoint URL. Defaults to OpenAI. Point this at any
+   * OpenAI-compatible `/embeddings` endpoint (e.g. Cloudflare Workers AI:
+   * `https://api.cloudflare.com/client/v4/accounts/<id>/ai/v1/embeddings`).
+   */
+  apiEndpoint?: string;
 }
 
 // API key error message is defined but not used directly
@@ -81,7 +88,7 @@ export class OpenAIEmbeddingService extends EmbeddingService {
     this.model = config.model || 'text-embedding-3-small';
     this.dimensions = config.dimensions || 1536; // text-embedding-3-small has 1536 dimensions
     this.version = config.version || '3.0.0';
-    this.apiEndpoint = 'https://api.openai.com/v1/embeddings';
+    this.apiEndpoint = config.apiEndpoint || 'https://api.openai.com/v1/embeddings';
   }
 
   /**

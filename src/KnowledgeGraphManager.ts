@@ -1,5 +1,7 @@
 // import path from 'path';
 import type { EmbeddingJobManager } from './embeddings/EmbeddingJobManager.js';
+import { prepareEntityText } from './embeddings/entityText.js';
+import { RerankerService } from './retrieval/RerankerService.js';
 import type { StorageProvider } from './storage/StorageProvider.js';
 import {
   VectorStoreFactory,
@@ -113,6 +115,8 @@ interface KnowledgeGraphManagerOptions {
   vectorStoreOptions?: VectorStoreFactoryOptions;
   /** When false, skip queueing embedding jobs locally. See README "Embedding Pipeline Topology". */
   writeEmbeddingsLocally?: boolean;
+  /** Optional cross-encoder reranker for semantic search (additive, fail-open). */
+  reranker?: RerankerService;
 }
 
 // The KnowledgeGraphManager class contains all operations to interact with the knowledge graph
@@ -121,11 +125,13 @@ export class KnowledgeGraphManager {
   private embeddingJobManager?: EmbeddingJobManager;
   private vectorStore?: VectorStore;
   private writeEmbeddingsLocally: boolean;
+  private reranker?: RerankerService;
 
   constructor(options?: KnowledgeGraphManagerOptions) {
     this.storageProvider = options?.storageProvider;
     this.embeddingJobManager = options?.embeddingJobManager;
     this.writeEmbeddingsLocally = options?.writeEmbeddingsLocally ?? true;
+    this.reranker = options?.reranker;
 
     // If no storage provider is given, log a deprecation warning
     if (!this.storageProvider) {
@@ -558,10 +564,16 @@ export class KnowledgeGraphManager {
             const embeddingService = this.embeddingJobManager.embeddingService;
             if (embeddingService) {
               const queryVector = await embeddingService.generateEmbedding(query);
-              return await this.storageProvider.semanticSearch(query, {
+              // Widen recall when reranking so the reranker has candidates to reorder.
+              const recallLimit = this.reranker?.enabled
+                ? Math.max(options.limit ?? 10, this.reranker.topN)
+                : options.limit;
+              const recall = await this.storageProvider.semanticSearch(query, {
                 ...options,
+                limit: recallLimit,
                 queryVector,
               });
+              return await this.maybeRerank(query, recall, options.limit ?? 10);
             }
           }
 
@@ -623,6 +635,53 @@ export class KnowledgeGraphManager {
       domain: options.domain,
       includeNullDomain: options.includeNullDomain,
     });
+  }
+
+  /**
+   * Optionally rerank semantic-search results with a cross-encoder (RerankerService).
+   *
+   * Strictly additive and FAIL-OPEN: if no reranker is configured, the candidate set is
+   * trivial (<=1), or the rerank call errors/times out/returns garbage, the original
+   * vector/hybrid ordering is returned unchanged. This also imposes a meaningful final
+   * order (the underlying openNodes() hop does not preserve rank order).
+   *
+   * @param query - The search query
+   * @param recall - The vector/hybrid recall result to reorder
+   * @param topK - Number of results to keep after reranking
+   * @returns The reranked (or, on any failure, the original) knowledge graph
+   */
+  private async maybeRerank(
+    query: string,
+    recall: KnowledgeGraph,
+    topK: number
+  ): Promise<KnowledgeGraph> {
+    if (!this.reranker?.enabled || !recall.entities || recall.entities.length <= 1) {
+      return recall;
+    }
+    try {
+      const passages = recall.entities.map(entity => prepareEntityText(entity));
+      const order = await this.reranker.rerank(query, passages);
+      if (order.length === 0) return recall;
+      const reordered = order
+        .map(index => recall.entities[index])
+        .filter((entity): entity is Entity => Boolean(entity))
+        .slice(0, topK);
+      const names = new Set(reordered.map(entity => entity.name));
+      return {
+        ...recall,
+        entities: reordered,
+        relations: (recall.relations || []).filter(
+          relation => names.has(relation.from) && names.has(relation.to)
+        ),
+        // Reflect the post-rerank trim so `total` can't overstate the returned entity count.
+        total: reordered.length,
+      };
+    } catch (error) {
+      logger.warn('Reranker failed; returning vector/hybrid order unchanged (fail-open)', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return recall;
+    }
   }
 
   /**

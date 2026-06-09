@@ -585,6 +585,29 @@ NEO4J_SIMILARITY_FUNCTION=cosine
 OPENAI_API_KEY=your-openai-api-key
 OPENAI_EMBEDDING_MODEL=text-embedding-3-small
 
+# Provider-neutral embedding config (v2.5.0+) — ANY OpenAI-compatible endpoint.
+# These fall back to the OPENAI_* names above, so existing setups are unaffected.
+# Example: Cloudflare Workers AI qwen3-embedding-0.6b (1024-dim):
+#   EMBEDDING_API_KEY=<cf-workers-ai-token>
+#   EMBEDDING_API_BASE_URL=https://api.cloudflare.com/client/v4/accounts/<id>/ai/v1
+#   EMBEDDING_MODEL=@cf/qwen/qwen3-embedding-0.6b
+#   EMBEDDING_DIMENSIONS=1024     # MUST match NEO4J_VECTOR_DIMENSIONS and the model's NATIVE output
+#                                 # dim. Sets the reported/index dimension only — it is NOT sent in
+#                                 # the embeddings request (not all OpenAI-compatible endpoints accept
+#                                 # a `dimensions` param), so it cannot truncate an OpenAI vector;
+#                                 # choose a model whose native output dim already matches.
+# With NO provider configured (and MOCK_EMBEDDINGS unset) the server runs keyword-only
+# (no random-vector mock). Set MOCK_EMBEDDINGS=true for deterministic test vectors.
+
+# Optional cross-encoder reranker (v2.5.0+) — re-scores semantic_search candidates.
+# Disabled unless RERANK_ENABLED=true AND an endpoint + key resolve. Fail-open on any error.
+RERANK_ENABLED=false
+# RERANK_MODEL=@cf/baai/bge-reranker-base
+# RERANK_ENDPOINT=https://api.cloudflare.com/client/v4/accounts/<id>/ai/run/@cf/baai/bge-reranker-base
+# RERANK_ACCOUNT_ID=<id>          # alternative to RERANK_ENDPOINT (derives the URL from model)
+# RERANK_API_KEY=<token>          # falls back to EMBEDDING_API_KEY
+# RERANK_TOP_N=20  RERANK_TOP_K=10  RERANK_MAX_PASSAGE_CHARS=2000  RERANK_TIMEOUT_MS=5000
+
 # Embedding Pipeline Topology (v2.3.0+)
 WRITE_EMBEDDINGS_LOCALLY=true       # Default true. Set to "false" on thin-client hosts (e.g. laptops)
                                      # to skip queueing embedding jobs on entity writes; entities are

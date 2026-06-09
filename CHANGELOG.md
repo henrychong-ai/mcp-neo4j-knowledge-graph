@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.5.0] - 2026-06-09
+
+### Added
+
+- **Configurable, provider-neutral embedding endpoint.** New `EMBEDDING_API_ENDPOINT` / `EMBEDDING_API_BASE_URL`, `EMBEDDING_MODEL`, `EMBEDDING_DIMENSIONS`, `EMBEDDING_API_KEY` env vars (all falling back to the legacy `OPENAI_*` names). Point the server at **any OpenAI-compatible embeddings endpoint** (OpenAI, **Cloudflare Workers AI**, etc.) with no code changes. `OpenAIEmbeddingService` gained a configurable `apiEndpoint`.
+- **Optional cross-encoder reranker** for `semantic_search` (`RerankerService`, default **Cloudflare `@cf/baai/bge-reranker-base`**). After vector/hybrid recall, candidates are re-scored and reordered, then trimmed to `RERANK_TOP_K`. Disabled by default; enable with `RERANK_ENABLED=true` (+ `RERANK_ENDPOINT`/`RERANK_ACCOUNT_ID`, `RERANK_API_KEY`, `RERANK_TOP_N`, `RERANK_TOP_K`, `RERANK_MAX_PASSAGE_CHARS`, `RERANK_TIMEOUT_MS`). Also imposes a meaningful final order (the prior `openNodes()` hop did not preserve rank order).
+- Shared `prepareEntityText()` (`src/embeddings/entityText.ts`) used by BOTH embedding generation and reranking — single source of truth so the two never drift.
+
+### Changed
+
+- **Honest keyword-only fail-open when no embedding provider is configured.** Previously a missing API key silently produced _random_ mock embeddings (meaningless "semantic" rankings). Now, with no `EMBEDDING_API_KEY`/`OPENAI_API_KEY` and `MOCK_EMBEDDINGS` unset, the server runs **keyword/FTS-only** (no `EmbeddingJobManager`; `semantic_search` degrades cleanly). Mock embeddings remain available explicitly via `MOCK_EMBEDDINGS=true` (used by the test suite). This is a fix, not a breaking change — random-vector "semantic" search was never meaningful.
+- Reranking is **strictly additive and fail-open**: if unconfigured, or the rerank call errors / times out / returns a malformed response, the original vector/hybrid order is returned unchanged.
+
+### Backward compatibility
+
+- Fully backward-compatible: with none of the new env vars set, behaviour is identical to v2.4.x (OpenAI endpoint, 1536 dims, `text-embedding-3-small`, no reranker) — apart from the documented mock→keyword fail-open above.
+- **Note:** `EMBEDDING_DIMENSIONS` sets the reported/index dimension only; it is **not** forwarded to the embeddings request (not all OpenAI-compatible endpoints accept a `dimensions` param), so the chosen model's native output dim must match it.
+
+### Validated
+
+- `pnpm run check` (oxlint + biome format:check + tsc --noEmit) — clean; `pnpm test` — 822 passing (incl. new `RerankerService` coverage).
+
 ## [2.4.3] - 2026-06-04
 
 ### Changed

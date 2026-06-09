@@ -7,6 +7,7 @@ import { EmbeddingServiceFactory } from './embeddings/EmbeddingServiceFactory.js
 import { Neo4jJobStore } from './embeddings/Neo4jJobStore.js';
 import { KnowledgeGraphManager } from './KnowledgeGraphManager.js';
 import { PrometheusMetrics } from './metrics/PrometheusMetrics.js';
+import { RerankerService } from './retrieval/RerankerService.js';
 import { setupServer } from './server/setup.js';
 import { createAdaptedStorageProvider } from './storage/createAdaptedStorageProvider.js';
 import type { Neo4jConnectionManager } from './storage/neo4j/Neo4jConnectionManager.js';
@@ -33,83 +34,87 @@ let prometheusMetrics: PrometheusMetrics | null = null;
 
 // Initialize embedding job manager only if storage provider supports it
 let embeddingJobManager: EmbeddingJobManager | undefined;
-try {
-  // Force debug logging to help troubleshoot
-  logger.debug(`OpenAI API key exists: ${!!process.env.OPENAI_API_KEY}`);
-  logger.debug(`OpenAI Embedding model: ${process.env.OPENAI_EMBEDDING_MODEL || 'not set'}`);
-  logger.debug(`Storage provider type: ${process.env.MEMORY_STORAGE_TYPE || 'default'}`);
-
-  // Ensure OPENAI_API_KEY is defined for embedding generation
-  if (process.env.OPENAI_API_KEY) {
-    logger.info('OpenAI API key found, will use for generating embeddings');
-  } else {
-    logger.warn(
-      'OPENAI_API_KEY environment variable is not set. Semantic search will use random embeddings.'
-    );
-  }
-
-  // Initialize the embedding service
-  const embeddingService = EmbeddingServiceFactory.createFromEnvironment();
-  logger.debug(`Embedding service model info: ${JSON.stringify(embeddingService.getModelInfo())}`);
-
-  // Configure rate limiting options - stricter limits to prevent OpenAI API abuse
-  const rateLimiterOptions = {
-    tokensPerInterval: process.env.EMBEDDING_RATE_LIMIT_TOKENS
-      ? Number.parseInt(process.env.EMBEDDING_RATE_LIMIT_TOKENS, 10)
-      : 20, // Default: 20 requests per minute
-    interval: process.env.EMBEDDING_RATE_LIMIT_INTERVAL
-      ? Number.parseInt(process.env.EMBEDDING_RATE_LIMIT_INTERVAL, 10)
-      : 60 * 1000, // Default: 1 minute
-  };
-
-  logger.info('Initializing EmbeddingJobManager', {
-    rateLimiterOptions,
-    model: embeddingService.getModelInfo().name,
-    storageType: process.env.MEMORY_STORAGE_TYPE || 'neo4j',
-  });
-
-  const adaptedStorageProvider = createAdaptedStorageProvider(storageProvider);
-
-  // Pull the Neo4j connection out of the storage provider so the queue
-  // shares the same driver/pool. Falls back to throwing if missing — we
-  // only support Neo4j storage in v2.x.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const getConnectionManager = (storageProvider as any).getConnectionManager;
-  if (typeof getConnectionManager !== 'function') {
-    throw new Error(
-      'Storage provider does not expose getConnectionManager(); EmbeddingJobManager v2.4.0+ requires Neo4j.'
-    );
-  }
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const connectionManager: Neo4jConnectionManager = getConnectionManager.call(storageProvider);
-  const jobStore = new Neo4jJobStore(connectionManager);
-
-  // Create the embedding job manager with adapted storage provider + Neo4j-backed queue
-  embeddingJobManager = new EmbeddingJobManager(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    adaptedStorageProvider as any,
-    embeddingService,
-    rateLimiterOptions,
-    null, // Use default cache options
-    logger,
-    jobStore,
-    staleClaimMs
+if (!EmbeddingServiceFactory.hasEmbeddingProvider()) {
+  // No embedding provider configured (no EMBEDDING_API_KEY/OPENAI_API_KEY, not MOCK_EMBEDDINGS).
+  // Run keyword-only rather than generate meaningless random-vector "semantic" results.
+  logger.info(
+    'No embedding provider configured — semantic search disabled, running in keyword-only mode. ' +
+      'Set EMBEDDING_API_KEY (any OpenAI-compatible endpoint, e.g. Cloudflare Workers AI) or ' +
+      'OPENAI_API_KEY to enable embeddings, or MOCK_EMBEDDINGS=true for test vectors.'
   );
+} else {
+  try {
+    logger.debug(`Storage provider type: ${process.env.MEMORY_STORAGE_TYPE || 'default'}`);
 
-  logger.info('EmbeddingJobManager initialized (background jobs will start only in production)');
-} catch (error) {
-  // Fail gracefully if embedding job manager initialization fails
-  logger.error('Failed to initialize EmbeddingJobManager', {
-    error: error instanceof Error ? error.message : String(error),
-    stack: error instanceof Error ? error.stack : undefined,
-  });
-  embeddingJobManager = undefined;
+    // Initialize the embedding service (OpenAI-compatible: OpenAI / Cloudflare Workers AI / any)
+    const embeddingService = EmbeddingServiceFactory.createFromEnvironment();
+    logger.debug(
+      `Embedding service model info: ${JSON.stringify(embeddingService.getModelInfo())}`
+    );
+
+    // Configure rate limiting options - stricter limits to prevent OpenAI API abuse
+    const rateLimiterOptions = {
+      tokensPerInterval: process.env.EMBEDDING_RATE_LIMIT_TOKENS
+        ? Number.parseInt(process.env.EMBEDDING_RATE_LIMIT_TOKENS, 10)
+        : 20, // Default: 20 requests per minute
+      interval: process.env.EMBEDDING_RATE_LIMIT_INTERVAL
+        ? Number.parseInt(process.env.EMBEDDING_RATE_LIMIT_INTERVAL, 10)
+        : 60 * 1000, // Default: 1 minute
+    };
+
+    logger.info('Initializing EmbeddingJobManager', {
+      rateLimiterOptions,
+      model: embeddingService.getModelInfo().name,
+      storageType: process.env.MEMORY_STORAGE_TYPE || 'neo4j',
+    });
+
+    const adaptedStorageProvider = createAdaptedStorageProvider(storageProvider);
+
+    // Pull the Neo4j connection out of the storage provider so the queue
+    // shares the same driver/pool. Falls back to throwing if missing — we
+    // only support Neo4j storage in v2.x.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const getConnectionManager = (storageProvider as any).getConnectionManager;
+    if (typeof getConnectionManager !== 'function') {
+      throw new Error(
+        'Storage provider does not expose getConnectionManager(); EmbeddingJobManager v2.4.0+ requires Neo4j.'
+      );
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const connectionManager: Neo4jConnectionManager = getConnectionManager.call(storageProvider);
+    const jobStore = new Neo4jJobStore(connectionManager);
+
+    // Create the embedding job manager with adapted storage provider + Neo4j-backed queue
+    embeddingJobManager = new EmbeddingJobManager(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      adaptedStorageProvider as any,
+      embeddingService,
+      rateLimiterOptions,
+      null, // Use default cache options
+      logger,
+      jobStore,
+      staleClaimMs
+    );
+
+    logger.info('EmbeddingJobManager initialized (background jobs will start only in production)');
+  } catch (error) {
+    // Fail gracefully if embedding job manager initialization fails
+    logger.error('Failed to initialize EmbeddingJobManager', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
+    embeddingJobManager = undefined;
+  }
 }
+
+// Build the optional cross-encoder reranker (disabled unless RERANK_ENABLED + endpoint/key resolve).
+const reranker = RerankerService.fromEnv();
 
 // Create the KnowledgeGraphManager with the storage provider, embedding job manager, and vector store options
 const knowledgeGraphManager = new KnowledgeGraphManager({
   storageProvider,
   embeddingJobManager,
+  reranker,
   writeEmbeddingsLocally,
   // Pass vector store options from storage provider if available
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
