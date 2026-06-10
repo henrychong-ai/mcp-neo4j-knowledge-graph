@@ -2,7 +2,7 @@
 
 ## 🚨 Critical Priority
 
-### Reranker keep-alive socket hang — rerank ALWAYS fails open on remote-DB clients (found 2026-06-10, target v2.6.1)
+### Reranker keep-alive socket hang — rerank ALWAYS fails open on remote-DB clients (found 2026-06-10, target v2.7.0 — plan approved, see `~/.claude/plans/20260610-mcp-neo4j-kg-v2.7.0-reranker-transport-ordering-defaults.md`)
 
 **Bug**: `RerankerService.rerank()` uses the shared axios default agent (keep-alive). The TLS socket opened by the query-embedding call to `api.cloudflare.com` goes half-open after ~2–3 s idle; the subsequent rerank POST reuses it and hangs until the 5000 ms timeout (`ECONNABORTED: timeout of 5000ms exceeded`), so `maybeRerank` fail-opens every time. Clients whose vector recall takes seconds between the two CF calls (e.g. remote Neo4j over VPN) hit the dead-socket window on essentially every search.
 
