@@ -1,4 +1,7 @@
-import axios from 'axios';
+import http from 'node:http';
+import https from 'node:https';
+
+import axios, { type AxiosInstance } from 'axios';
 
 import { logger } from '../utils/logger.js';
 
@@ -68,6 +71,13 @@ export class OpenAIEmbeddingService extends EmbeddingService {
   private apiEndpoint: string;
 
   /**
+   * Dedicated axios instance with keep-alive disabled — half-open keep-alive
+   * sockets to api.cloudflare.com hang requests issued seconds after the
+   * previous call (v2.7.0 incident).
+   */
+  private readonly axiosInstance: AxiosInstance;
+
+  /**
    * Create a new OpenAI embedding service
    *
    * @param config - Configuration for the service
@@ -89,6 +99,10 @@ export class OpenAIEmbeddingService extends EmbeddingService {
     this.dimensions = config.dimensions || 1536; // text-embedding-3-small has 1536 dimensions
     this.version = config.version || '3.0.0';
     this.apiEndpoint = config.apiEndpoint || 'https://api.openai.com/v1/embeddings';
+    this.axiosInstance = axios.create({
+      httpAgent: new http.Agent({ keepAlive: false }),
+      httpsAgent: new https.Agent({ keepAlive: false }),
+    });
   }
 
   /**
@@ -109,7 +123,7 @@ export class OpenAIEmbeddingService extends EmbeddingService {
     });
 
     try {
-      const response = await axios.post<OpenAIEmbeddingResponse>(
+      const response = await this.axiosInstance.post<OpenAIEmbeddingResponse>(
         this.apiEndpoint,
         {
           input: text,
@@ -208,7 +222,7 @@ export class OpenAIEmbeddingService extends EmbeddingService {
    */
   override async generateEmbeddings(texts: string[]): Promise<number[][]> {
     try {
-      const response = await axios.post<OpenAIEmbeddingResponse>(
+      const response = await this.axiosInstance.post<OpenAIEmbeddingResponse>(
         this.apiEndpoint,
         {
           input: texts,

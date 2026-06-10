@@ -556,7 +556,7 @@ services:
 - Provider-agnostic (OpenAI-compatible). Defaults: OpenAI text-embedding-3-small (1536d). Cloudflare Workers AI example: @cf/qwen/qwen3-embedding-0.6b (1024d) + @cf/baai/bge-reranker-base reranker
 - INVARIANT: `EMBEDDING_DIMENSIONS` == `NEO4J_VECTOR_DIMENSIONS` == model native output dim. Model switch with a different dim = index rebuild + full re-embed (runbook: README "Switching models")
 - Setup walkthroughs (OpenAI / Cloudflare free plan / self-hosted) + multi-surface MCP client topology: README "Embeddings & Reranking Setup" + "Multi-Surface MCP Client Setup"
-- Semantic search: `limit=10`, `min_similarity=0.6` (default)
+- Semantic search defaults (v2.7.0, reranker-aware): vector recall is always `limit ?? 10`; default return is 10 (no reranker) or the top 5 reranked (`RERANK_TOP_K`, default 5) when a reranker is configured; explicit `limit` always honoured exactly. `min_similarity` default 0 (disabled — Neo4j `(cos+1)/2` normalised scale; see README)
 
 **Automated Maintenance (v1.3.0+):**
 
@@ -579,6 +579,13 @@ services:
 - **Production mock-guard**: `EmbeddingServiceFactory.hasEmbeddingProvider(env)` rejects `MOCK_EMBEDDINGS` under `NODE_ENV=production`; `shouldWriteEmbeddings(service, env)` refuses a `DefaultEmbeddingService` (mock OR silent fallback) in production — index.ts then runs keyword-only. Random vectors never drive a production store.
 - **Startup consistency check**: `checkDimensionConsistency(env)` warns at boot when `EMBEDDING_DIMENSIONS` != `NEO4J_VECTOR_DIMENSIONS`.
 - **Version source of truth**: `setup.ts getPackageVersion()` reads package.json via `createRequire` — never hardcode the MCP serverInfo version.
+
+### Reranker & Ordering (v2.7.0)
+
+- **keepAlive:false transport agents**: `RerankerService` and `OpenAIEmbeddingService` each create their own axios instance with `keepAlive: false` `node:http`/`node:https` agents (inline per file, deliberately no shared util) — the shared default keep-alive agent's half-open socket made every rerank call after a multi-second recall gap time out and silently fail open.
+- **Full-ordering rerank + caller-side trim**: `RerankerService.rerank()` returns the complete defensively score-sorted ordering (no topK early-break); `KnowledgeGraphManager.maybeRerank` owns the trim to the return count and appends any unscored tail (candidates beyond `RERANK_TOP_N`) in recall order.
+- **Provider preserves rank order through hydration**: `Neo4jStorageProvider.semanticSearch` reorders `openNodes()` results to match the ranked name list (hybrid and non-hybrid paths) — recall order is meaningful, and fail-open returns hybrid-ordered results sliced to the return count.
+- **`min_similarity` default 0** (disabled): threshold applies to Neo4j's `(cos+1)/2` normalised score; defaults resolve with `??` so an explicit `0` works.
 
 ### BigInt Handling in Neo4j Operations
 

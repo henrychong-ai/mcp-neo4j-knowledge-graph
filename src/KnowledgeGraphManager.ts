@@ -126,6 +126,8 @@ export class KnowledgeGraphManager {
   private vectorStore?: VectorStore;
   private writeEmbeddingsLocally: boolean;
   private reranker?: RerankerService;
+  /** Once-per-process latch so the keyword-only fallback warn does not spam logs. */
+  private static keywordFallbackWarned = false;
 
   constructor(options?: KnowledgeGraphManagerOptions) {
     this.storageProvider = options?.storageProvider;
@@ -484,8 +486,9 @@ export class KnowledgeGraphManager {
       const vectorStore = await this.ensureVectorStore().catch(() => {});
 
       if (vectorStore) {
-        const limit = options.limit || 10;
-        const minSimilarity = options.threshold || 0.7;
+        // ?? (not ||) so an explicit limit/threshold of 0 is honoured (v2.7.0)
+        const limit = options.limit ?? 10;
+        const minSimilarity = options.threshold ?? 0.7;
 
         // Search the vector store
         const results = await vectorStore.search(embedding, {
@@ -508,8 +511,8 @@ export class KnowledgeGraphManager {
     if (this.storageProvider && hasSearchVectors(this.storageProvider)) {
       return this.storageProvider.searchVectors(
         embedding,
-        options.limit || 10,
-        options.threshold || 0.7
+        options.limit ?? 10,
+        options.threshold ?? 0.7
       );
     }
 
@@ -554,6 +557,18 @@ export class KnowledgeGraphManager {
       options = { ...options, semanticSearch: true };
     }
 
+    // v2.7.0: normalise an explicit limit once at the entry point — fractional
+    // values floor, negatives clamp to 0 (explicit "no results"), and non-finite
+    // values (NaN/Infinity) fall back to the defaults as if no limit were given.
+    if (options.limit !== undefined) {
+      const normalisedLimit = Number.isFinite(options.limit)
+        ? Math.max(0, Math.floor(options.limit))
+        : undefined;
+      if (normalisedLimit !== options.limit) {
+        options = { ...options, limit: normalisedLimit };
+      }
+    }
+
     // Check if semantic search is requested
     if (options.semanticSearch || options.hybridSearch) {
       // Check if we have a storage provider with semanticSearch method
@@ -563,38 +578,62 @@ export class KnowledgeGraphManager {
           if (this.embeddingJobManager) {
             const embeddingService = this.embeddingJobManager.embeddingService;
             if (embeddingService) {
+              // Recall/return counts (v2.7.0): recall a fixed default of 10 unless the
+              // caller sets an explicit limit; when a reranker is configured and no limit
+              // is given, return its topK (default 5) best candidates from that recall.
+              const recallLimit = options.limit ?? 10;
+              const returnCount =
+                options.limit ?? (this.reranker?.enabled ? this.reranker.topK : 10);
+              // An explicit limit of 0 is empty by construction — skip the billable
+              // query-embedding call, the recall pipeline, and any rerank call entirely.
+              if (returnCount === 0) {
+                return { entities: [], relations: [], total: 0 };
+              }
               const queryVector = await embeddingService.generateEmbedding(query);
-              // Widen recall when reranking so the reranker has candidates to reorder.
-              const recallLimit = this.reranker?.enabled
-                ? Math.max(options.limit ?? 10, this.reranker.topN)
-                : options.limit;
               const recall = await this.storageProvider.semanticSearch(query, {
                 ...options,
                 limit: recallLimit,
                 queryVector,
               });
-              return await this.maybeRerank(query, recall, options.limit ?? 10);
+              return await this.maybeRerank(query, recall, returnCount);
             }
           }
 
           // Fall back to text search if no embedding service
-          return await this.storageProvider.searchNodes(query, {
-            domain: options.domain,
-            includeNullDomain: options.includeNullDomain,
-          });
+          const fallbackMessage =
+            'Semantic search requested but no embedding service is available — falling back to keyword-only searchNodes. Configure EMBEDDING_API_KEY (or OPENAI_API_KEY) for semantic retrieval.';
+          if (KnowledgeGraphManager.keywordFallbackWarned) {
+            logger.debug(fallbackMessage);
+          } else {
+            KnowledgeGraphManager.keywordFallbackWarned = true;
+            logger.warn(fallbackMessage);
+          }
+          return this.applyExplicitLimit(
+            await this.storageProvider.searchNodes(query, {
+              domain: options.domain,
+              includeNullDomain: options.includeNullDomain,
+            }),
+            options.limit
+          );
         } catch (error) {
           logger.error('Provider semanticSearch failed, falling back to basic search', error);
-          return this.storageProvider.searchNodes(query, {
-            domain: options.domain,
-            includeNullDomain: options.includeNullDomain,
-          });
+          return this.applyExplicitLimit(
+            await this.storageProvider.searchNodes(query, {
+              domain: options.domain,
+              includeNullDomain: options.includeNullDomain,
+            }),
+            options.limit
+          );
         }
       } else if (this.storageProvider) {
         // Fall back to searchNodes if semanticSearch is not available in the provider
-        return this.storageProvider.searchNodes(query, {
-          domain: options.domain,
-          includeNullDomain: options.includeNullDomain,
-        });
+        return this.applyExplicitLimit(
+          await this.storageProvider.searchNodes(query, {
+            domain: options.domain,
+            includeNullDomain: options.includeNullDomain,
+          }),
+          options.limit
+        );
       }
 
       // If no storage provider or its semanticSearch is not available, try internal semantic search
@@ -603,8 +642,9 @@ export class KnowledgeGraphManager {
           // Try to use semantic search
           const results = await this.semanticSearch(query, {
             hybridSearch: options.hybridSearch || false,
-            limit: options.limit || 10,
-            threshold: options.threshold || options.minSimilarity || 0.5,
+            // ?? (not ||) so an explicit limit/threshold of 0 is honoured (v2.7.0)
+            limit: options.limit ?? 10,
+            threshold: options.threshold ?? options.minSimilarity ?? 0.5,
             entityTypes: options.entityTypes || [],
             facets: options.facets || [],
             offset: options.offset || 0,
@@ -619,10 +659,13 @@ export class KnowledgeGraphManager {
 
           // Explicitly call searchNodes if available in the provider
           if (this.storageProvider) {
-            return (this.storageProvider as StorageProvider).searchNodes(query, {
-              domain: options.domain,
-              includeNullDomain: options.includeNullDomain,
-            });
+            return this.applyExplicitLimit(
+              await (this.storageProvider as StorageProvider).searchNodes(query, {
+                domain: options.domain,
+                includeNullDomain: options.includeNullDomain,
+              }),
+              options.limit
+            );
           }
         }
       } else {
@@ -638,49 +681,102 @@ export class KnowledgeGraphManager {
   }
 
   /**
-   * Optionally rerank semantic-search results with a cross-encoder (RerankerService).
+   * Trim an ordered entity list to `returnCount` and rebuild the result around it.
    *
-   * Strictly additive and FAIL-OPEN: if no reranker is configured, the candidate set is
-   * trivial (<=1), or the rerank call errors/times out/returns garbage, the original
-   * vector/hybrid ordering is returned unchanged. This also imposes a meaningful final
-   * order (the underlying openNodes() hop does not preserve rank order).
+   * Recall order is meaningful as of v2.7.0: Neo4jStorageProvider.semanticSearch reorders
+   * hydrated entities to match the ranked name list, so slicing recall preserves the
+   * vector/hybrid ranking. Relations are filtered to the surviving entities and `total`
+   * reflects the returned entity count so it can't overstate the trimmed result.
+   *
+   * @param recall - The recall result whose non-entity fields are preserved
+   * @param ordered - The entities in final (rerank or recall) order
+   * @param returnCount - Maximum number of entities to return
+   * @returns The recall result rebuilt around the trimmed, ordered entities
+   */
+  /**
+   * Honour an explicit caller limit on a keyword-fallback result (v2.7.0).
+   * No limit given → the graph passes through unchanged (keyword search keeps
+   * its own result-size semantics); an explicit limit is enforced exactly,
+   * matching the documented semantic_search contract even in degraded mode.
+   */
+  private applyExplicitLimit(graph: KnowledgeGraph, limit?: number): KnowledgeGraph {
+    if (limit === undefined) {
+      return graph;
+    }
+    return this.trimToReturnCount(graph, graph.entities ?? [], limit);
+  }
+
+  private trimToReturnCount(
+    recall: KnowledgeGraph,
+    ordered: Entity[],
+    returnCount: number
+  ): KnowledgeGraph {
+    const entities = ordered.slice(0, returnCount);
+    const names = new Set(entities.map(entity => entity.name));
+    return {
+      ...recall,
+      entities,
+      relations: (recall.relations || []).filter(
+        relation => names.has(relation.from) && names.has(relation.to)
+      ),
+      total: entities.length,
+    };
+  }
+
+  /**
+   * Order semantic-search results and trim them to `returnCount`.
+   *
+   * With a cross-encoder reranker (RerankerService) configured, entities are reordered
+   * best-first by rerank score; if the rerank ordering covers fewer entities than
+   * `returnCount` (e.g. an explicit limit above the RERANK_TOP_N scoring cap), the
+   * unscored remainder is appended in recall order. Strictly additive and FAIL-OPEN: if
+   * no reranker is configured, the candidate set is trivial (<=1), or the rerank call
+   * errors/times out/returns garbage, the recall ordering is used instead (meaningful as
+   * of v2.7.0 — the provider preserves rank order through entity hydration). Every path
+   * returns at most `returnCount` entities, filters relations to the surviving entities,
+   * and sets `total` to the returned entity count.
    *
    * @param query - The search query
    * @param recall - The vector/hybrid recall result to reorder
-   * @param topK - Number of results to keep after reranking
-   * @returns The reranked (or, on any failure, the original) knowledge graph
+   * @param returnCount - Number of results to return after ordering and trimming
+   * @returns The reranked (or, on any rerank failure, recall-ordered) knowledge graph
    */
   private async maybeRerank(
     query: string,
     recall: KnowledgeGraph,
-    topK: number
+    returnCount: number
   ): Promise<KnowledgeGraph> {
-    if (!this.reranker?.enabled || !recall.entities || recall.entities.length <= 1) {
-      return recall;
+    const recallEntities = recall.entities ?? [];
+    if (!this.reranker?.enabled || recallEntities.length <= 1) {
+      return this.trimToReturnCount(recall, recallEntities, returnCount);
     }
     try {
-      const passages = recall.entities.map(entity => prepareEntityText(entity));
+      const passages = recallEntities.map(entity => prepareEntityText(entity));
       const order = await this.reranker.rerank(query, passages);
-      if (order.length === 0) return recall;
       const reordered = order
-        .map(index => recall.entities[index])
-        .filter((entity): entity is Entity => Boolean(entity))
-        .slice(0, topK);
-      const names = new Set(reordered.map(entity => entity.name));
-      return {
-        ...recall,
-        entities: reordered,
-        relations: (recall.relations || []).filter(
-          relation => names.has(relation.from) && names.has(relation.to)
-        ),
-        // Reflect the post-rerank trim so `total` can't overstate the returned entity count.
-        total: reordered.length,
-      };
+        .map(index => recallEntities[index])
+        .filter((entity): entity is Entity => Boolean(entity));
+      if (reordered.length === 0) {
+        return this.trimToReturnCount(recall, recallEntities, returnCount);
+      }
+      // An explicit limit above the reranker's scoring cap (RERANK_TOP_N) leaves some
+      // recall entities unscored — append them in recall order to honour the limit.
+      if (reordered.length < returnCount) {
+        const included = new Set(reordered.map(entity => entity.name));
+        for (const entity of recallEntities) {
+          if (reordered.length >= returnCount) break;
+          if (!included.has(entity.name)) {
+            included.add(entity.name);
+            reordered.push(entity);
+          }
+        }
+      }
+      return this.trimToReturnCount(recall, reordered, returnCount);
     } catch (error) {
-      logger.warn('Reranker failed; returning vector/hybrid order unchanged (fail-open)', {
+      logger.warn('Reranker failed; returning recall order trimmed to returnCount (fail-open)', {
         error: error instanceof Error ? error.message : String(error),
       });
-      return recall;
+      return this.trimToReturnCount(recall, recallEntities, returnCount);
     }
   }
 

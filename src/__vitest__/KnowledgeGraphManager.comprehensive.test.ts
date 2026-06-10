@@ -340,7 +340,9 @@ describe('KnowledgeGraphManager - Search Method', () => {
     const result = await manager.search('test query', { semanticSearch: true });
 
     expect((mockProvider as any).semanticSearch).toHaveBeenCalled();
-    expect(result).toEqual(mockSemanticResult);
+    // v2.7.0: results are always trimmed to the return count with `total` set to the
+    // returned entity count, even when no reranker is configured.
+    expect(result).toEqual({ ...mockSemanticResult, total: 1 });
   });
 
   it('should enable semanticSearch when hybridSearch is true', async () => {

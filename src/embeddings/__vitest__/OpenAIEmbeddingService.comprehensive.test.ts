@@ -3,12 +3,15 @@
  * Covers: constructor, generateEmbedding, generateEmbeddings, error handling, normalization
  */
 
-import axios from 'axios';
+import axios, { type AxiosInstance } from 'axios';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { OpenAIEmbeddingService } from '../OpenAIEmbeddingService.js';
 
-// Mock axios
+// Mock axios. The service calls axios.create() in its constructor (dedicated
+// keep-alive-disabled instance), so create() must return an object whose post
+// is the shared mock — all existing mockedAxios.post setups/assertions then
+// apply to the instance unchanged.
 vi.mock('axios');
 const mockedAxios = vi.mocked(axios);
 
@@ -79,6 +82,7 @@ describe('OpenAIEmbeddingService', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockedAxios.create.mockReturnValue({ post: mockedAxios.post } as unknown as AxiosInstance);
     process.env = { ...originalEnv };
     delete process.env.OPENAI_API_KEY;
     delete process.env.DEBUG;

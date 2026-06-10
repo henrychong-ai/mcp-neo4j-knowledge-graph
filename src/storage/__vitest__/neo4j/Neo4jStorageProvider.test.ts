@@ -822,6 +822,236 @@ describe('Neo4jStorageProvider', () => {
     });
   });
 
+  // v2.7.0: semantic search ordering guarantee + min_similarity default
+
+  describe('semanticSearch ordering (v2.7.0)', () => {
+    const makeEntity = (name: string): Entity => ({
+      name,
+      entityType: 'test',
+      observations: [],
+    });
+
+    const vectorRecord = (name: string, score: number) => ({
+      get: (key: string) => {
+        if (key === 'name') return name;
+        if (key === 'entityType') return 'test';
+        if (key === 'score') return score;
+        return null;
+      },
+    });
+
+    /** Session whose run() answers the direct queryNodes Cypher with ranked records */
+    const mockSessionWithVectorResults = (records: ReturnType<typeof vectorRecord>[]) => {
+      const run = vi.fn().mockImplementation((query: string) => {
+        if (typeof query === 'string' && query.includes('db.index.vector.queryNodes')) {
+          return Promise.resolve({ records });
+        }
+        return Promise.resolve({ records: [] });
+      });
+      vi.spyOn(storageProvider.getConnectionManager(), 'getSession').mockResolvedValue({
+        run,
+        close: vi.fn().mockResolvedValue(undefined),
+      } as never);
+      return run;
+    };
+
+    describe('reorderEntitiesByRank', () => {
+      const reorder = (graph: KnowledgeGraph, rankedNames: string[]): KnowledgeGraph =>
+        (
+          storageProvider as unknown as {
+            reorderEntitiesByRank: (graph: KnowledgeGraph, rankedNames: string[]) => KnowledgeGraph;
+          }
+        ).reorderEntitiesByRank(graph, rankedNames);
+
+      it('reorders shuffled entities to match the ranked name list', () => {
+        const graph: KnowledgeGraph = {
+          entities: [makeEntity('b'), makeEntity('c'), makeEntity('a')],
+          relations: [],
+        };
+
+        const result = reorder(graph, ['a', 'b', 'c']);
+
+        expect(result.entities.map(e => e.name)).toEqual(['a', 'b', 'c']);
+      });
+
+      it('places entities missing from the ranked list last, preserving relative order', () => {
+        const graph: KnowledgeGraph = {
+          entities: [makeEntity('x'), makeEntity('b'), makeEntity('y'), makeEntity('a')],
+          relations: [],
+        };
+
+        const result = reorder(graph, ['a', 'b']);
+
+        expect(result.entities.map(e => e.name)).toEqual(['a', 'b', 'x', 'y']);
+      });
+
+      it('does not mutate the input graph', () => {
+        const graph: KnowledgeGraph = {
+          entities: [makeEntity('b'), makeEntity('a')],
+          relations: [],
+        };
+
+        reorder(graph, ['a', 'b']);
+
+        expect(graph.entities.map(e => e.name)).toEqual(['b', 'a']);
+      });
+    });
+
+    it('returns entities in vector-rank order when openNodes hydrates them shuffled (vector path)', async () => {
+      mockSessionWithVectorResults([
+        vectorRecord('c', 0.99),
+        vectorRecord('a', 0.8),
+        vectorRecord('b', 0.7),
+      ]);
+      vi.spyOn(storageProvider, 'getEntity').mockImplementation(async name => makeEntity(name));
+      const openNodesSpy = vi.spyOn(storageProvider, 'openNodes').mockResolvedValue({
+        // Hydration returns the entities shuffled relative to the ranked list
+        entities: [makeEntity('a'), makeEntity('b'), makeEntity('c')],
+        relations: [],
+      });
+
+      const result = await storageProvider.semanticSearch('ordering test', {
+        queryVector: [0.1, 0.2, 0.3],
+        enableHybridRetrieval: false,
+        useCache: false,
+      });
+
+      expect(openNodesSpy).toHaveBeenCalledWith(['c', 'a', 'b']);
+      expect(result.entities.map(e => e.name)).toEqual(['c', 'a', 'b']);
+    });
+
+    it('caches the ordered result (reorder happens before searchCache.set)', async () => {
+      mockSessionWithVectorResults([
+        vectorRecord('c', 0.99),
+        vectorRecord('a', 0.8),
+        vectorRecord('b', 0.7),
+      ]);
+      vi.spyOn(storageProvider, 'getEntity').mockImplementation(async name => makeEntity(name));
+      const openNodesSpy = vi.spyOn(storageProvider, 'openNodes').mockResolvedValue({
+        entities: [makeEntity('a'), makeEntity('b'), makeEntity('c')],
+        relations: [],
+      });
+
+      const options = {
+        queryVector: [0.1, 0.2, 0.3],
+        enableHybridRetrieval: false,
+      };
+      const first = await storageProvider.semanticSearch('cache ordering test', options);
+      const second = await storageProvider.semanticSearch('cache ordering test', options);
+
+      // Second call is served from cache — and the cached graph is the ordered one
+      expect(openNodesSpy).toHaveBeenCalledTimes(1);
+      expect(first.entities.map(e => e.name)).toEqual(['c', 'a', 'b']);
+      expect(second.entities.map(e => e.name)).toEqual(['c', 'a', 'b']);
+    });
+
+    it('returns entities in rank order on the findSimilarEntities fallback path', async () => {
+      // Direct vector search fails -> semanticSearch falls back to findSimilarEntities
+      vi.spyOn(storageProvider.getConnectionManager(), 'getSession').mockResolvedValue({
+        run: vi.fn().mockRejectedValue(new Error('direct vector search unavailable')),
+        close: vi.fn().mockResolvedValue(undefined),
+      } as never);
+      vi.spyOn(storageProvider, 'findSimilarEntities').mockResolvedValue([
+        { ...makeEntity('z'), score: 0.95 },
+        { ...makeEntity('x'), score: 0.9 },
+        { ...makeEntity('y'), score: 0.85 },
+      ]);
+      const openNodesSpy = vi.spyOn(storageProvider, 'openNodes').mockResolvedValue({
+        entities: [makeEntity('x'), makeEntity('y'), makeEntity('z')],
+        relations: [],
+      });
+
+      const result = await storageProvider.semanticSearch('fallback ordering test', {
+        queryVector: [0.1, 0.2, 0.3],
+        useCache: false,
+      });
+
+      expect(openNodesSpy).toHaveBeenCalledWith(['z', 'x', 'y']);
+      expect(result.entities.map(e => e.name)).toEqual(['z', 'x', 'y']);
+    });
+  });
+
+  describe('semanticSearch min_similarity default (v2.7.0)', () => {
+    /**
+     * Run a semantic search with the given options and capture the minScore
+     * param passed to the direct queryNodes Cypher.
+     */
+    const captureMinScore = async (options: { minSimilarity?: number }): Promise<unknown> => {
+      const run = vi.fn().mockResolvedValue({ records: [] });
+      vi.spyOn(storageProvider.getConnectionManager(), 'getSession').mockResolvedValue({
+        run,
+        close: vi.fn().mockResolvedValue(undefined),
+      } as never);
+
+      await storageProvider.semanticSearch('min similarity probe', {
+        queryVector: [0.1, 0.2, 0.3],
+        useCache: false,
+        ...options,
+      });
+
+      const vectorCalls = run.mock.calls.filter(
+        ([query]) => typeof query === 'string' && query.includes('db.index.vector.queryNodes')
+      );
+      expect(vectorCalls.length).toBeGreaterThan(0);
+      return (vectorCalls[0][1] as Record<string, unknown>).minScore;
+    };
+
+    it('defaults minScore to 0 when minSimilarity is undefined', async () => {
+      expect(await captureMinScore({})).toBe(0);
+    });
+
+    it('honours an explicit minSimilarity of 0 (no || collapse)', async () => {
+      expect(await captureMinScore({ minSimilarity: 0 })).toBe(0);
+    });
+
+    it('honours an explicit minSimilarity of 0.4', async () => {
+      expect(await captureMinScore({ minSimilarity: 0.4 })).toBe(0.4);
+    });
+
+    it('uses 0 (not 0.6) for the minSimilarity slot in the cache key', () => {
+      const generateCacheKey = (query: string, options: Record<string, unknown>): string =>
+        (
+          storageProvider as unknown as {
+            generateCacheKey: (query: string, options: Record<string, unknown>) => string;
+          }
+        ).generateCacheKey(query, options);
+
+      // Cache key parts: query:limit:minSimilarity:...
+      expect(generateCacheKey('q', {}).split(':')[2]).toBe('0');
+      expect(generateCacheKey('q', { minSimilarity: 0 }).split(':')[2]).toBe('0');
+      expect(generateCacheKey('q', { minSimilarity: 0.4 }).split(':')[2]).toBe('0.4');
+      // undefined and explicit 0 now produce the same key (both mean "no floor")
+      expect(generateCacheKey('q', {})).toBe(generateCacheKey('q', { minSimilarity: 0 }));
+    });
+
+    it('keeps an explicit limit of 0 distinct from the default in the cache key', () => {
+      const generateCacheKey = (query: string, options: Record<string, unknown>): string =>
+        (
+          storageProvider as unknown as {
+            generateCacheKey: (query: string, options: Record<string, unknown>) => string;
+          }
+        ).generateCacheKey(query, options);
+
+      // Cache key parts: query:limit:...
+      expect(generateCacheKey('q', {}).split(':')[1]).toBe('10');
+      expect(generateCacheKey('q', { limit: 0 }).split(':')[1]).toBe('0');
+    });
+
+    it('includes includeNullDomain in the cache key (null-domain vs all-domain results never alias)', () => {
+      const generateCacheKey = (query: string, options: Record<string, unknown>): string =>
+        (
+          storageProvider as unknown as {
+            generateCacheKey: (query: string, options: Record<string, unknown>) => string;
+          }
+        ).generateCacheKey(query, options);
+
+      expect(generateCacheKey('q', { includeNullDomain: true })).not.toBe(
+        generateCacheKey('q', {})
+      );
+      expect(generateCacheKey('q', { includeNullDomain: false })).toBe(generateCacheKey('q', {}));
+    });
+  });
+
   // Helper methods
 
   describe('close', () => {

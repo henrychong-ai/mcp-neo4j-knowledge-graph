@@ -241,8 +241,8 @@ export class Neo4jStorageProvider implements StorageProvider {
 
     const parts = [
       query,
-      String(options.limit || 10),
-      String(options.minSimilarity || 0.6),
+      String(options.limit ?? 10),
+      String(options.minSimilarity ?? 0),
       entityTypes.join(','),
       String(options.hybridSearch || false),
       String(options.semanticWeight || 0.6),
@@ -250,8 +250,31 @@ export class Neo4jStorageProvider implements StorageProvider {
       hybridConfigKey,
       vectorKey,
       options.domain || 'all',
+      // includeNullDomain changes the Cypher filter (`AND node.domain IS NULL`) —
+      // omitting it from the key aliased null-domain and all-domain results.
+      String(options.includeNullDomain ?? false),
     ];
     return parts.join(':');
+  }
+
+  /**
+   * Reorder a graph's entities to match a ranked name list.
+   *
+   * openNodes() hydration does not guarantee result order, so the ranked
+   * ordering produced by vector/hybrid search must be re-applied before the
+   * graph is cached or returned — callers (KnowledgeGraphManager.maybeRerank)
+   * rely on recall order being meaningful. Entities whose name is missing
+   * from the ranked list are placed last, preserving their relative order
+   * (Array.prototype.sort is stable).
+   */
+  private reorderEntitiesByRank(graph: KnowledgeGraph, rankedNames: string[]): KnowledgeGraph {
+    const rankIndex = new Map(rankedNames.map((name, index) => [name, index]));
+    const entities = [...graph.entities].sort(
+      (a, b) =>
+        (rankIndex.get(a.name) ?? Number.MAX_SAFE_INTEGER) -
+        (rankIndex.get(b.name) ?? Number.MAX_SAFE_INTEGER)
+    );
+    return { ...graph, entities };
   }
 
   /**
@@ -2418,8 +2441,10 @@ export class Neo4jStorageProvider implements StorageProvider {
           method: 'vectorOnly',
         });
 
-        const searchLimit = Math.floor(options.limit || 10);
-        const minSimilarity = options.minSimilarity || 0.6;
+        // ?? (not ||) so an explicit limit of 0 stays 0 instead of widening to 10
+        const searchLimit = Math.floor(options.limit ?? 10);
+        // Default 0 (no similarity floor) — `??` so an explicit 0 is honoured
+        const minSimilarity = options.minSimilarity ?? 0;
 
         diagnostics.stepsTaken.push({
           step: 'vectorSearch',
@@ -2594,8 +2619,12 @@ export class Neo4jStorageProvider implements StorageProvider {
                 }
               }
 
-              // Get related relations for final entities
-              const finalGraph = await this.openNodes(finalEntityNames);
+              // Get related relations for final entities, re-applying the
+              // ranked order (openNodes does not preserve it) before caching
+              const finalGraph = this.reorderEntitiesByRank(
+                await this.openNodes(finalEntityNames),
+                finalEntityNames
+              );
 
               diagnostics.endTime = Date.now();
               diagnostics.totalTimeTaken = diagnostics.endTime - diagnostics.startTime;
@@ -2713,7 +2742,12 @@ export class Neo4jStorageProvider implements StorageProvider {
           entityNames,
         });
 
-        const finalGraph = await this.openNodes(entityNames);
+        // Hydrate, then re-apply the ranked order (openNodes does not
+        // preserve it) before caching
+        const finalGraph = this.reorderEntitiesByRank(
+          await this.openNodes(entityNames),
+          entityNames
+        );
 
         diagnostics.stepsTaken.push({
           step: 'openNodes',
@@ -2746,7 +2780,7 @@ export class Neo4jStorageProvider implements StorageProvider {
         reason: 'No query vector available',
       });
 
-      const textSearchLimit = Math.floor(options.limit || 10);
+      const textSearchLimit = Math.floor(options.limit ?? 10);
 
       diagnostics.stepsTaken.push({
         step: 'textSearch',

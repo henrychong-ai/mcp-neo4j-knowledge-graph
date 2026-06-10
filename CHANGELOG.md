@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.7.0] - 2026-06-10
+
+Reranker transport fix, ordering guarantees, and reranker-aware defaults. Motivated by a live diagnosis (2026-06-10): on clients with multi-second vector-recall latency (e.g. remote Neo4j over VPN), the cross-encoder rerank call had **never** succeeded — it always timed out on a half-open keep-alive socket and silently failed open, returning the full widened recall set unsliced and effectively unordered.
+
+### Fixed
+
+- **Reranker keep-alive socket hang.** `RerankerService` and `OpenAIEmbeddingService` each use a dedicated axios instance with `keepAlive: false` HTTP(S) agents. Previously both shared the axios default keep-alive agent: the TLS socket opened by the query-embedding call went half-open after ~2–3 s idle, and the rerank POST reused it and hung to the 5,000 ms timeout (`ECONNABORTED`) — so on clients with multi-second recall latency between the two calls, reranking **always** timed out and silently fail-opened. Cost of the fix: one extra TLS handshake (~100 ms) per call.
+- **Defensive score-sort of rerank responses.** `RerankerService.rerank()` now explicitly sorts the provider response by score (best-first) before collecting ids — the ordering guarantee is ours, not an undocumented invariant of the provider's response order.
+- **Rank order preserved through `openNodes` hydration.** `Neo4jStorageProvider.semanticSearch` computed a real hybrid ranking but the `openNodes()` hydration hop returned entities in arbitrary Cypher order on **both** search paths (hybrid and non-hybrid). Entities are now reordered to match the ranked name list, so vector/hybrid order is meaningful end-to-end.
+- **Fail-open now returns ordered, sliced results.** When the reranker is disabled, trivial, or fails, `semantic_search` returns the hybrid-ordered recall sliced to the return count (relations filtered to surviving entities, `total` updated). Previously fail-open returned the full widened recall (`RERANK_TOP_N`, default 20), unordered, ignoring `limit`.
+
+### Changed (behaviour)
+
+- **Reranker-aware defaults.** Vector recall is always `limit ?? 10`. With a reranker configured, the default return is the **top 5 reranked** (`RERANK_TOP_K` default 10 → 5); without a reranker the default remains 10. Explicit `limit` is always honoured exactly in both modes. Recall-widening to `RERANK_TOP_N` is removed — `RERANK_TOP_N` (default 20) is now **only** the scoring-payload cap (how many candidates the cross-encoder scores); with an explicit `limit` beyond it, the unscored tail is appended in recall order so the `limit` contract holds. **Call-out:** reranker-configured deployments now return 5 results by default (was 10, effectively unordered); non-reranker deployments are unchanged at 10.
+- **`min_similarity` default 0.6 → 0 (disabled).** The threshold applies to Neo4j's normalised cosine score (`(cosine + 1) / 2`, so 0.5 = unrelated). Measured on the production corpus with qwen3 embeddings, all top-20 scores cluster 0.71–0.90 — relevant and nonsense queries alike — so 0.6 never filtered anything and no valid absolute floor exists on this scale. The per-call parameter is retained (and an explicit `0` now works: `??` instead of `||`); `limit` is likewise passed through undefined-preserving.
+
+### Added
+
+- **Warn log on silent keyword-only degradation.** When `semantic_search` is requested but no embedding service is configured, the server now logs a warning instead of silently falling back to keyword-only `searchNodes` — previously a missing embedding env masked itself as "multi-word queries return nothing".
+
+### Fixed (review round — multi-reviewer synthesis)
+
+- **Explicit `limit` sanitised once at the search entry.** Fractional values floor, negatives clamp to 0 (previously `slice(0, -1)` returned all-but-the-last entity), and non-finite values (NaN/Infinity) fall back to the defaults. An explicit `limit: 0` now short-circuits before the query-embedding call — no billable embed, no vector query, and no rerank call for a result that is empty by construction (the provider also honours `0` instead of widening it back to 10).
+- **Keyword-only fallback honours an explicit `limit`.** All degraded-mode `searchNodes` fallbacks inside the semantic path now trim to the caller's limit, keeping the "explicit `limit` is always honoured" contract even without an embedding service. (Known gap: `entity_types` is still not applied in keyword mode — documented residual.)
+- **Explicit-zero contract extended to the legacy paths.** The internal (non-provider) semantic path and `findSimilarEntities` now use `??` instead of `||` for `limit`/`threshold`, so explicit zeros are honoured there too.
+- **Semantic-search cache key includes `includeNullDomain`.** Previously a cached null-domain result could satisfy an all-domain query (and vice versa) — a pre-existing collision in the same path, fixed while touching the key for the `min_similarity` change.
+
 ## [2.6.0] - 2026-06-10
 
 Hardening release — makes it structurally impossible for random/mock vectors or wrong-dimension writes to corrupt a production knowledge graph. Motivated by a real incident (2026-06-09): stale client processes whose API key could not resolve fell back to the random mock embedding service and silently wrote 1536-dim vectors into a production 1024-dim store.

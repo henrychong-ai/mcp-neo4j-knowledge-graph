@@ -524,8 +524,8 @@ The following tools are available to LLM client hosts through the Model Context 
   - Search for entities semantically using vector embeddings and similarity
   - Input:
     - `query` (string): The text query to search for semantically
-    - `limit` (number, optional): Maximum results to return (default: 10)
-    - `min_similarity` (number, optional): Minimum similarity threshold (0.0-1.0, default: 0.6)
+    - `limit` (number, optional): Maximum results to return (default: 10; with a reranker configured, default: 5 reranked best-first — an explicit `limit` is always honoured exactly)
+    - `min_similarity` (number, optional): Minimum similarity threshold on Neo4j's normalised cosine scale (0.0-1.0, where 0.5 ≈ unrelated; default: 0 = disabled — see [Result counts, ordering & `min_similarity`](#result-counts-ordering--min_similarity))
     - `entity_types` (string[], optional): Filter results by entity types
     - `domain` (string, optional): Filter by user-defined domain. Omit to search all domains
     - `hybrid_search` (boolean, optional): Combine keyword and semantic search (default: true)
@@ -617,6 +617,26 @@ EMBEDDING_DIMENSIONS=768
 NEO4J_VECTOR_DIMENSIONS=768
 ```
 
+### Result counts, ordering & `min_similarity`
+
+Defaults are **reranker-aware** (v2.7.0+). Vector recall is always `limit ?? 10`; the reranker only re-orders *within* that recalled set and trims the default return:
+
+| Scenario | Vector recall | Returned | Final order |
+|---|---|---|---|
+| No reranker, default | 10 | **10** | hybrid score, best-first |
+| Reranker configured, default | 10 | **5** (`RERANK_TOP_K`) | cross-encoder, best-first |
+| Explicit `limit: N` (either mode) | N | **N** (always honoured exactly) | as above |
+| Reranker fails → fail-open | 10 / N | **5 / N** | hybrid score, sliced to the return count |
+
+Two env knobs govern the reranker, and they mean different things:
+
+- **`RERANK_TOP_K`** (default **5**) — the default *return count* when a reranker is configured. Only applies when no explicit `limit` is given.
+- **`RERANK_TOP_N`** (default **20**) — the *scoring-payload cap*: how many recall candidates are sent to the cross-encoder for scoring. It is **not** a return count. With an explicit `limit` larger than `RERANK_TOP_N`, the first `RERANK_TOP_N` candidates are cross-encoder-ordered and the unscored remainder is appended in recall order, so the `limit` contract always holds.
+
+**Ordering guarantees:** with a reranker, results are cross-encoder best-first (the response is defensively score-sorted server-side). Without a reranker — and on any reranker failure (fail-open) — results follow the hybrid-score order, which is preserved through entity hydration on both search paths (v2.7.0+).
+
+**`min_similarity`:** the threshold applies to **Neo4j's normalised cosine score** — `(cosine + 1) / 2`, so 0.5 ≈ unrelated and 1.0 = identical. The default is **0 (disabled)**. Absolute floors are not meaningful on this scale for typical embedding models: measured with qwen3 embeddings, top-20 scores cluster around 0.71–0.90 for relevant *and* irrelevant queries alike, so any floor that blocks junk also blocks real queries. The parameter is retained per-call for power users (an explicit `0` works).
+
 ### Switching models (dimension migration)
 
 Changing to a model with a **different native dimension** requires rebuilding the vector index and re-embedding — vectors of the old dimension cannot coexist with the new index. With the server stopped:
@@ -645,7 +665,7 @@ The embedding pipeline is designed to fail **loudly into a safe state**, never s
 |---|---|
 | No provider configured (no `EMBEDDING_API_KEY`/`OPENAI_API_KEY`) | Server runs in **keyword-only mode**: BM25/keyword search works, `semantic_search` falls back, nothing is ever embedded. Random/mock vectors are never generated implicitly. |
 | Embedding API call fails on entity write | Entity is persisted with `embedding = NULL`; the backfill cron retries later. Writes never block on the embedding provider. |
-| Reranker errors (timeout, bad response, quota) | **Fail-open**: `semantic_search` returns the vector/hybrid ordering unchanged. Reranking is strictly additive. |
+| Reranker errors (timeout, bad response, quota) | **Fail-open**: `semantic_search` returns the hybrid-ordered recall sliced to the return count (v2.7.0+; previously the full widened recall, unordered). Reranking is strictly additive. |
 | Vector length ≠ `NEO4J_VECTOR_DIMENSIONS` (v2.6.0+) | Write is **rejected with a loud error** — a mismatched vector can never be indexed, so persisting it would silently corrupt search. The startup log also warns if `EMBEDDING_DIMENSIONS` ≠ `NEO4J_VECTOR_DIMENSIONS`. |
 | `NODE_ENV=production` with a mock/fallback embedding service (v2.6.0+) | Embedding **writes are refused** (keyword-only mode + hard error log). `MOCK_EMBEDDINGS=true` is for tests and never counts as a provider in production. |
 
@@ -754,13 +774,16 @@ OPENAI_EMBEDDING_MODEL=text-embedding-3-small
 # (no random-vector mock). Set MOCK_EMBEDDINGS=true for deterministic test vectors.
 
 # Optional cross-encoder reranker (v2.5.0+) — re-scores semantic_search candidates.
-# Disabled unless RERANK_ENABLED=true AND an endpoint + key resolve. Fail-open on any error.
+# Disabled unless RERANK_ENABLED=true AND an endpoint + key resolve. Fail-open on any error
+# (v2.7.0+: fail-open returns the hybrid-ordered recall sliced to the return count).
 RERANK_ENABLED=false
 # RERANK_MODEL=@cf/baai/bge-reranker-base
 # RERANK_ENDPOINT=https://api.cloudflare.com/client/v4/accounts/<id>/ai/run/@cf/baai/bge-reranker-base
 # RERANK_ACCOUNT_ID=<id>          # alternative to RERANK_ENDPOINT (derives the URL from model)
 # RERANK_API_KEY=<token>          # falls back to EMBEDDING_API_KEY
-# RERANK_TOP_N=20  RERANK_TOP_K=10  RERANK_MAX_PASSAGE_CHARS=2000  RERANK_TIMEOUT_MS=5000
+# RERANK_TOP_N=20                 # scoring-payload cap (candidates sent to the cross-encoder) — NOT a return count
+# RERANK_TOP_K=5                  # default return count with a reranker (explicit `limit` always wins; v2.7.0: was 10)
+# RERANK_MAX_PASSAGE_CHARS=2000  RERANK_TIMEOUT_MS=5000
 
 # Embedding Pipeline Topology (v2.3.0+)
 WRITE_EMBEDDINGS_LOCALLY=true       # Default true. Set to "false" on thin-client hosts (e.g. laptops)

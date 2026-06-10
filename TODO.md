@@ -2,17 +2,7 @@
 
 ## 🚨 Critical Priority
 
-### Reranker keep-alive socket hang — rerank ALWAYS fails open on remote-DB clients (found 2026-06-10, target v2.7.0 — plan approved, see `~/.claude/plans/20260610-mcp-neo4j-kg-v2.7.0-reranker-transport-ordering-defaults.md`)
-
-**Bug**: `RerankerService.rerank()` uses the shared axios default agent (keep-alive). The TLS socket opened by the query-embedding call to `api.cloudflare.com` goes half-open after ~2–3 s idle; the subsequent rerank POST reuses it and hangs until the 5000 ms timeout (`ECONNABORTED: timeout of 5000ms exceeded`), so `maybeRerank` fail-opens every time. Clients whose vector recall takes seconds between the two CF calls (e.g. remote Neo4j over VPN) hit the dead-socket window on essentially every search.
-
-**Reproduction** (deterministic): embed → 3 s pause → rerank with shared agent = timeout; embed → 0 ms → rerank = OK; isolated rerank with a full 20×2000-char payload = 0.4–0.6 s. The endpoint, token, and payload are all healthy via curl.
-
-**User-visible effect**: `semantic_search` returns the full widened recall set (`topN`, default 20) instead of `limit`, in arbitrary order (the `openNodes()` hop destroys rank order). The fail-open design masks the failure completely — only `LOG_LEVEL=debug` stderr shows `Reranker failed; returning vector/hybrid order unchanged (fail-open)`.
-
-**Fix**: give RerankerService its own axios instance with `httpsAgent: new https.Agent({ keepAlive: false })` (one extra TLS handshake per search — negligible), or a single retry on `ECONNABORTED`. Consider the same hardening for `OpenAIEmbeddingService` (any reuse after a multi-second idle window is exposed).
-
-**Also**: add a `logger.warn` to the silent keyword-only fallback in `KnowledgeGraphManager.search()` (~line 580, "Fall back to text search if no embedding service") — its silence masked a client misconfiguration (missing embedding env) as "search works but multi-word queries return nothing".
+_(No critical items - all clear!)_
 
 ---
 
@@ -43,6 +33,14 @@ _(No open items - all clear!)_
 ---
 
 ## ✅ Completed
+
+### Reranker keep-alive socket hang — v2.7.0 (2026-06-10)
+
+**Status**: ✅ **COMPLETE** — fixed in v2.7.0 (see CHANGELOG.md)
+
+`RerankerService` and `OpenAIEmbeddingService` now use dedicated `keepAlive: false` axios agents, eliminating the half-open-socket timeout that made every rerank silently fail open on remote-DB clients. v2.7.0 also preserves rank order through `openNodes()` hydration, returns ordered fail-open results sliced to the return count, adopts reranker-aware defaults (recall 10, return 5 reranked / 10 plain; `min_similarity` default 0), and adds the keyword-only-fallback warn log.
+
+---
 
 ### v1.5.0 Query Result Caching (2025-11-05)
 
@@ -513,6 +511,14 @@ git push origin main --tags
 **Last Updated:** 2026-02-09
 
 **Current State:** v2.2.0 — Neo4j-only architecture, ES2024/Node 24, 834 tests, pnpm/Vitest/Oxlint/Biome toolchain.
+
+## Residual review findings — v2.7.0 autosequence (2026-06-10)
+
+Deferred (not apply-eligible: API/design judgement; from /codex + /code-review + /security-review synthesis):
+
+- [ ] **`entity_types` ignored in keyword-only fallback**: the degraded-mode `searchNodes` path now honours `limit` (v2.7.0 review fix) but cannot apply `entity_types` filtering — `searchNodes` has no entity-type parameter. Adding one is an API change; until then the degraded mode silently ignores the filter.
+- [ ] **`RerankerService.topN` getter is introspection-only**: its sole production consumer (recall-widening) was removed in v2.7.0. Removing the getter is a public-API change — defer to the next major/minor with API review; JSDoc updated meanwhile.
+- [ ] **Dead Zod `SemanticSearchInputSchema`** (`src/schemas/index.ts`): carries stale `.default(10)`/`.default(0.6)` and is unimported in the live handler path. If Zod validation is ever wired into the handler, those defaults would silently defeat the v2.7.0 undefined-preserving pass-through — either delete the schema or align it (limit optional-no-default, minSimilarity default 0) before wiring.
 
 ## Residual review findings — v2.6.0 autosequence (2026-06-10)
 

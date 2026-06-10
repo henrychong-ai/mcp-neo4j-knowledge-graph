@@ -1,4 +1,7 @@
-import axios from 'axios';
+import http from 'node:http';
+import https from 'node:https';
+
+import axios, { type AxiosInstance } from 'axios';
 
 import { logger } from '../utils/logger.js';
 
@@ -17,7 +20,7 @@ export interface RerankConfig {
   apiKey: string;
   /** Candidates sent to the reranker (recall set). */
   topN: number;
-  /** Results kept after rerank. */
+  /** Default return count when a reranker is configured; trim applied by the caller. */
   topK: number;
   /** Per-passage truncation for scoring only (reranker context limits). */
   maxPassageChars: number;
@@ -38,7 +41,12 @@ function intEnv(name: string, fallback: number): number {
 
 /**
  * Thin client for a cross-encoder reranker (default: Cloudflare Workers AI
- * `@cf/baai/bge-reranker-base`). OpenAI-style/native HTTP; reuses `axios`.
+ * `@cf/baai/bge-reranker-base`). OpenAI-style/native HTTP via a dedicated
+ * axios instance with keep-alive DISABLED — the rerank call follows a
+ * multi-second recall gap, and a pooled keep-alive socket (shared with the
+ * embedding call) can go half-open in that gap, turning every rerank into a
+ * timeout. A fresh connection per call is cheap relative to model latency.
+ * (Instance is deliberately created inline here, not in a shared util.)
  *
  * The service itself MAY throw (transport/parse errors) — callers are expected
  * to fail open (return the pre-rerank order). It never enables itself without a
@@ -46,15 +54,25 @@ function intEnv(name: string, fallback: number): number {
  */
 export class RerankerService {
   private readonly cfg: RerankConfig;
+  private readonly client: AxiosInstance;
 
   constructor(cfg: RerankConfig) {
     this.cfg = cfg;
+    this.client = axios.create({
+      httpAgent: new http.Agent({ keepAlive: false }),
+      httpsAgent: new https.Agent({ keepAlive: false }),
+    });
   }
 
   get enabled(): boolean {
     return this.cfg.enabled;
   }
 
+  /**
+   * Scoring-payload cap (RERANK_TOP_N) — introspection only as of v2.7.0: the
+   * recall-widening that consumed this getter was removed; rerank() applies the
+   * cap internally when slicing passages.
+   */
   get topN(): number {
     return this.cfg.topN;
   }
@@ -74,7 +92,7 @@ export class RerankerService {
    * Env: RERANK_ENABLED, RERANK_MODEL (default @cf/baai/bge-reranker-base),
    * RERANK_ENDPOINT (or derived from RERANK_ACCOUNT_ID/CF_ACCOUNT_ID + model),
    * RERANK_API_KEY (falls back to EMBEDDING_API_KEY), RERANK_TOP_N (20),
-   * RERANK_TOP_K (10), RERANK_MAX_PASSAGE_CHARS (2000), RERANK_TIMEOUT_MS (5000).
+   * RERANK_TOP_K (5), RERANK_MAX_PASSAGE_CHARS (2000), RERANK_TIMEOUT_MS (5000).
    */
   static fromEnv(): RerankerService {
     const requested = process.env.RERANK_ENABLED === 'true';
@@ -102,16 +120,18 @@ export class RerankerService {
       model,
       apiKey,
       topN: intEnv('RERANK_TOP_N', 20),
-      topK: intEnv('RERANK_TOP_K', 10),
+      topK: intEnv('RERANK_TOP_K', 5),
       maxPassageChars: intEnv('RERANK_MAX_PASSAGE_CHARS', 2000),
       timeoutMs: intEnv('RERANK_TIMEOUT_MS', 5000),
     });
   }
 
   /**
-   * Rerank `passages` against `query`. Returns candidate indices reordered
-   * descending by relevance, length <= topK. THROWS on transport/parse error —
-   * the caller fail-opens.
+   * Rerank `passages` against `query`. Returns the FULL ordering of valid
+   * candidate indices, best-first (defensively re-sorted by score descending —
+   * the API's row order is not trusted). Trimming to the final return count is
+   * the CALLER's responsibility (KnowledgeGraphManager.maybeRerank). THROWS on
+   * transport/parse error — the caller fail-opens.
    *
    * @param query - Search query
    * @param passages - Candidate passages (index-aligned with the caller's results)
@@ -122,7 +142,7 @@ export class RerankerService {
       .slice(0, this.cfg.topN)
       .map(text => ({ text: (text || '').slice(0, this.cfg.maxPassageChars) }));
 
-    const response = await axios.post<RerankResponse>(
+    const response = await this.client.post<RerankResponse>(
       this.cfg.endpoint,
       { query: query.slice(0, this.cfg.maxPassageChars), contexts },
       {
@@ -139,12 +159,18 @@ export class RerankerService {
       throw new Error('Reranker returned a malformed response (missing result.response array)');
     }
 
+    // Defensive: sort by score descending ourselves — do not trust the API's row order.
+    // Rows with a missing (null/undefined) score sink to the end.
+    const sorted = [...ranked].sort(
+      (a, b) => (b?.score ?? Number.NEGATIVE_INFINITY) - (a?.score ?? Number.NEGATIVE_INFINITY)
+    );
+
     // Defensive: keep only integer, in-range, UNIQUE ids (CF returns request-array indices).
     // Fractional / duplicate / out-of-range ids are dropped so a malformed-but-arrayed response
     // can't corrupt ordering or duplicate results — the caller still fully fail-opens on a throw.
     const seen = new Set<number>();
     const indices: number[] = [];
-    for (const row of ranked) {
+    for (const row of sorted) {
       const id = row?.id;
       if (
         typeof id === 'number' &&
@@ -155,7 +181,6 @@ export class RerankerService {
       ) {
         seen.add(id);
         indices.push(id);
-        if (indices.length >= this.cfg.topK) break;
       }
     }
     return indices;

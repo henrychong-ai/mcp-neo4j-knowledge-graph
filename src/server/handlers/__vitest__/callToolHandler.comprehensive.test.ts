@@ -397,7 +397,7 @@ describe('callToolHandler - Temporal Operations', () => {
 });
 
 describe('callToolHandler - Semantic Search Operations', () => {
-  it('should handle semantic_search with default options', async () => {
+  it('should forward undefined limit and min_similarity when absent (manager resolves defaults)', async () => {
     const mockResults = { entities: [], relations: [], total: 0 };
     const mockManager = createMockKnowledgeGraphManager({
       search: vi.fn().mockResolvedValue(mockResults),
@@ -417,11 +417,37 @@ describe('callToolHandler - Semantic Search Operations', () => {
       'test query',
       expect.objectContaining({
         semanticSearch: true,
-        limit: 10,
-        minSimilarity: 0.6,
       })
     );
+    const searchOptions = mockManager.search.mock.calls[0][1];
+    expect(searchOptions.limit).toBeUndefined();
+    expect(searchOptions.minSimilarity).toBeUndefined();
     expect(JSON.parse(result.content[0].text)).toEqual(mockResults);
+  });
+
+  it('should forward explicit limit and min_similarity unchanged, including 0', async () => {
+    const mockResults = { entities: [], relations: [], total: 0 };
+    const mockManager = createMockKnowledgeGraphManager({
+      search: vi.fn().mockResolvedValue(mockResults),
+    });
+
+    await handleCallToolRequest(
+      {
+        params: {
+          name: 'semantic_search',
+          arguments: { query: 'test query', limit: 7, min_similarity: 0 },
+        },
+      },
+      mockManager
+    );
+
+    expect(mockManager.search).toHaveBeenCalledWith(
+      'test query',
+      expect.objectContaining({
+        limit: 7,
+        minSimilarity: 0,
+      })
+    );
   });
 
   it('should handle semantic_search with hybrid config', async () => {

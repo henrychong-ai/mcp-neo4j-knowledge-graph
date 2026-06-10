@@ -371,11 +371,13 @@ export async function handleListToolsRequest(): Promise<{ tools: Record<string, 
           },
           limit: {
             type: 'number',
-            description: 'Maximum number of results to return (default: 10)',
+            description:
+              'Maximum number of results to return (default: 10; when a reranker is configured, default: 5, reranked best-first)',
           },
           min_similarity: {
             type: 'number',
-            description: 'Minimum similarity threshold from 0.0 to 1.0 (default: 0.6)',
+            description:
+              "Minimum similarity threshold 0.0-1.0 on Neo4j's normalised cosine scale, where 0.5 means unrelated and 1.0 identical (default: 0 — disabled; absolute floors are not meaningful for high-clustering embedding models)",
           },
           entity_types: {
             type: 'array',

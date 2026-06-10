@@ -335,10 +335,12 @@ export async function handleCallToolRequest(
             }
           : undefined;
 
-        // Extract search options from args
+        // Extract search options from args. limit and min_similarity pass through
+        // undefined-preserving — the manager resolves defaults (reranker-aware for
+        // limit), and an explicit min_similarity of 0 must not collapse to a default.
         const searchOptions = {
-          limit: args.limit || 10,
-          minSimilarity: args.min_similarity || 0.6,
+          limit: args.limit as number | undefined,
+          minSimilarity: args.min_similarity as number | undefined,
           entityTypes: args.entity_types || [],
           hybridSearch: args.hybrid_search === undefined ? true : args.hybrid_search,
           semanticWeight: args.semantic_weight || 0.6,
