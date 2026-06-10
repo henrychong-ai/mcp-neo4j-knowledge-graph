@@ -2,7 +2,17 @@
 
 ## 🚨 Critical Priority
 
-_(No critical priority items - all clear!)_
+### Reranker keep-alive socket hang — rerank ALWAYS fails open on remote-DB clients (found 2026-06-10, target v2.6.1)
+
+**Bug**: `RerankerService.rerank()` uses the shared axios default agent (keep-alive). The TLS socket opened by the query-embedding call to `api.cloudflare.com` goes half-open after ~2–3 s idle; the subsequent rerank POST reuses it and hangs until the 5000 ms timeout (`ECONNABORTED: timeout of 5000ms exceeded`), so `maybeRerank` fail-opens every time. Clients whose vector recall takes seconds between the two CF calls (e.g. remote Neo4j over VPN) hit the dead-socket window on essentially every search.
+
+**Reproduction** (deterministic): embed → 3 s pause → rerank with shared agent = timeout; embed → 0 ms → rerank = OK; isolated rerank with a full 20×2000-char payload = 0.4–0.6 s. The endpoint, token, and payload are all healthy via curl.
+
+**User-visible effect**: `semantic_search` returns the full widened recall set (`topN`, default 20) instead of `limit`, in arbitrary order (the `openNodes()` hop destroys rank order). The fail-open design masks the failure completely — only `LOG_LEVEL=debug` stderr shows `Reranker failed; returning vector/hybrid order unchanged (fail-open)`.
+
+**Fix**: give RerankerService its own axios instance with `httpsAgent: new https.Agent({ keepAlive: false })` (one extra TLS handshake per search — negligible), or a single retry on `ECONNABORTED`. Consider the same hardening for `OpenAIEmbeddingService` (any reuse after a multi-second idle window is exposed).
+
+**Also**: add a `logger.warn` to the silent keyword-only fallback in `KnowledgeGraphManager.search()` (~line 580, "Fall back to text search if no embedding service") — its silence masked a client misconfiguration (missing embedding env) as "search works but multi-word queries return nothing".
 
 ---
 
