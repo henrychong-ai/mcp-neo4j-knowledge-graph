@@ -269,6 +269,26 @@ describe('KnowledgeGraphManager v2.7.0 search defaults matrix', () => {
     expect(unlimited.entities).toHaveLength(3);
   });
 
+  it('keyword-only fallback forwards entityTypes, limit, and domain filters to searchNodes (v2.7.1)', async () => {
+    const provider = makeProvider(makeRecall(10));
+    // No embedding service → keyword fallback path.
+    const manager = new KnowledgeGraphManager({ storageProvider: provider });
+
+    await manager.search('test query', {
+      semanticSearch: true,
+      limit: 4,
+      entityTypes: ['incident-playbook', 'infrastructure'],
+      domain: 'infra',
+    });
+
+    expect(provider.searchNodes).toHaveBeenCalledWith('test query', {
+      limit: 4,
+      entityTypes: ['incident-playbook', 'infrastructure'],
+      domain: 'infra',
+      includeNullDomain: undefined,
+    });
+  });
+
   it('fail-open: rerank failure returns recall order sliced to returnCount (not the unsliced recall)', async () => {
     const warnSpy = vi.spyOn(logger, 'warn');
     const reranker = makeReranker({

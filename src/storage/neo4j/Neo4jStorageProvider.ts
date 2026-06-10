@@ -605,8 +605,11 @@ export class Neo4jStorageProvider implements StorageProvider {
     try {
       const startTime = Date.now();
 
-      // Prepare search parameters
-      const rawLimit = options.limit || 10;
+      // Prepare search parameters — ?? (not ||) so an explicit limit of 0 is honoured.
+      // Direct callers: a NaN limit now yields LIMIT 0 (empty result) instead of the
+      // old falsy-collapse to 10; KnowledgeGraphManager normalises non-finite limits
+      // to undefined before they reach this method.
+      const rawLimit = options.limit ?? 10;
       const parameters: Record<string, unknown> = {
         query: `(?i).*${query}.*`, // Case-insensitive regex pattern
         limit: neo4j.int(Math.floor(rawLimit)),

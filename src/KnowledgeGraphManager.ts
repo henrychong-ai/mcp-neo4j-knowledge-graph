@@ -609,29 +609,20 @@ export class KnowledgeGraphManager {
             logger.warn(fallbackMessage);
           }
           return this.applyExplicitLimit(
-            await this.storageProvider.searchNodes(query, {
-              domain: options.domain,
-              includeNullDomain: options.includeNullDomain,
-            }),
+            await this.storageProvider.searchNodes(query, this.keywordFallbackOptions(options)),
             options.limit
           );
         } catch (error) {
           logger.error('Provider semanticSearch failed, falling back to basic search', error);
           return this.applyExplicitLimit(
-            await this.storageProvider.searchNodes(query, {
-              domain: options.domain,
-              includeNullDomain: options.includeNullDomain,
-            }),
+            await this.storageProvider.searchNodes(query, this.keywordFallbackOptions(options)),
             options.limit
           );
         }
       } else if (this.storageProvider) {
         // Fall back to searchNodes if semanticSearch is not available in the provider
         return this.applyExplicitLimit(
-          await this.storageProvider.searchNodes(query, {
-            domain: options.domain,
-            includeNullDomain: options.includeNullDomain,
-          }),
+          await this.storageProvider.searchNodes(query, this.keywordFallbackOptions(options)),
           options.limit
         );
       }
@@ -660,10 +651,10 @@ export class KnowledgeGraphManager {
           // Explicitly call searchNodes if available in the provider
           if (this.storageProvider) {
             return this.applyExplicitLimit(
-              await (this.storageProvider as StorageProvider).searchNodes(query, {
-                domain: options.domain,
-                includeNullDomain: options.includeNullDomain,
-              }),
+              await (this.storageProvider as StorageProvider).searchNodes(
+                query,
+                this.keywordFallbackOptions(options)
+              ),
               options.limit
             );
           }
@@ -681,18 +672,25 @@ export class KnowledgeGraphManager {
   }
 
   /**
-   * Trim an ordered entity list to `returnCount` and rebuild the result around it.
-   *
-   * Recall order is meaningful as of v2.7.0: Neo4jStorageProvider.semanticSearch reorders
-   * hydrated entities to match the ranked name list, so slicing recall preserves the
-   * vector/hybrid ranking. Relations are filtered to the surviving entities and `total`
-   * reflects the returned entity count so it can't overstate the trimmed result.
-   *
-   * @param recall - The recall result whose non-entity fields are preserved
-   * @param ordered - The entities in final (rerank or recall) order
-   * @param returnCount - Maximum number of entities to return
-   * @returns The recall result rebuilt around the trimmed, ordered entities
+   * Build the option set forwarded to keyword-only `searchNodes` fallbacks (v2.7.1).
+   * Forwards every option the keyword path can honour — `limit` (also enforced
+   * post-hoc by applyExplicitLimit), `entityTypes`, and the domain filters — so
+   * degraded mode keeps as much of the semantic_search contract as possible.
    */
+  private keywordFallbackOptions(options: {
+    limit?: number;
+    entityTypes?: string[];
+    domain?: string;
+    includeNullDomain?: boolean;
+  }): { limit?: number; entityTypes?: string[]; domain?: string; includeNullDomain?: boolean } {
+    return {
+      limit: options.limit,
+      entityTypes: options.entityTypes,
+      domain: options.domain,
+      includeNullDomain: options.includeNullDomain,
+    };
+  }
+
   /**
    * Honour an explicit caller limit on a keyword-fallback result (v2.7.0).
    * No limit given → the graph passes through unchanged (keyword search keeps
@@ -706,6 +704,19 @@ export class KnowledgeGraphManager {
     return this.trimToReturnCount(graph, graph.entities ?? [], limit);
   }
 
+  /**
+   * Trim an ordered entity list to `returnCount` and rebuild the result around it.
+   *
+   * Recall order is meaningful as of v2.7.0: Neo4jStorageProvider.semanticSearch reorders
+   * hydrated entities to match the ranked name list, so slicing recall preserves the
+   * vector/hybrid ranking. Relations are filtered to the surviving entities and `total`
+   * reflects the returned entity count so it can't overstate the trimmed result.
+   *
+   * @param recall - The recall result whose non-entity fields are preserved
+   * @param ordered - The entities in final (rerank or recall) order
+   * @param returnCount - Maximum number of entities to return
+   * @returns The recall result rebuilt around the trimmed, ordered entities
+   */
   private trimToReturnCount(
     recall: KnowledgeGraph,
     ordered: Entity[],

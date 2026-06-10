@@ -508,17 +508,18 @@ git push origin main --tags
 
 ---
 
-**Last Updated:** 2026-02-09
+**Last Updated:** 2026-06-10
 
-**Current State:** v2.2.0 — Neo4j-only architecture, ES2024/Node 24, 834 tests, pnpm/Vitest/Oxlint/Biome toolchain.
+**Current State:** v2.7.1 — Neo4j-only architecture, ES2024/Node 24, 870+ tests, pnpm/Vitest/Oxlint/Biome toolchain; CF Workers AI embeddings (qwen3 1024d) + bge cross-encoder reranking with reranker-aware defaults.
 
 ## Residual review findings — v2.7.0 autosequence (2026-06-10)
 
 Deferred (not apply-eligible: API/design judgement; from /codex + /code-review + /security-review synthesis):
 
-- [ ] **`entity_types` ignored in keyword-only fallback**: the degraded-mode `searchNodes` path now honours `limit` (v2.7.0 review fix) but cannot apply `entity_types` filtering — `searchNodes` has no entity-type parameter. Adding one is an API change; until then the degraded mode silently ignores the filter.
+- [x] **`entity_types` ignored in keyword-only fallback** — ✅ closed in v2.7.1. Correction to the original finding: `searchNodes` already supported `entityTypes` (the Cypher filter existed); the actual gap was the manager's fallback sites not forwarding it. Fallbacks now forward `entityTypes` + `limit` + domain filters via `keywordFallbackOptions()`.
 - [ ] **`RerankerService.topN` getter is introspection-only**: its sole production consumer (recall-widening) was removed in v2.7.0. Removing the getter is a public-API change — defer to the next major/minor with API review; JSDoc updated meanwhile.
-- [ ] **Dead Zod `SemanticSearchInputSchema`** (`src/schemas/index.ts`): carries stale `.default(10)`/`.default(0.6)` and is unimported in the live handler path. If Zod validation is ever wired into the handler, those defaults would silently defeat the v2.7.0 undefined-preserving pass-through — either delete the schema or align it (limit optional-no-default, minSimilarity default 0) before wiring.
+- [ ] **Non-semantic `search()` path ignores `limit`/`entityTypes`** (v2.7.1 review finding, pre-existing): `KnowledgeGraphManager.search()` WITHOUT `semanticSearch` forwards only domain filters to `searchNodes` and applies no limit trim — the same contract gap v2.7.1 closed for the degraded *semantic* path. Unreachable via the MCP tools (semantic_search always sets semanticSearch; search_nodes bypasses `search()`), so library-API only. Fix alongside the topN/API review.
+- [x] **Dead Zod `SemanticSearchInputSchema`** — ✅ closed in v2.7.1: aligned with the live contract (limit/minSimilarity optional, NO schema defaults, limit accepts 0) so wiring it into the handler later can't resurrect pre-2.7.0 defaults.
 
 ## Residual review findings — v2.6.0 autosequence (2026-06-10)
 

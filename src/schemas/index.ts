@@ -121,12 +121,21 @@ export const SearchNodesInputSchema = z.object({
 export type SearchNodesInput = z.infer<typeof SearchNodesInputSchema>;
 
 /**
- * Schema for semantic_search tool input
+ * Schema for semantic_search tool input.
+ *
+ * v2.7.1: aligned with the reranker-aware default semantics — `limit` and
+ * `minSimilarity` carry NO schema defaults so an absent value stays undefined
+ * through the handler and the manager resolves it reranker-aware (limit:
+ * 10 plain / RERANK_TOP_K reranked; minSimilarity: 0). A schema `.default()`
+ * here would silently resurrect pre-2.7.0 behaviour if this schema is ever
+ * wired into the handler path. `limit` accepts 0 (explicit empty result) and
+ * non-negative values; the manager floors/clamps at runtime.
  */
 export const SemanticSearchInputSchema = z.object({
   query: z.string().min(1, 'Search query is required'),
-  limit: z.number().int().positive().max(100).default(10),
-  minSimilarity: z.number().min(0).max(1).default(0.6),
+  // No max: the live tool contract honours any explicit limit exactly.
+  limit: z.number().min(0).optional(),
+  minSimilarity: z.number().min(0).max(1).optional(),
   domain: z.string().optional(),
 });
 

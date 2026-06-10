@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.7.1] - 2026-06-10
+
+Housekeeping patch: degraded-mode contract completion, schema alignment, and dependency security updates.
+
+### Fixed
+
+- **Keyword-only fallback now forwards `entity_types`.** `searchNodes` always supported entity-type filtering (correcting the v2.7.0 residual's premise) — the manager's degraded-mode fallback sites simply never forwarded it. All fallbacks now pass `entityTypes`, `limit`, and the domain filters through (`keywordFallbackOptions()`), so degraded mode honours as much of the `semantic_search` contract as the keyword path supports. `searchNodes` itself also honours an explicit `limit: 0` (`??` instead of `||`).
+- **Zod `SemanticSearchInputSchema` aligned with the live contract.** The unused schema carried `.default(10)`/`.default(0.6)`, which would have silently resurrected pre-2.7.0 defaults if ever wired into the handler. `limit` and `minSimilarity` are now optional with no schema defaults (resolution stays reranker-aware in the manager), `limit` accepts `0`, and the `.max(100)` cap was dropped (the live tool honours any explicit limit exactly).
+
+### Security
+
+- **Dependency overrides bumped for 6 Dependabot advisories** (all transitive via the MCP SDK's HTTP stack): `hono` ≥4.12.21 (4 moderate advisories — Set-Cookie injection, percent-encoded mount routing, IPv6 deny-rule bypass, JWT scheme laxity), `qs` ≥6.15.2 (stringify DoS), `ip-address` ≥10.1.1 (XSS in Address6 HTML output; new override). Lockfile fully re-resolved; resolved versions: hono 4.12.25, qs 6.15.2, ip-address 10.2.0. The pre-existing unbounded `fast-uri` override was bounded to `>=3.1.2 <4` so the regen cannot float a transitive major outside `ajv`'s declared `^3` range (review finding).
+
 ## [2.7.0] - 2026-06-10
 
 Reranker transport fix, ordering guarantees, and reranker-aware defaults. Motivated by a live diagnosis (2026-06-10): on clients with multi-second vector-recall latency (e.g. remote Neo4j over VPN), the cross-encoder rerank call had **never** succeeded — it always timed out on a half-open keep-alive socket and silently failed open, returning the full widened recall set unsliced and effectively unordered.
