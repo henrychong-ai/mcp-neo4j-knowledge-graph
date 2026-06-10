@@ -97,16 +97,22 @@ describe('setupServer', () => {
   it('should create a server with the correct configuration', async () => {
     // Import the module under test
     const setupModule = await import('../setup.js');
+    // fs read (not a JSON module import) for portability to native Node ESM semantics
+    const { readFileSync } = await import('node:fs');
+    const pkg = JSON.parse(
+      readFileSync(new URL('../../../package.json', import.meta.url), 'utf8')
+    ) as { version: string };
 
     // Act
     const knowledgeGraphManager = {};
     const result = setupModule.setupServer(knowledgeGraphManager);
 
-    // Assert server was created with the right parameters
+    // Assert server was created with the right parameters — version must come
+    // from package.json (single source of truth), never a hardcoded literal
     expect(ServerMock).toHaveBeenCalledWith(
       {
         name: 'mcp-neo4j-knowledge-graph',
-        version: '2.3.2',
+        version: pkg.version,
       },
       {
         capabilities: {
@@ -118,6 +124,18 @@ describe('setupServer', () => {
 
     // Assert server instance was returned
     expect(result).toBe(mockServerInstance);
+  });
+
+  it('getPackageVersion returns the package.json version (no hardcoded drift)', async () => {
+    const setupModule = await import('../setup.js');
+    const { readFileSync } = await import('node:fs');
+    const pkg = JSON.parse(
+      readFileSync(new URL('../../../package.json', import.meta.url), 'utf8')
+    ) as { version: string };
+
+    expect(setupModule.getPackageVersion()).toBe(pkg.version);
+    // Sanity: semver-shaped
+    expect(setupModule.getPackageVersion()).toMatch(/^\d+\.\d+\.\d+/);
   });
 
   it('should register request handlers', async () => {

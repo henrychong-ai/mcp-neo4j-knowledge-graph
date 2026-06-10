@@ -733,8 +733,10 @@ describe('Neo4jStorageProvider', () => {
         sessionMock as never
       );
 
+      // 1536-length to satisfy the v2.6.0 dimension guard (config.vectorDimensions = 1536)
+      const vector = Array.from({ length: 1536 }, (_, i) => (i === 0 ? 0.1 : 0.001));
       const embedding = {
-        vector: [0.1, -0.2, 0.3],
+        vector,
         model: 'text-embedding-3-small',
         lastUpdated: 1_700_000_000_000,
       };
@@ -747,7 +749,7 @@ describe('Neo4jStorageProvider', () => {
       expect(cypher).toContain('e.embeddingGeneratedAt = $generatedAt');
       expect(params.model).toBe('text-embedding-3-small');
       expect(params.generatedAt).toBe(1_700_000_000_000);
-      expect(params.embedding).toEqual([0.1, -0.2, 0.3]);
+      expect(params.embedding).toEqual(vector);
     });
 
     it('falls back to current timestamp when embedding.lastUpdated is missing', async () => {
@@ -765,9 +767,10 @@ describe('Neo4jStorageProvider', () => {
       );
 
       const before = Date.now();
-      // lastUpdated omitted (cast to fit type, simulating callers passing a partial object)
+      // lastUpdated omitted (cast to fit type, simulating callers passing a partial object).
+      // 1536-length to satisfy the v2.6.0 dimension guard.
       const embedding = {
-        vector: [0.1],
+        vector: new Array(1536).fill(0.1) as number[],
         model: 'text-embedding-3-small',
       } as unknown as Parameters<typeof storageProvider.updateEntityEmbedding>[1];
 
@@ -777,6 +780,45 @@ describe('Neo4jStorageProvider', () => {
       const [, params] = runSpy.mock.calls[0] as [string, Record<string, unknown>];
       expect(params.generatedAt).toBeGreaterThanOrEqual(before);
       expect(params.generatedAt).toBeLessThanOrEqual(after);
+    });
+
+    // v2.6.0: write-path dimension guard — a mismatched vector (e.g. 1536-dim mock
+    // into a 1024-dim store) must throw loudly BEFORE any DB work, never corrupt
+    // the index silently.
+    describe('dimension guard', () => {
+      it('rejects a vector whose length != config.vectorDimensions, before any DB call', async () => {
+        const getSessionSpy = vi.spyOn(storageProvider.getConnectionManager(), 'getSession');
+
+        const embedding = {
+          vector: new Array(1024).fill(0.1) as number[], // config expects 1536
+          model: 'wrong-dim-model',
+          lastUpdated: Date.now(),
+        };
+
+        await expect(
+          storageProvider.updateEntityEmbedding('test-entity', embedding)
+        ).rejects.toThrow(/dimension mismatch.*1024.*1536/i);
+        expect(getSessionSpy).not.toHaveBeenCalled();
+      });
+
+      it('is inert when config.vectorDimensions is unset', async () => {
+        // Simulate a config without a pinned dimension (runtime mutation; the
+        // field is readonly at the type level only)
+        (
+          storageProvider as unknown as { config: { vectorDimensions?: number } }
+        ).config.vectorDimensions = undefined;
+
+        const embedding = {
+          vector: [0.1, 0.2, 0.3],
+          model: 'any-model',
+          lastUpdated: Date.now(),
+        };
+
+        // Proceeds past the guard to the normal write path (mocked session)
+        await expect(
+          storageProvider.updateEntityEmbedding('test-entity', embedding)
+        ).resolves.toBeUndefined();
+      });
     });
   });
 

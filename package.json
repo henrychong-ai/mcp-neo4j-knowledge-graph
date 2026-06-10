@@ -1,6 +1,6 @@
 {
   "name": "@henrychong-ai/mcp-neo4j-knowledge-graph",
-  "version": "2.5.0",
+  "version": "2.6.0",
   "description": "Neo4j-based knowledge graph MCP server with temporal versioning and semantic search",
   "license": "MIT",
   "author": "Henry Chong <henry@henrychong.ai>",
@@ -31,7 +31,8 @@
   ],
   "files": [
     "dist",
-    "SETUP_AUTOMATION.md"
+    "SETUP_AUTOMATION.md",
+    "example.env"
   ],
   "scripts": {
     "build": "tsc && echo '#!/usr/bin/env node' | cat - dist/index.js > dist/index.js.tmp && mv dist/index.js.tmp dist/index.js && shx chmod +x dist/*.js",

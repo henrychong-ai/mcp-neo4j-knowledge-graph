@@ -563,6 +563,160 @@ The following tools are available to LLM client hosts through the Model Context 
     - `reference_time` (number): Reference timestamp for decay calculation (milliseconds since epoch)
     - `decay_factor` (number): Optional decay factor override
 
+## Embeddings & Reranking Setup
+
+Semantic search needs an embedding provider. The server speaks the **OpenAI-compatible `/embeddings` API**, so it works with OpenAI, Cloudflare Workers AI, or any self-hosted OpenAI-compatible endpoint (Ollama, LM Studio, vLLM). An optional **cross-encoder reranker** re-scores semantic search candidates for better precision.
+
+### The one rule that matters: dimensions must match
+
+```
+EMBEDDING_DIMENSIONS  ==  NEO4J_VECTOR_DIMENSIONS  ==  the model's NATIVE output dimension
+```
+
+The Neo4j vector index is created at a fixed dimension. A vector of any other length can never be indexed — and as of v2.6.0 the server **refuses to write it** (see [Graceful degradation](#graceful-degradation--failure-behaviour)). The dimension is a property of the *model*, so pick the model first, then set both variables to its native output size.
+
+### Option A — OpenAI (default)
+
+```bash
+OPENAI_API_KEY=sk-...
+OPENAI_EMBEDDING_MODEL=text-embedding-3-small   # 1536 dimensions (default)
+NEO4J_VECTOR_DIMENSIONS=1536
+```
+
+Nothing else needed — the OpenAI endpoint is the built-in default.
+
+### Option B — Cloudflare Workers AI (free plan works)
+
+Cloudflare's free Workers AI allocation (**10,000 neurons/day**) comfortably covers a personal knowledge graph — a full re-embed of ~2,000 entities fits inside a single day's free quota, and steady-state usage (query embeddings + incremental backfill) is a tiny fraction of that.
+
+1. **Create a token**: Cloudflare dashboard → My Profile → **API Tokens** → Create Token → use the **Workers AI** template (or a custom token with `Account → Workers AI → Read`). This single permission covers both embeddings and the reranker.
+2. **Find your account ID**: dashboard → any zone → right sidebar, or **Workers & Pages** overview.
+3. **Configure:**
+
+```bash
+EMBEDDING_API_KEY=<your-cf-workers-ai-token>
+EMBEDDING_API_ENDPOINT=https://api.cloudflare.com/client/v4/accounts/<your-account-id>/ai/v1/embeddings
+EMBEDDING_MODEL=@cf/qwen/qwen3-embedding-0.6b   # native 1024 dimensions
+EMBEDDING_DIMENSIONS=1024
+NEO4J_VECTOR_DIMENSIONS=1024
+
+# Optional but recommended: cross-encoder reranker (same token)
+RERANK_ENABLED=true
+RERANK_ACCOUNT_ID=<your-account-id>
+RERANK_MODEL=@cf/baai/bge-reranker-base
+RERANK_API_KEY=<your-cf-workers-ai-token>
+```
+
+### Option C — Any OpenAI-compatible endpoint (Ollama, LM Studio, vLLM)
+
+```bash
+EMBEDDING_API_KEY=anything-non-empty            # some local servers ignore auth but the key must be set
+EMBEDDING_API_BASE_URL=http://localhost:11434/v1  # /embeddings is appended automatically
+EMBEDDING_MODEL=nomic-embed-text                # check your model's native dimension!
+EMBEDDING_DIMENSIONS=768
+NEO4J_VECTOR_DIMENSIONS=768
+```
+
+### Switching models (dimension migration)
+
+Changing to a model with a **different native dimension** requires rebuilding the vector index and re-embedding — vectors of the old dimension cannot coexist with the new index. With the server stopped:
+
+```cypher
+DROP INDEX entity_embeddings IF EXISTS;
+
+MATCH (e:Entity) WHERE e.embedding IS NOT NULL
+SET e.embedding = NULL, e.embeddingModel = NULL, e.embeddingGeneratedAt = NULL;
+
+CREATE VECTOR INDEX entity_embeddings IF NOT EXISTS
+FOR (n:Entity) ON (n.embedding)
+OPTIONS { indexConfig: {
+  `vector.dimensions`: 1024,            // the NEW dimension
+  `vector.similarity_function`: 'cosine'
+} };
+```
+
+Then update the `EMBEDDING_*` / `NEO4J_VECTOR_DIMENSIONS` variables and restart. The backfill cron (`EMBEDDING_BACKFILL_CRON`) re-embeds every entity automatically — tighten it to `*/1 * * * *` for the duration of the migration if you want it done in minutes rather than at the next daily tick.
+
+### Graceful degradation / failure behaviour
+
+The embedding pipeline is designed to fail **loudly into a safe state**, never silently corrupt:
+
+| Condition | Behaviour |
+|---|---|
+| No provider configured (no `EMBEDDING_API_KEY`/`OPENAI_API_KEY`) | Server runs in **keyword-only mode**: BM25/keyword search works, `semantic_search` falls back, nothing is ever embedded. Random/mock vectors are never generated implicitly. |
+| Embedding API call fails on entity write | Entity is persisted with `embedding = NULL`; the backfill cron retries later. Writes never block on the embedding provider. |
+| Reranker errors (timeout, bad response, quota) | **Fail-open**: `semantic_search` returns the vector/hybrid ordering unchanged. Reranking is strictly additive. |
+| Vector length ≠ `NEO4J_VECTOR_DIMENSIONS` (v2.6.0+) | Write is **rejected with a loud error** — a mismatched vector can never be indexed, so persisting it would silently corrupt search. The startup log also warns if `EMBEDDING_DIMENSIONS` ≠ `NEO4J_VECTOR_DIMENSIONS`. |
+| `NODE_ENV=production` with a mock/fallback embedding service (v2.6.0+) | Embedding **writes are refused** (keyword-only mode + hard error log). `MOCK_EMBEDDINGS=true` is for tests and never counts as a provider in production. |
+
+## Multi-Surface MCP Client Setup
+
+When several MCP clients (Claude Code, Claude Desktop, Codex, etc.) share one knowledge graph, use a **hub-and-spoke topology**:
+
+- **One server-side instance** owns all embedding writes: `WRITE_EMBEDDINGS_LOCALLY=true` (the default) plus a tight backfill cron (`EMBEDDING_BACKFILL_CRON='*/1 * * * *'`).
+- **Every interactive client** runs as a **thin client**: `WRITE_EMBEDDINGS_LOCALLY=false`. Thin clients embed *queries* (so `semantic_search` works) but never write embeddings — a misconfigured laptop can therefore never pollute the shared store.
+
+The canonical thin-client environment (substitute your own values):
+
+```bash
+NEO4J_URI=bolt://<your-neo4j-host>:7687
+NEO4J_USERNAME=neo4j                  # NOTE: NEO4J_USERNAME — "NEO4J_USER" is silently ignored
+NEO4J_PASSWORD=<password>
+NEO4J_DATABASE=neo4j
+NEO4J_VECTOR_DIMENSIONS=1024
+EMBEDDING_API_KEY=<token>
+EMBEDDING_API_ENDPOINT=https://api.cloudflare.com/client/v4/accounts/<account-id>/ai/v1/embeddings
+EMBEDDING_MODEL=@cf/qwen/qwen3-embedding-0.6b
+EMBEDDING_DIMENSIONS=1024
+RERANK_ENABLED=true
+RERANK_ACCOUNT_ID=<account-id>
+RERANK_MODEL=@cf/baai/bge-reranker-base
+RERANK_API_KEY=<token>
+WRITE_EMBEDDINGS_LOCALLY=false
+```
+
+**Claude Code** (user scope, all projects):
+
+```bash
+claude mcp add-json kg -s user '{
+  "command": "npx",
+  "args": ["-y", "@henrychong-ai/mcp-neo4j-knowledge-graph"],
+  "env": { /* canonical thin-client env above */ }
+}'
+```
+
+**Claude Desktop** (`~/Library/Application Support/Claude/claude_desktop_config.json` on macOS):
+
+```json
+{
+  "mcpServers": {
+    "kg": {
+      "command": "npx",
+      "args": ["-y", "@henrychong-ai/mcp-neo4j-knowledge-graph"],
+      "env": { "...": "canonical thin-client env above" }
+    }
+  }
+}
+```
+
+**Codex** (`~/.codex/config.toml`):
+
+```toml
+[mcp_servers.kg]
+command = "npx"
+args = ["-y", "@henrychong-ai/mcp-neo4j-knowledge-graph"]
+
+[mcp_servers.kg.env]
+NEO4J_URI = "bolt://<your-neo4j-host>:7687"
+# ... canonical thin-client env above, TOML syntax
+```
+
+Tips:
+
+- **Secrets**: prefer a secret-manager wrapper (e.g. 1Password: `command: "op"`, `args: ["run", "--", "npx", "-y", "@henrychong-ai/mcp-neo4j-knowledge-graph"]` with `op://` references in `env`) over literal tokens in config files.
+- **Query embeddings must match the index**: every client embeds its own queries, so all clients must use the same model/dimension as the server's index. A client on a different model returns no semantic hits.
+- **After upgrading**: clear the npx cache so clients pick up the new version — `rm -rf ~/.npm/_npx/*/node_modules/@henrychong-ai` — then restart the client app. Long-lived apps (Claude Desktop) keep old server processes alive until restarted.
+
 ## Configuration
 
 ### Environment Variables

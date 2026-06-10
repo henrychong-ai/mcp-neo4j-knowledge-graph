@@ -150,24 +150,41 @@ export class Neo4jStorageProvider implements StorageProvider {
     // Set up schema manager
     this.schemaManager = new Neo4jSchemaManager(this.connectionManager, this.config, false);
 
-    // Set up vector store
+    // Set up vector store — dimensions MUST follow the configured index dimension
+    // (was hardcoded 1536, which would create a wrong-sized index on non-1536 deployments)
     this.vectorStore = new Neo4jVectorStore({
       connectionManager: this.connectionManager,
       indexName: this.config.vectorIndexName,
-      dimensions: 1536,
+      dimensions: this.config.vectorDimensions,
       similarityFunction: 'cosine',
       entityNodeLabel: 'Entity',
     });
 
     logger.debug('Neo4jStorageProvider: Initializing embedding service');
     try {
-      // Set up embedding service
-      this.embeddingService = EmbeddingServiceFactory.createFromEnvironment();
-      logger.debug('Neo4jStorageProvider: Embedding service initialized successfully', {
-        provider: this.embeddingService.getProviderInfo().provider,
-        model: this.embeddingService.getProviderInfo().model,
-        dimensions: this.embeddingService.getProviderInfo().dimensions,
-      });
+      // Set up embedding service — same provider/production gates as index.ts, so the
+      // storage provider's DIRECT write paths (createEntities/createEntitiesBatch)
+      // can never generate random/mock vectors when no real provider is configured.
+      if (!EmbeddingServiceFactory.hasEmbeddingProvider()) {
+        logger.info(
+          'Neo4jStorageProvider: no embedding provider configured — entity writes will persist with NULL embeddings'
+        );
+      } else {
+        const service = EmbeddingServiceFactory.createFromEnvironment();
+        if (!EmbeddingServiceFactory.shouldWriteEmbeddings(service)) {
+          logger.error(
+            'Neo4jStorageProvider: refusing random/mock embedding service under NODE_ENV=production — ' +
+              'entity writes will persist with NULL embeddings'
+          );
+        } else {
+          this.embeddingService = service;
+          logger.debug('Neo4jStorageProvider: Embedding service initialized successfully', {
+            provider: this.embeddingService.getProviderInfo().provider,
+            model: this.embeddingService.getProviderInfo().model,
+            dimensions: this.embeddingService.getProviderInfo().dimensions,
+          });
+        }
+      }
     } catch (error) {
       logger.error('Neo4jStorageProvider: Failed to initialize embedding service', error);
     }
@@ -783,10 +800,14 @@ export class Neo4jStorageProvider implements StorageProvider {
 
                 // Generate embedding using the instance's embedding service
                 embedding = await this.embeddingService.generateEmbedding(text);
+                // Wrong-dimension vectors must never be persisted — throw into the
+                // catch below so the entity is still created, with embedding=NULL.
+                this.assertEmbeddingDimension(embedding);
                 logger.info(`Generated embedding for entity: ${entity.name}`);
               } catch (error) {
                 logger.error(`Failed to generate embedding for entity: ${entity.name}`, error);
                 // Continue without embedding if generation fails
+                embedding = null;
               }
             } else {
               logger.warn(
@@ -2017,12 +2038,42 @@ export class Neo4jStorageProvider implements StorageProvider {
   }
 
   /**
+   * Guard: reject embedding vectors whose length does not match the configured
+   * vector index dimension (`NEO4J_VECTOR_DIMENSIONS`). A mismatched write —
+   * e.g. a 1536-dim vector into a 1024-dim index — can never be indexed and
+   * silently corrupts semantic search. Throwing turns silent corruption into a
+   * loud failed job. Inert when `vectorDimensions` is unset.
+   *
+   * @param vector The embedding vector about to be persisted
+   */
+  private assertEmbeddingDimension(vector: number[]): void {
+    const expected = this.config.vectorDimensions;
+    // Number.isFinite (not truthiness): parseInt of a malformed env value yields
+    // NaN, which is falsy and would otherwise silently disable the guard.
+    if (
+      typeof expected === 'number' &&
+      Number.isFinite(expected) &&
+      expected > 0 &&
+      Array.isArray(vector) &&
+      vector.length !== expected
+    ) {
+      throw new Error(
+        `Embedding dimension mismatch: got ${vector.length}, vector index expects ${expected} ` +
+          `(NEO4J_VECTOR_DIMENSIONS). Ensure EMBEDDING_MODEL's native output dimension and ` +
+          `EMBEDDING_DIMENSIONS both match the index — refusing to write a corrupt vector.`
+      );
+    }
+  }
+
+  /**
    * Store or update the embedding vector for an entity
    * @param entityName The name of the entity to update
    * @param embedding The embedding data to store
    */
   async updateEntityEmbedding(entityName: string, embedding: EntityEmbedding): Promise<void> {
     try {
+      this.assertEmbeddingDimension(embedding.vector);
+
       // Verify that the entity exists
       const entity = await this.getEntity(entityName);
       if (!entity) {
@@ -2802,8 +2853,12 @@ export class Neo4jStorageProvider implements StorageProvider {
                   ? entity.observations.join('\n')
                   : '';
                 embedding = await this.embeddingService.generateEmbedding(text);
+                // Same write-path dimension guard as createEntities: a mismatched
+                // vector throws into the catch and the entity persists with NULL.
+                this.assertEmbeddingDimension(embedding);
               } catch (error) {
                 logger.warn(`Failed to generate embedding for entity: ${entity.name}`, error);
+                embedding = null;
               }
             }
 

@@ -5,6 +5,42 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.6.0] - 2026-06-10
+
+Hardening release — makes it structurally impossible for random/mock vectors or wrong-dimension writes to corrupt a production knowledge graph. Motivated by a real incident (2026-06-09): stale client processes whose API key could not resolve fell back to the random mock embedding service and silently wrote 1536-dim vectors into a production 1024-dim store.
+
+### Added
+
+- **Write-path dimension guard.** `Neo4jStorageProvider` now rejects any embedding vector whose length does not match the configured `NEO4J_VECTOR_DIMENSIONS`: `updateEntityEmbedding` throws (the job fails loudly and is logged), and `createEntities` persists the entity with `embedding = NULL` instead of a corrupt vector. A mismatched vector can never be indexed, so persisting it silently corrupted semantic search.
+- **Production mock-guard.** Under `NODE_ENV=production`: `MOCK_EMBEDDINGS=true` no longer counts as an embedding provider (`hasEmbeddingProvider`), and a resolved random `DefaultEmbeddingService` — whether from the mock flag or the silent fallback path — is refused for embedding writes (new `shouldWriteEmbeddings`); the server runs keyword-only with a hard error log. Both factory checks accept an injectable `env` for testability.
+- **Startup dimension-consistency warning.** `checkDimensionConsistency` warns at boot when `EMBEDDING_DIMENSIONS` ≠ `NEO4J_VECTOR_DIMENSIONS` (the write guard remains the enforcement).
+- **Docs: "Embeddings & Reranking Setup"** README section — provider walkthroughs (OpenAI / **Cloudflare Workers AI free plan** / any OpenAI-compatible endpoint), the dimension rule, a model-switch (dimension migration) runbook with Cypher, and a consolidated graceful-degradation table.
+- **Docs: "Multi-Surface MCP Client Setup"** README section — hub-and-spoke topology (one writing server, thin clients with `WRITE_EMBEDDINGS_LOCALLY=false`), canonical thin-client env block, and per-surface examples (Claude Code, Claude Desktop, Codex) with gotcha call-outs (`NEO4J_USERNAME` not `NEO4J_USER`; stale npx cache after upgrades; client/index model-dimension match).
+- **`example.env` populated** — a working annotated starting point (`cp example.env .env`).
+
+### Added (review round — multi-reviewer synthesis)
+
+- **Batch write path guarded.** `createEntitiesBatch` now runs the same dimension guard as `createEntities` (mismatch → entity persists with `embedding = NULL`); it was an unguarded direct write path.
+- **Storage provider production gate.** `Neo4jStorageProvider`'s own embedding service (used by its direct `createEntities`/`createEntitiesBatch` write paths) now applies the same `hasEmbeddingProvider` / `shouldWriteEmbeddings` gates as the server wiring — no provider or production-mock ⇒ NULL embeddings, never random vectors.
+- **`MOCK_EMBEDDINGS` never honoured in production** inside `createFromEnvironment` (previously it beat a real API key even under `NODE_ENV=production`).
+- **NaN-proof guards.** `assertEmbeddingDimension` uses `Number.isFinite` (a malformed `NEO4J_VECTOR_DIMENSIONS` parses to falsy `NaN`, which would have silently disabled the guard), and `checkDimensionConsistency` compares numerically and warns on non-positive/non-numeric values.
+- **`shouldWriteEmbeddings` `-mock` model-name sentinel** alongside `instanceof` (robust across duplicate module copies, e.g. npx caches).
+- **CLI dimension guard.** `embeddings:generate` (raw-Cypher writer) enforces the same dimension invariant before each write.
+- **Vector store dimension follows config.** `Neo4jVectorStore` was constructed with hardcoded 1536 dims regardless of `NEO4J_VECTOR_DIMENSIONS`; now uses `config.vectorDimensions`.
+- `example.env` shipped in the npm package (`files`).
+
+### Fixed
+
+- **MCP `serverInfo.version` no longer hardcoded.** `setup.ts` previously pinned `version: '2.3.2'` (stale since v2.3.2); it now reads package.json at runtime via `createRequire` (`getPackageVersion()`), eliminating the second source of truth and the false-negative it caused in version-gated deploy tooling.
+
+### Backward compatibility
+
+- All guards are inert for correctly-configured deployments: the dimension guard only fires on a genuine mismatch; the production guard only fires for a mock/fallback service under `NODE_ENV=production`; CI (NODE_ENV unset, mock @ 1536d, index @ 1536d) is unaffected.
+
+### Validated
+
+- `pnpm run check` (oxlint + biome format:check + tsc --noEmit) — clean; `pnpm test` — 837 passing (14 new guard/version tests).
+
 ## [2.5.0] - 2026-06-09
 
 ### Added

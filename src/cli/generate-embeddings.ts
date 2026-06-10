@@ -184,6 +184,23 @@ async function generateEmbeddings(options: GenerateEmbeddingsOptions = {}): Prom
           // Generate embedding
           const embedding = await embeddingService.generateEmbedding(text);
 
+          // Write-path dimension guard (mirrors Neo4jStorageProvider.assertEmbeddingDimension):
+          // this CLI writes raw Cypher, so it must enforce the same invariant itself.
+          const expectedDims = process.env.NEO4J_VECTOR_DIMENSIONS
+            ? Number.parseInt(process.env.NEO4J_VECTOR_DIMENSIONS, 10)
+            : undefined;
+          if (
+            typeof expectedDims === 'number' &&
+            Number.isFinite(expectedDims) &&
+            expectedDims > 0 &&
+            embedding.length !== expectedDims
+          ) {
+            throw new Error(
+              `Embedding dimension mismatch: got ${embedding.length}, vector index expects ` +
+                `${expectedDims} (NEO4J_VECTOR_DIMENSIONS) — refusing to write a corrupt vector.`
+            );
+          }
+
           // Update entity
           const updateQuery = `
             MATCH (e:Entity {name: $name})

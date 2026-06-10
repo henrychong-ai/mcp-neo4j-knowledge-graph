@@ -269,7 +269,7 @@ Test files use Vitest with comprehensive mocking:
 **Publish Job:**
 
 - **Trigger**: Only on version tags (e.g., `v2.2.0`)
-- **Authentication**: npm publish on v\* tags (NPM_TOKEN secret)
+- **Authentication**: OIDC Trusted Publishing + `--provenance` (no token secret; trusted publisher configured on npmjs.org for this repo + ci-cd.yml)
 - **Version Check**: Tag must match `package.json` version
 
 ## Version History & Recent Bugfixes
@@ -553,7 +553,9 @@ services:
 
 ### Vector Embeddings
 
-- Model: OpenAI text-embedding-3-small (1536 dimensions)
+- Provider-agnostic (OpenAI-compatible). Defaults: OpenAI text-embedding-3-small (1536d). Cloudflare Workers AI example: @cf/qwen/qwen3-embedding-0.6b (1024d) + @cf/baai/bge-reranker-base reranker
+- INVARIANT: `EMBEDDING_DIMENSIONS` == `NEO4J_VECTOR_DIMENSIONS` == model native output dim. Model switch with a different dim = index rebuild + full re-embed (runbook: README "Switching models")
+- Setup walkthroughs (OpenAI / Cloudflare free plan / self-hosted) + multi-surface MCP client topology: README "Embeddings & Reranking Setup" + "Multi-Surface MCP Client Setup"
 - Semantic search: `limit=10`, `min_similarity=0.6` (default)
 
 **Automated Maintenance (v1.3.0+):**
@@ -570,6 +572,13 @@ services:
 - Cost per run: ~$0.02 per 1M tokens
 
 ## Critical Implementation Patterns
+
+### Embedding Write Guards (v2.6.0)
+
+- **Dimension guard**: `Neo4jStorageProvider.assertEmbeddingDimension` rejects any vector whose length != `config.vectorDimensions` — on `updateEntityEmbedding` (throws, job fails loudly) and `createEntities` (entity persists with NULL embedding). Wrong-dimension vectors are NEVER written.
+- **Production mock-guard**: `EmbeddingServiceFactory.hasEmbeddingProvider(env)` rejects `MOCK_EMBEDDINGS` under `NODE_ENV=production`; `shouldWriteEmbeddings(service, env)` refuses a `DefaultEmbeddingService` (mock OR silent fallback) in production — index.ts then runs keyword-only. Random vectors never drive a production store.
+- **Startup consistency check**: `checkDimensionConsistency(env)` warns at boot when `EMBEDDING_DIMENSIONS` != `NEO4J_VECTOR_DIMENSIONS`.
+- **Version source of truth**: `setup.ts getPackageVersion()` reads package.json via `createRequire` — never hardcode the MCP serverInfo version.
 
 ### BigInt Handling in Neo4j Operations
 

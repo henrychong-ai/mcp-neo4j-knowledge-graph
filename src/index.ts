@@ -52,6 +52,18 @@ if (!EmbeddingServiceFactory.hasEmbeddingProvider()) {
       `Embedding service model info: ${JSON.stringify(embeddingService.getModelInfo())}`
     );
 
+    // Production guard (v2.6.0): never wire a writing job manager to a random/mock
+    // service. Catches BOTH MOCK_EMBEDDINGS and the silent fallback-to-Default path
+    // (configured key whose service construction failed). Thrown error is handled
+    // by the catch below → embeddingJobManager stays undefined → keyword-only mode.
+    if (!EmbeddingServiceFactory.shouldWriteEmbeddings(embeddingService)) {
+      throw new Error(
+        'NODE_ENV=production with a random/mock embedding service (DefaultEmbeddingService) — ' +
+          'refusing to write embeddings. Set EMBEDDING_API_KEY or OPENAI_API_KEY to a real ' +
+          'provider. Falling back to keyword-only mode.'
+      );
+    }
+
     // Configure rate limiting options - stricter limits to prevent OpenAI API abuse
     const rateLimiterOptions = {
       tokensPerInterval: process.env.EMBEDDING_RATE_LIMIT_TOKENS

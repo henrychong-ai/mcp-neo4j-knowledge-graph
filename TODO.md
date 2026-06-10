@@ -503,3 +503,12 @@ git push origin main --tags
 **Last Updated:** 2026-02-09
 
 **Current State:** v2.2.0 — Neo4j-only architecture, ES2024/Node 24, 834 tests, pnpm/Vitest/Oxlint/Biome toolchain.
+
+## Residual review findings — v2.6.0 autosequence (2026-06-10)
+
+Deferred (not apply-eligible: design judgement / cosmetic; from /codex + /code-review + /security-review synthesis):
+
+- [ ] **index.ts production-guard control flow**: replace throw-into-catch with explicit if/else for readability (lone style finding; current form is documented and behaviour-correct).
+- [ ] **Dimension-validation ownership**: `Neo4jVectorStore.addVector` and `Neo4jStorageProvider.assertEmbeddingDimension` both validate independently (defence in depth today); consider a single shared helper so error messages/tolerance stay coordinated.
+- [ ] **Library-consumer bypass**: the production mock-guard protects the server wiring and the storage provider's own service; a consumer constructing `EmbeddingJobManager` directly with a mock service is out of scope by design — document in CONTRIBUTING if library usage grows.
+- [ ] **Env-int parsing consolidation**: export `intEnv()` from RerankerService (or a shared util) and reuse in EmbeddingServiceFactory/config parsing.
