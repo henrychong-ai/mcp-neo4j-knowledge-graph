@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.7.2] - 2026-06-25
+
+Dependency maintenance patch; no runtime behaviour changes intended.
+
+### Changed
+
+- Refreshed minor/patch dependency lines: `axios` 1.18.1, `neo4j-driver` 6.1.0, `node-cron` 4.5.0, `uuid` 14.0.1, `@biomejs/biome` 2.5.1, `@types/node` 25.9.4, `@vitest/coverage-v8` 4.1.9, `oxlint` 1.71.0, and `vitest` 4.1.9.
+
+### Security
+
+- Retained/updated scoped pnpm overrides for transitive advisory ranges: `hono` >=4.12.25, `vite` >=7.3.5 on the 7.x line, `esbuild` >=0.28.1 on affected 0.x ranges, and `form-data` >=4.0.6.
+
 ## [2.7.1] - 2026-06-10
 
 Housekeeping patch: degraded-mode contract completion, schema alignment, and dependency security updates.
