@@ -25,11 +25,17 @@ export async function handleCallToolRequest(
     throw new Error('Invalid request: missing params');
   }
 
-  const { name, arguments: args } = request.params;
+  const { name, arguments: rawArgs } = request.params;
 
   if (!name) {
     throw new Error('Invalid request: missing tool name');
   }
+
+  // flag_oversized_entities has no required arguments; some MCP clients send no
+  // `arguments` field rather than `{}`. Default it to {} so its parameter
+  // defaults apply. Other tools keep the existing required-arguments contract.
+  const NO_REQUIRED_ARG_TOOLS = new Set(['flag_oversized_entities']);
+  const args = rawArgs ?? (NO_REQUIRED_ARG_TOOLS.has(name) ? {} : undefined);
 
   if (!args) {
     throw new Error(`No arguments provided for tool: ${name}`);
@@ -117,6 +123,22 @@ export async function handleCallToolRequest(
           },
         ],
       };
+    }
+
+    case 'flag_oversized_entities': {
+      try {
+        const result = await knowledgeGraphManager.flagOversizedEntities({
+          scanLimit: typeof args.limit === 'number' ? args.limit : undefined,
+          warnRatio: typeof args.warn_ratio === 'number' ? args.warn_ratio : undefined,
+          includeOk: args.include_ok === true,
+        });
+        return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+      } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        return {
+          content: [{ type: 'text', text: `Error flagging oversized entities: ${errorMessage}` }],
+        };
+      }
     }
 
     case 'get_entity_history': {

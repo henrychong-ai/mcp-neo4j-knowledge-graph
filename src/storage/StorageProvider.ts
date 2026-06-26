@@ -40,6 +40,24 @@ export interface SearchOptions {
 }
 
 /**
+ * Compact, cap-safe projection of one entity's approximate serialized size.
+ * Returned by {@link StorageProvider.scanEntitySizes}; never carries full
+ * observation text, so the scan itself can never breach the MCP output cap.
+ */
+export interface EntitySizeScanRow {
+  name: string;
+  entityType: string;
+  /** Approximate serialized characters (observations + structural overhead + relations term). */
+  approxChars: number;
+  /** Approximate characters contributed by observations alone. */
+  obsChars: number;
+  /** Number of observations on the entity. */
+  obsCount: number;
+  /** Number of current relations attached to the entity. */
+  relCount: number;
+}
+
+/**
  * Interface for storage providers that can load and save knowledge graphs
  */
 export interface StorageProvider {
@@ -70,6 +88,17 @@ export interface StorageProvider {
    * @returns Promise resolving to a KnowledgeGraph containing the specified nodes
    */
   openNodes(names: string[]): Promise<KnowledgeGraph>;
+
+  /**
+   * Scan current entities ranked by approximate serialized size, largest first.
+   * Computes size in the storage layer and returns only a compact projection
+   * (never full entities), so the scan is immune to the MCP output cap it
+   * polices. Optional — providers that cannot scan efficiently may omit it, and
+   * callers fall back to an in-memory pass.
+   * @param limit Maximum number of (largest) entities to return
+   * @returns Promise resolving to ranked size rows, largest first
+   */
+  scanEntitySizes?(limit: number): Promise<EntitySizeScanRow[]>;
 
   /**
    * Create new entities in the knowledge graph

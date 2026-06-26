@@ -63,6 +63,27 @@ describe('handleCallToolRequest', () => {
     );
   });
 
+  test('flag_oversized_entities tolerates missing arguments (defaults to {})', async () => {
+    // Arrange — a client that omits `arguments` entirely must not error on a
+    // tool whose args are all optional.
+    const flagOversizedEntities = vi
+      .fn()
+      .mockResolvedValue({ assumedCap: 25000, scanned: 0, flaggedCount: 0, entities: [] });
+    const request = {
+      params: { name: 'flag_oversized_entities', arguments: undefined },
+    };
+
+    // Act
+    const result = await handleCallToolRequest(request, {
+      ...mockKnowledgeGraphManager,
+      flagOversizedEntities,
+    } as unknown as KnowledgeGraphManager);
+
+    // Assert
+    expect(flagOversizedEntities).toHaveBeenCalledTimes(1);
+    expect(JSON.parse(result.content[0].text).scanned).toBe(0);
+  });
+
   test('should throw an error for unknown tool', async () => {
     // Arrange
     const request = {

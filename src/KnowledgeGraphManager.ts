@@ -1,8 +1,15 @@
 // import path from 'path';
+import { type EntitySizeConfigOverrides, getEntitySizeConfig } from './config/entitySize.js';
 import type { EmbeddingJobManager } from './embeddings/EmbeddingJobManager.js';
 import { prepareEntityText } from './embeddings/entityText.js';
+import {
+  type EntitySizeReport,
+  estimateEntitySize,
+  estimateFromCharCount,
+  RESTRUCTURE_HINT,
+} from './maintenance/EntitySizeService.js';
 import { RerankerService } from './retrieval/RerankerService.js';
-import type { StorageProvider } from './storage/StorageProvider.js';
+import type { EntitySizeScanRow, StorageProvider } from './storage/StorageProvider.js';
 import {
   VectorStoreFactory,
   type VectorStoreFactoryOptions,
@@ -107,6 +114,32 @@ export interface SearchResponse {
     }
   >;
   timeTaken: number;
+}
+
+/** Options for {@link KnowledgeGraphManager.flagOversizedEntities}. */
+export interface FlagOversizedOptions extends EntitySizeConfigOverrides {
+  /** When true, include OK entities in the result (default: only WARN/CRITICAL). */
+  includeOk?: boolean;
+}
+
+/** Result of {@link KnowledgeGraphManager.flagOversizedEntities}. */
+export interface FlagOversizedResult {
+  /** Assumed MCP output cap (tokens) the sizes are measured against. */
+  assumedCap: number;
+  warnRatio: number;
+  criticalRatio: number;
+  /** Number of entities scanned/ranked. */
+  scanned: number;
+  flaggedCount: number;
+  criticalCount: number;
+  warnCount: number;
+  /** Ranked size reports (largest first), filtered per includeOk. */
+  entities: EntitySizeReport[];
+  restructureHint: string;
+  /** Set when a degraded path was taken (e.g. in-memory fallback). */
+  note?: string;
+  /** Set when the operation failed (fail-open — never throws). */
+  error?: string;
 }
 
 interface KnowledgeGraphManagerOptions {
@@ -413,6 +446,113 @@ export class KnowledgeGraphManager {
       throw new Error('Storage provider is required to open nodes');
     }
     return this.storageProvider.openNodes(names);
+  }
+
+  /**
+   * Flag entities whose serialized size approaches or exceeds the MCP
+   * `open_nodes` output cap, so they can be restructured before they become
+   * unretrievable. Ranks candidates cheaply in the storage layer (cap-immune),
+   * then refines the top-N precisely by hydrating the real entities — the cap
+   * applies only to tool RESPONSES, not to this internal hydration, so even
+   * already-CRITICAL entities load safely here.
+   *
+   * Fail-open: any error is captured into the `error` field; this never throws.
+   *
+   * @param options Threshold overrides plus includeOk
+   * @returns Ranked, classified size reports for the largest entities
+   */
+  async flagOversizedEntities(options?: FlagOversizedOptions): Promise<FlagOversizedResult> {
+    const cfg = getEntitySizeConfig(options);
+    const includeOk = options?.includeOk ?? false;
+
+    const base = {
+      assumedCap: cfg.maxTokens,
+      warnRatio: cfg.warnRatio,
+      criticalRatio: cfg.criticalRatio,
+      restructureHint: RESTRUCTURE_HINT,
+    };
+
+    try {
+      if (!this.storageProvider) {
+        throw new Error('Storage provider is required to flag oversized entities');
+      }
+
+      // 1. Rank candidates cheaply in the storage layer (cap-immune projection).
+      let rows: EntitySizeScanRow[];
+      let note: string | undefined;
+      if (typeof this.storageProvider.scanEntitySizes === 'function') {
+        rows = await this.storageProvider.scanEntitySizes(cfg.scanLimit);
+      } else {
+        // Fallback for providers without a native scan (e.g. tests / non-Neo4j):
+        // size in memory. Only reached when scanEntitySizes is absent.
+        const graph = await this.storageProvider.loadGraph();
+        rows = graph.entities
+          .map(e => {
+            const obs = e.observations ?? [];
+            const obsChars = obs.reduce((s, o) => s + (o ?? '').length + 6, 0);
+            return {
+              name: e.name,
+              entityType: e.entityType ?? '',
+              obsChars,
+              obsCount: obs.length,
+              relCount: 0,
+              approxChars: obsChars + 200,
+            };
+          })
+          .sort((a, b) => b.approxChars - a.approxChars)
+          .slice(0, cfg.scanLimit);
+        note = 'storage provider has no scanEntitySizes(); used in-memory fallback';
+      }
+
+      const scanned = rows.length;
+
+      // 2. Refine the candidates precisely by hydrating the real entities.
+      const names = rows.map(r => r.name);
+      const entityByName = new Map<string, Entity>();
+      if (names.length > 0) {
+        try {
+          const graph = await this.storageProvider.openNodes(names);
+          for (const e of graph.entities) {
+            entityByName.set(e.name, e);
+          }
+        } catch (err) {
+          logger.warn(
+            'flagOversizedEntities: refine openNodes failed, using approximate sizes',
+            err
+          );
+        }
+      }
+
+      const reports: EntitySizeReport[] = rows.map(row => {
+        const entity = entityByName.get(row.name);
+        return entity ? estimateEntitySize(entity, cfg) : estimateFromCharCount(row, cfg);
+      });
+      reports.sort((a, b) => b.estTokens - a.estTokens);
+
+      const flagged = reports.filter(r => r.state !== 'OK');
+
+      return {
+        ...base,
+        scanned,
+        flaggedCount: flagged.length,
+        criticalCount: flagged.filter(r => r.state === 'CRITICAL').length,
+        warnCount: flagged.filter(r => r.state === 'WARN').length,
+        entities: includeOk ? reports : flagged,
+        ...(note ? { note } : {}),
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      logger.error('flagOversizedEntities failed', error);
+      return {
+        ...base,
+        scanned: 0,
+        flaggedCount: 0,
+        criticalCount: 0,
+        warnCount: 0,
+        entities: [],
+        error: message,
+      };
+    }
   }
 
   /**

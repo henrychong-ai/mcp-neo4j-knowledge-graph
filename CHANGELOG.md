@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.8.0] - 2026-06-26
+
+Oversized-entity flagging (Phase 1): detect entities whose serialized size approaches or exceeds the MCP `open_nodes` output cap and surface them before they become unretrievable. Additive, backward-compatible, and fail-open throughout.
+
+### Added
+
+- **`flag_oversized_entities` MCP tool.** Lists current entities ranked by serialized size (largest first) with `est_tokens`, `ratio`, `state` (`OK`/`WARN`/`CRITICAL`), `obsCount`, and `largestObservationChars`, plus the assumed cap and a restructure hint. Returns size metrics only — never full entity bodies — so the scan can never itself breach the cap. Optional args: `limit` (default 50), `warn_ratio` (default 0.8), `include_ok` (default false).
+- **On-write size warnings.** `create_entities_batch`, `add_observations_batch`, and `update_entities_batch` now append an additive, non-fatal `warnings[]` field naming any touched entity that crosses WARN/CRITICAL. Strictly fail-open (never blocks or fails a write); gated by `ENTITY_SIZE_WARN_ON_WRITE` (default true).
+- **`kg:oversized` CLI** (`src/cli/report-oversized.ts`): prints a table (or `--json`) of WARN/CRITICAL entities and exits non-zero when any CRITICAL exists, for a recurring cron digest. Sizing is pure Cypher — no embedding provider required.
+- **`StorageProvider.scanEntitySizes(limit)`** (implemented for Neo4j): ranks current entities by approximate serialized size entirely in the storage layer, returning only a compact projection. Handles observations stored as either a JSON string or a list via `valueType()`.
+- **`EntitySizeService`** (`src/maintenance/`): the single, dependency-free size-estimation primitive — serializes the entity as the real `open_nodes` response envelope (incl. temporal fields) and estimates tokens at `chars / 2.8`, a divisor calibrated against the documented ~73k-char-over-cap failure to err toward over-estimation. Shared by the tool, write warnings, and CLI.
+- **Configuration**: `MAX_MCP_OUTPUT_TOKENS` (default 25000), `ENTITY_SIZE_WARN_RATIO` (0.8), `ENTITY_SIZE_CRITICAL_RATIO` (1.0), `ENTITY_SIZE_WARN_ON_WRITE` (true), `ENTITY_SIZE_SCAN_LIMIT` (50). See README "Oversized-entity flagging" and `example.env`.
+
+### Notes
+
+- Sizing is advisory: a conservative `chars / 2.8` heuristic (calibrated to the documented over-cap incident) with a sub-1.0 warn ratio, not a reproduction of the harness tokenizer. The acute case is per-entity — once one entity's own serialized form exceeds the cap, `open_nodes(["Name"])` fails closed on it.
+- Restructuring stays manual/agent-driven (semantic split is a judgement call); the tooling informs, it does not auto-split.
+- Phase-2 extension points are designed-for but intentionally out of scope here: Prometheus gauges, `open_nodes` graceful-degrade for already-CRITICAL entities, and a `suggest_entity_split` helper.
+
 ## [2.7.1] - 2026-06-10
 
 Housekeeping patch: degraded-mode contract completion, schema alignment, and dependency security updates.

@@ -430,6 +430,61 @@ Semantic search queries are automatically cached for improved performance:
 
 This caching layer provides significant performance improvements for repeated or similar queries without any configuration needed.
 
+## Oversized-entity flagging (v2.8.0+)
+
+`open_nodes` returns pretty-printed JSON, and the MCP client/harness caps a tool
+response at `MAX_MCP_OUTPUT_TOKENS` (default **25,000 tokens**). If a single
+entity's own serialized form grows past that cap, `open_nodes(["Name"])` fails
+**closed** — the entity can no longer be fetched or deduped by exact name. This
+feature flags entities approaching the cap so you can restructure them first.
+
+**How size is estimated.** Per entity, the server measures the characters of the
+entity as `open_nodes` actually serializes it — nested in the `{ entities: [ … ] }`
+response envelope with its temporal/identity fields, but without the embedding
+vector (which `open_nodes` does not return), so observations dominate — and
+estimates tokens at `chars / 2.8`. That divisor is calibrated against the
+documented failure (an entity at ~73k serialized chars that exceeded the
+25k-token cap ⇒ <2.93 chars/token for dense technical/JSON content) and
+deliberately errs toward over-estimating tokens: a false WARN is cheap, a missed
+over-cap entity is the catastrophe the feature prevents. Combined with a sub-1.0
+warn ratio it is a conservative early warning, not a reproduction of the harness
+tokenizer. Three states: **OK** (`< warn_ratio`), **WARN**
+(`warn_ratio`–`critical_ratio`: restructure soon), **CRITICAL** (`>= critical_ratio`:
+at/over the cap — split now).
+
+Three ways you find out:
+
+1. **On demand — `flag_oversized_entities` tool.** Returns a ranked, size-only
+   list (never full entity bodies, so the scan can't itself breach the cap). The
+   ranking is computed in the storage layer; the largest candidates are then
+   sized precisely.
+2. **At the moment of growth — write warnings.** When `create_entities_batch`,
+   `add_observations_batch`, or `update_entities_batch` push a touched entity
+   into WARN/CRITICAL, the result gains an additive, non-fatal `warnings[]` field
+   naming it. Strictly fail-open (never blocks or fails the write); disable with
+   `ENTITY_SIZE_WARN_ON_WRITE=false`.
+3. **On an ongoing basis — the CLI + a cron.** Run a recurring digest:
+
+   ```bash
+   pnpm run kg:oversized                 # table of WARN/CRITICAL entities
+   pnpm run kg:oversized -- --include-ok # include OK entities too
+   pnpm run kg:oversized:json            # machine-readable JSON
+   pnpm run kg:oversized -- --limit 100  # scan the 100 largest
+   ```
+
+   The CLI exits non-zero when any CRITICAL entity exists, so a weekly cron
+   (alongside the embedding backfill) can alert. Sizing is pure Cypher — no
+   embedding provider is needed.
+
+**Restructuring stays a judgement call** (the tool informs, it does not
+auto-split): group an oversized entity's observations by theme into new, more
+specific sibling entities, then link them with `create_relations`. Dedup with
+`open_nodes` before creating. A CRITICAL entity may already be unretrievable
+whole — split it from its source before it grows further.
+
+Thresholds and scan size are configurable via the `MAX_MCP_OUTPUT_TOKENS` /
+`ENTITY_SIZE_*` environment variables (see [Configuration](#environment-variables)).
+
 ## MCP API Tools
 
 The following tools are available to LLM client hosts through the Model Context Protocol:
@@ -517,6 +572,14 @@ The following tools are available to LLM client hosts through the Model Context 
 - **open_nodes**
   - Retrieve specific nodes by name
   - Input: `names` (string[])
+
+- **flag_oversized_entities** (v2.8.0+)
+  - List entities whose serialized size approaches or exceeds the MCP `open_nodes` output cap (default 25,000 tokens), ranked largest-first, so they can be split before they become unretrievable. Read-only; returns size metrics only (`est_tokens`, `ratio`, `state` of `OK`/`WARN`/`CRITICAL`, observation counts) — never full entity bodies, so the call can never itself breach the cap.
+  - Input (all optional):
+    - `limit` (number): number of largest entities to scan/rank (default: 50)
+    - `warn_ratio` (number): fraction of the cap (0.0-1.0) for the WARN threshold (default: 0.8)
+    - `include_ok` (boolean): include entities below the warn threshold (default: false)
+  - See [Oversized-entity flagging](#oversized-entity-flagging-v280).
 
 ### Semantic Search
 
@@ -811,6 +874,17 @@ EMBEDDING_STALE_CLAIM_MS=300000      # (v2.4.0+) Claims older than this age are 
                                      # to 'pending' on the next processJobs tick. Default 5 minutes.
                                      # Increase if your worker's batch processing time can exceed
                                      # this; decrease for faster recovery from worker crashes.
+
+# Oversized-Entity Flagging (v2.8.0+) — early-warning before an entity outgrows
+# the open_nodes cap. All advisory; sizing is a conservative chars-per-token estimate.
+MAX_MCP_OUTPUT_TOKENS=25000          # Assumed open_nodes output cap (tokens) the sizes are measured against.
+                                     # Set to match your client/harness cap if it differs from the 25k default.
+ENTITY_SIZE_WARN_RATIO=0.8           # Fraction of the cap at/above which an entity is flagged WARN.
+ENTITY_SIZE_CRITICAL_RATIO=1.0       # Fraction of the cap at/above which an entity is flagged CRITICAL
+                                     # (>= warn ratio; already at/over the cap → may be unretrievable whole).
+ENTITY_SIZE_WARN_ON_WRITE=true       # When true, write tools (create/add/update batch) append a non-fatal
+                                     # warnings[] field naming any touched entity that crosses WARN/CRITICAL.
+ENTITY_SIZE_SCAN_LIMIT=50            # Default number of largest entities scanned/ranked per pass.
 
 # Logging Configuration
 LOG_LEVEL=warn              # Log level: debug, info, warn, error, silent (default: warn)

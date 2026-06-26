@@ -359,6 +359,30 @@ export async function handleListToolsRequest(): Promise<{ tools: Record<string, 
       },
     },
     {
+      name: 'flag_oversized_entities',
+      description:
+        'List knowledge-graph entities whose serialized size approaches or exceeds the MCP open_nodes output cap (default 25,000 tokens), ranked largest-first, so they can be split before they become unretrievable. Read-only; returns size metrics only (name, est_tokens, ratio, state OK/WARN/CRITICAL, observation counts) — never full entity bodies.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          limit: {
+            type: 'number',
+            description: 'Number of largest entities to scan and rank (default: 50)',
+          },
+          warn_ratio: {
+            type: 'number',
+            description:
+              'Fraction of the cap (0.0-1.0) at/above which an entity is flagged WARN (default: 0.8)',
+          },
+          include_ok: {
+            type: 'boolean',
+            description:
+              'When true, include entities below the warn threshold too (default: false — only WARN/CRITICAL)',
+          },
+        },
+      },
+    },
+    {
       name: 'semantic_search',
       description:
         'Search for entities semantically using vector embeddings and similarity in your knowledge graph',

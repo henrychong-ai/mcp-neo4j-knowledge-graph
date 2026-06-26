@@ -5,6 +5,12 @@
  * Provides 10-50x performance improvement over individual updates.
  */
 
+import {
+  attachWriteWarnings,
+  collectWriteSizeWarnings,
+  extractWrittenNames,
+} from './writeSizeWarnings.js';
+
 /**
  * Handle update_entities_batch tool calls
  *
@@ -19,11 +25,15 @@ export async function handleUpdateEntitiesBatch(
 ): Promise<{ content: { type: string; text: string }[] }> {
   const result = await knowledgeGraphManager.updateEntitiesBatch(args.updates, args.config);
 
+  // Additive, fail-open: flag any entity this write pushed near the open_nodes cap.
+  const warnings = await collectWriteSizeWarnings(knowledgeGraphManager, extractWrittenNames(args));
+  const payload = attachWriteWarnings(result, warnings);
+
   return {
     content: [
       {
         type: 'text',
-        text: JSON.stringify(result, null, 2),
+        text: JSON.stringify(payload, null, 2),
       },
     ],
   };

@@ -16,7 +16,7 @@ import type {
 import type { EntityEmbedding, SemanticSearchOptions } from '../../types/entity-embedding.js';
 import type { Relation } from '../../types/relation.js';
 import { logger } from '../../utils/logger.js';
-import type { StorageProvider, SearchOptions } from '../StorageProvider.js';
+import type { StorageProvider, SearchOptions, EntitySizeScanRow } from '../StorageProvider.js';
 
 import { DEFAULT_NEO4J_CONFIG, type Neo4jConfig } from './Neo4jConfig.js';
 import { Neo4jConnectionManager } from './Neo4jConnectionManager.js';
@@ -779,6 +779,80 @@ export class Neo4jStorageProvider implements StorageProvider {
       logger.error('Error opening nodes in Neo4j', error);
       throw error;
     }
+  }
+
+  /**
+   * Scan current entities ranked by approximate serialized size, largest first.
+   *
+   * Size is computed entirely in Cypher and only a compact projection is
+   * returned (name, type, char/observation/relation counts) — never full
+   * entities — so this scan can never itself breach the MCP output cap it
+   * exists to police. Observations may be stored as a JSON string or a list;
+   * both forms are handled via valueType() (Neo4j 5.13+).
+   *
+   * @param limit Maximum number of (largest) entities to return
+   * @returns Ranked size rows, largest approxChars first
+   */
+  async scanEntitySizes(limit: number): Promise<EntitySizeScanRow[]> {
+    const safeLimit = Number.isFinite(limit) && limit > 0 ? Math.floor(limit) : 50;
+
+    // obsChars: characters contributed by observations, deliberately biased HIGH
+    //   so a many-short-observation entity (whose real open_nodes JSON carries
+    //   large per-line indentation overhead) is not ranked below the top-N and
+    //   missed. String form => its JSON length + ~10 chars/element for the
+    //   pretty-print indentation the raw string omits; list form => sum of
+    //   element lengths + ~12 chars/element (8-space indent + quotes + comma).
+    //   coalesce guards a null element (which would null the whole rank, and
+    //   Neo4j sorts nulls FIRST, spuriously promoting it). obsCount is the
+    //   element count for both forms (string form approximated via split).
+    // approxChars: obsChars + a fixed structural/metadata overhead + a small
+    //   per-relation term. Only used for RANKING; precise sizing is refined
+    //   against the real entity for the returned top-N.
+    const query = `
+      MATCH (e:Entity)
+      WHERE e.validTo IS NULL
+      WITH e,
+        CASE
+          WHEN e.observations IS NULL THEN 0
+          WHEN valueType(e.observations) STARTS WITH 'STRING'
+            THEN size(e.observations) + (size(split(e.observations, '","')) * 10)
+          WHEN valueType(e.observations) STARTS WITH 'LIST'
+            THEN reduce(s = 0, o IN e.observations | s + size(coalesce(toString(o), '')) + 12)
+          ELSE 0
+        END AS obsChars,
+        CASE
+          WHEN e.observations IS NULL THEN 0
+          WHEN valueType(e.observations) STARTS WITH 'LIST' THEN size(e.observations)
+          WHEN valueType(e.observations) STARTS WITH 'STRING' THEN size(split(e.observations, '","'))
+          ELSE 0
+        END AS obsCount
+      OPTIONAL MATCH (e)-[r:RELATES_TO]-(:Entity)
+      WHERE r.validTo IS NULL
+      WITH e, obsChars, obsCount, count(DISTINCT r) AS relCount
+      RETURN
+        e.name AS name,
+        e.entityType AS entityType,
+        obsChars AS obsChars,
+        obsCount AS obsCount,
+        relCount AS relCount,
+        (obsChars + 200 + relCount * 8) AS approxChars
+      ORDER BY approxChars DESC
+      LIMIT toInteger($limit)
+    `;
+
+    const result = await this.connectionManager.executeQuery(query, { limit: safeLimit });
+
+    return result.records.map(record => {
+      const toNum = (value: unknown): number => Number(this.convertNeo4jInt(value) ?? 0);
+      return {
+        name: record.get('name') as string,
+        entityType: (record.get('entityType') as string) ?? '',
+        approxChars: toNum(record.get('approxChars')),
+        obsChars: toNum(record.get('obsChars')),
+        obsCount: toNum(record.get('obsCount')),
+        relCount: toNum(record.get('relCount')),
+      };
+    });
   }
 
   /**
