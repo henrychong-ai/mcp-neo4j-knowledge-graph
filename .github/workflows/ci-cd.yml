@@ -1,5 +1,6 @@
 # Neo4j Knowledge Graph MCP - CI and npm Publishing
-# Runs lint/format/typecheck/test/build on all pushes, publishes to npm on version tags (v*)
+# Runs lint/format/typecheck/test/build on all pushes; publishes to npm only on
+# version tags (v*) whose commit is on main (see the tag-on-main gate below).
 
 name: Neo4j Knowledge Graph MCP CI
 
@@ -109,10 +110,40 @@ jobs:
           OPENAI_EMBEDDING_MODEL: text-embedding-3-small
           MOCK_EMBEDDINGS: true
 
+  # Gate: a v* tag publishes ONLY when its commit is on main. Tags are
+  # branch-independent, so without this an off-main tag (e.g. pushed from
+  # develop) would publish to npm. This job resolves the tagged commit's
+  # membership in main and the publish job is gated on its result.
+  tag-on-main:
+    name: Tag is on main
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      on_main: ${{ steps.check.outputs.on_main }}
+    steps:
+      - name: Checkout (full history)
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Check tagged commit is on main
+        id: check
+        run: |
+          git fetch --no-tags origin main:refs/remotes/origin/main
+          if git merge-base --is-ancestor "${GITHUB_SHA}" origin/main; then
+            echo "on_main=true" >> "$GITHUB_OUTPUT"
+            echo "✅ Tag ${GITHUB_REF_NAME} (${GITHUB_SHA}) is on main — publish allowed."
+          else
+            echo "on_main=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Tag ${GITHUB_REF_NAME} is not on main — npm publish skipped."
+          fi
+
   publish:
     name: Publish to npm
-    needs: build
-    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [build, tag-on-main]
+    # Publish ONLY on a version tag whose commit is on main (both conditions).
+    if: ${{ startsWith(github.ref, 'refs/tags/v') && needs.tag-on-main.outputs.on_main == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
