@@ -575,6 +575,18 @@ EMBEDDING_DIMENSIONS  ==  NEO4J_VECTOR_DIMENSIONS  ==  the model's NATIVE output
 
 The Neo4j vector index is created at a fixed dimension. A vector of any other length can never be indexed — and as of v2.6.0 the server **refuses to write it** (see [Graceful degradation](#graceful-degradation--failure-behaviour)). The dimension is a property of the *model*, so pick the model first, then set both variables to its native output size.
 
+### The other thing to know: input context windows
+
+Each model also has a **maximum input length**, and text past it is truncated *before* it is vectorised — so a very long entity is embedded from its **head only**, and anything beyond the cutoff becomes unreachable by `semantic_search`. Keep entities reasonably sized (split oversized ones) for good recall.
+
+| Model | Role | Max input | Truncation |
+|---|---|---|---|
+| `@cf/qwen/qwen3-embedding-0.6b` | embedding | **8,192 tokens** | full text is sent; Cloudflare truncates the overflow server-side |
+| `text-embedding-3-small` / `-large` | embedding | 8,191 tokens | OpenAI truncates server-side |
+| `@cf/baai/bge-reranker-base` | reranker | **512 tokens** (query + passage) | each passage is truncated client-side to `RERANK_MAX_PASSAGE_CHARS` (default 2,000 chars ≈ this window) before scoring |
+
+> Cloudflare's docs are currently inconsistent on the qwen3 embedding limit — the [model page](https://developers.cloudflare.com/workers-ai/models/qwen3-embedding-0.6b/) and [AI Search table](https://developers.cloudflare.com/ai-search/configuration/models/supported-models/) say 8,192 tokens; the launch changelog says 4,096. Treat ~4K as a conservative floor if a single entity sits near the limit.
+
 ### Option A — OpenAI (default)
 
 ```bash
