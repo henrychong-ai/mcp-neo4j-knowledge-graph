@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.8.1] - 2026-07-03
+
+Dependency security maintenance only. No runtime code changes and no major-version bumps.
+
+### Security
+
+- Bumped `axios` `^1.17.0` -> `^1.18.1` and added a `form-data >=4.0.6 <5.0.0` override to resolve the high-severity `form-data` multipart CRLF injection advisory.
+- Tightened the Vite override from `^7.3.2` to `>=7.3.5 <8.0.0`, added an explicit patched Vite 7 dev peer, and bumped Vitest tooling to `^4.1.9` to resolve the Vite dev-server file disclosure advisories while staying on Vite 7.
+- Added an `esbuild >=0.28.1 <0.29.0` override for vulnerable transitive 0.27/0.28.0 dev-server resolutions.
+
+### Dependencies
+
+- Implemented safe Dependabot PRs: `neo4j-driver` `^6.0.1` -> `^6.1.0`, `@biomejs/biome` `^2.4.16` -> `^2.5.0`, and `@types/node` `^25.9.1` -> `^25.9.3`.
+- Deferred major Dependabot PRs for `lint-staged` 17.x and TypeScript 6.x.
+
 ## [2.8.0] - 2026-06-26
 
 Oversized-entity flagging (Phase 1): detect entities whose serialized size approaches or exceeds the MCP `open_nodes` output cap and surface them before they become unretrievable. Additive, backward-compatible, and fail-open throughout.
