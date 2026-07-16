@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.8.1] - 2026-07-16
+
+Dependency maintenance: safe minor/patch bumps across runtime and dev tooling. No source changes; all checks green (lint, format, typecheck, build, 904 unit tests).
+
+### Changed
+
+- **Runtime dependencies (minor/patch):** `axios` 1.17.0 → 1.18.1, `lru-cache` 11.5.1 → 11.5.2, `neo4j-driver` 6.0.1 → 6.2.0, `node-cron` 4.2.1 → 4.6.0, `uuid` 14.0.0 → 14.0.1.
+- **Dev dependencies (minor/patch):** `@biomejs/biome` 2.4.16 → 2.5.4, `@types/node` 25.9.2 → 25.9.3, `@vitest/coverage-v8` 4.1.8 → 4.1.10, `oxlint` 1.68.0 → 1.74.0, `tsx` 4.22.4 → 4.23.1, `vitest` 4.1.8 → 4.1.10.
+
+### Security
+
+- **Transitive dev-toolchain advisories resolved** (dev-only, via `vitest` → `vite`/`esbuild`; not shipped in the published package). Bumped the existing `vite` pnpm override to `>=7.3.5 <8` (resolves 7.3.6; fixes GHSA-fx2h-pf6j-xcff `server.fs.deny` bypass — high, and GHSA-v6wh-96g9-6wx3 `launch-editor` NTLMv2 hash disclosure — moderate) and added an `esbuild` override `>=0.28.1` (resolves 0.28.1; fixes GHSA-g7r4-m6w7-qqqr dev-server arbitrary file read — low). `pnpm audit` now reports no known vulnerabilities. Lockfile fully re-resolved; other transitives refreshed within their existing ranges (no majors).
+
+### Dependabot
+
+- Supersedes open Dependabot PRs #59 (`@biomejs/biome` → 2.5.0, taken to 2.5.4), #57 (`@types/node` → 25.9.3), and #56 (`neo4j-driver` → 6.1.0, taken to 6.2.0).
+- Deferred (major-version, separate review): #55 `lint-staged` 16 → 17, #31 `typescript` 5.9 → 6, and `@types/node` 25 → 26.
+
 ## [2.8.0] - 2026-06-26
 
 Oversized-entity flagging (Phase 1): detect entities whose serialized size approaches or exceeds the MCP `open_nodes` output cap and surface them before they become unretrievable. Additive, backward-compatible, and fail-open throughout.
