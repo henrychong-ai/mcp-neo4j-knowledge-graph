@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.8.1] - 2026-07-23
+
+Routine dependency maintenance: safe minor/patch bumps across runtime and dev-toolchain deps, incorporating the equivalent open Dependabot minor/patch and security-group updates. No source changes; full validation (lint, format, typecheck, build, 904 unit tests) green.
+
+### Changed
+
+- **Runtime deps**: `axios` 1.17.0 → 1.18.1 (incl. the 1.18.0 redirect-header/URL-hardening security fixes from the Dependabot npm_and_yarn security group), `neo4j-driver` 6.0.1 → 6.2.0, `node-cron` 4.2.1 → 4.6.0, `lru-cache` 11.5.1 → 11.5.2, `uuid` 14.0.0 → 14.0.1.
+- **Dev toolchain**: `@biomejs/biome` 2.4.16 → 2.5.5, `oxlint` 1.69.0 → 1.75.0, `vitest` + `@vitest/coverage-v8` 4.1.8 → 4.1.10, `tsx` 4.22.4 → 4.23.1, `@types/node` 25.9.2 → 25.9.5.
+
+### Security
+
+- **`form-data` 4.0.5 → 4.0.6** (transitive via axios) — pulls in the CR/LF/quote field-name escaping fix, completing the Dependabot security-group update (PR #64).
+
+### Notes
+
+- **Major bumps deliberately held back** (out of scope for this patch): `typescript` 5.x → 7.x (Dependabot PR #31), `lint-staged` 16.x → 17.x (PR #55), `@types/node` 25.x → 26.x. Incorporated Dependabot PRs #64 (axios + form-data security), #59 (biome), #57 (@types/node), #56 (neo4j-driver) via equivalent-or-higher in-range bumps rather than direct merges.
+
 ## [2.8.0] - 2026-06-26
 
 Oversized-entity flagging (Phase 1): detect entities whose serialized size approaches or exceeds the MCP `open_nodes` output cap and surface them before they become unretrievable. Additive, backward-compatible, and fail-open throughout.
