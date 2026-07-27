@@ -621,6 +621,16 @@ When any entity/relation changes (via `addObservations`, `deleteObservations`, `
 
 See `CHANGELOG.md` for complete history.
 
+## Dependency Maintenance
+
+**pnpm overrides do NOT apply to auto-installed peers (v2.8.1 landmine).** `vite` arrives only as an auto-installed peer of `vitest` (`autoInstallPeers: true`), so a `pnpm.overrides.vite` entry is silently ignored — resolution stays put even after deleting `pnpm-lock.yaml` and purging the pnpm metadata cache. Any transitive that reaches the tree only as an auto-installed peer must be declared as a **direct devDependency** for its override to bind. Symptom: an override that "does nothing" while every other override in the same block applies correctly.
+
+**Transitive advisories are mostly unreachable here.** `hono`, `@hono/node-server`, `express`, and `body-parser` come via the MCP SDK's HTTP stack; `src/index.ts` uses `StdioServerTransport` only and never loads them. Patch them to keep the Dependabot list actionable, but they are not runtime exposure. `axios` (embeddings + reranker) and `fast-uri` (via `ajv`, schema validation) **are** runtime-reachable — treat those advisories as material.
+
+**Overrides pinning a transitive major need the parent's range checked first.** `@hono/node-server >=2.0.5` is only legitimate from MCP SDK 1.30.0, which widened its declared range to `^1.19.9 || ^2.0.5`; on 1.29.0 the same override violates the SDK's constraint.
+
+After any override change, regenerate the lockfile and confirm with `pnpm install --frozen-lockfile` — `pnpm update` alone leaves drift that `pnpm run check` does not catch.
+
 ## Publishing
 
 Package is published to npm as `@henrychong-ai/mcp-neo4j-knowledge-graph`:

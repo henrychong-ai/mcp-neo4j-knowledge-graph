@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.8.1] - 2026-07-28
+
+Dependency and security maintenance release. No source changes — resolves all 21 open Dependabot advisories and refreshes the direct dependency set to current minor/patch versions.
+
+### Security
+
+- **All 21 open Dependabot advisories resolved** (2 high + 1 high dev, 15 moderate, 3 low). Resolved versions: axios 1.18.1, fast-uri 3.1.4, hono 4.12.32, @hono/node-server 2.0.12, body-parser 2.3.0, form-data 4.0.6, esbuild 0.28.1, vite 7.3.6.
+  - **axios ≥1.18.1** (9 advisories, the only runtime-reachable cluster — axios carries the embedding and reranker HTTP calls): proxy inheritance after interceptor changes (high), prototype-pollution gadgets in request construction and Basic-auth subfields, `formDataToJSON` recursion DoS, `maxBodyLength` bypasses on fetch/HTTP2 streamed uploads, NO_PROXY bypass for 0.0.0.0, form-serializer maxDepth bypass.
+  - **fast-uri ≥3.1.4** (2 high, via `ajv`): host confusion via literal backslash authority and via failed IDN canonicalisation. The existing `>=3.1.2 <4` override predated both patches; bound raised, major bound retained so it cannot float outside `ajv`'s declared `^3`.
+  - **form-data ≥4.0.6** (high): CRLF injection via unescaped multipart field names.
+  - **hono ≥4.12.27**, **@hono/node-server ≥2.0.5**, **body-parser ≥2.3.0** (5 advisories, all transitive via the MCP SDK's HTTP stack): JSX escaping bypass in `cx()`, per-request context bleed in `hono/jsx`, API Gateway v1 repeated-header drop, `serve-static` path traversal on Windows, invalid-limit DoS. **Not reachable in this server** — `src/index.ts` uses `StdioServerTransport` exclusively and never loads the HTTP stack — but cleared so the advisory list stays actionable.
+  - **vite ≥7.3.6, esbuild ≥0.28.1** (development-only): `server.fs.deny` bypass on Windows alternate paths (high), launch-editor NTLMv2 hash disclosure, esbuild dev-server arbitrary file read.
+
+### Changed
+
+- **`@modelcontextprotocol/sdk` 1.29.0 → 1.30.0.** Required for the `@hono/node-server` fix: 1.30.0 widens its declared range to `^1.19.9 || ^2.0.5`, so pinning the patched 2.x line no longer violates the SDK's own constraint.
+- **Runtime dependencies**: neo4j-driver ^6.0.1 → ^6.2.0, node-cron ^4.2.1 → ^4.6.0, lru-cache ^11.5.1 → ^11.5.2, uuid ^14.0.0 → ^14.0.1.
+- **Dev toolchain**: @biomejs/biome ^2.4.16 → ^2.5.5, oxlint ^1.68.0 → ^1.76.0, tsx ^4.22.4 → ^4.23.1, vitest + @vitest/coverage-v8 ^4.1.8 → ^4.1.10, @types/node ^25.9.1 → ^25.9.5.
+
+### Fixed
+
+- **`vite` pnpm override was silently inert.** `vite` reached the tree only as an auto-installed *peer* of `vitest`, and pnpm overrides do not apply to auto-installed peers — the override was ignored even after a full lockfile regeneration and metadata-cache purge, leaving resolution pinned at 7.3.2 and both vite advisories unfixable by override alone. `vite` is now declared as a direct devDependency (`^7.3.6`) so the override binds.
+
+### Notes
+
+- Held back deliberately (majors, out of scope for a patch release): typescript 5.9 → 7.x, vite 8.x, lint-staged 16 → 17, @types/node 26.x (kept on 25.x to match `engines: node >=24`).
+- Verified before release: oxlint clean, biome format clean, `tsc --noEmit` clean, build OK, 904 tests passing / 23 skipped, `pnpm install --frozen-lockfile` clean (no CI drift).
+
 ## [2.8.0] - 2026-06-26
 
 Oversized-entity flagging (Phase 1): detect entities whose serialized size approaches or exceeds the MCP `open_nodes` output cap and surface them before they become unretrievable. Additive, backward-compatible, and fail-open throughout.
