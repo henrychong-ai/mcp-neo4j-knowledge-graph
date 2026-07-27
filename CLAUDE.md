@@ -629,6 +629,8 @@ See `CHANGELOG.md` for complete history.
 
 **Overrides pinning a transitive major need the parent's range checked first.** `@hono/node-server >=2.0.5` is only legitimate from MCP SDK 1.30.0, which widened its declared range to `^1.19.9 || ^2.0.5`; on 1.29.0 the same override violates the SDK's constraint.
 
+**An override FLOOR goes stale and then actively holds a package back.** `postcss: ">=8.5.10"` (written for an earlier advisory) left resolution pinned at 8.5.15 while sibling repos with no override floated freely to 8.5.23 — so when a new postcss advisory landed (`<= 8.5.17`, patched 8.5.18) this repo was the only one exposed. An override is a *pin*, not a *minimum guarantee*: pnpm will not float past whatever the lockfile already holds. When a new advisory names a package you already override, raise the floor — don't assume the existing override covers it. Corollary to the upper-bound rule above: bound the top, but keep the bottom current.
+
 After any override change, regenerate the lockfile and confirm with `pnpm install --frozen-lockfile` — `pnpm update` alone leaves drift that `pnpm run check` does not catch.
 
 ## Publishing
