@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.8.2] - 2026-07-30
+
+Scheduled dependency maintenance. No source changes. `pnpm audit` was already clean going in and stays clean; the substantive work is **unsticking stale override floors** before they become the next postcss incident, and moving the CI actions onto the Node 24 runtime line.
+
+### Changed
+
+- **Runtime dependency**: `axios` ^1.18.1 → **^1.19.0** (minor). Runtime-reachable — carries the embedding and reranker HTTP calls. No advisory driving it; full suite green, and the two transport behaviours this repo depends on (per-service axios instances with `keepAlive: false` agents, fail-open rerank) are unaffected.
+- **Dev toolchain**: `@biomejs/biome` ^2.5.5 → **^2.5.6** (patch). `biome format .` clean across all 149 files with no reformatting.
+- **CI actions moved to the Node 24 runtime line**: `actions/checkout` v6 → **v7**, `actions/setup-node` v6 → **v7**, `gitleaks/gitleaks-action` v2 → **v3**. All three are runtime/ESM migrations — setup-node v7 adds `cache-primary-key`/`cache-matched-key` outputs and drops a dummy `NODE_AUTH_TOKEN` export; gitleaks v3 is a pure Node 20 → 24 runtime bump with no input, output, or behaviour changes. GitHub deprecates the Node 20 action runtime during 2026, so this is a required move rather than an optional one. `pnpm/action-setup` stays at v6 (already current).
+
+### Security
+
+- **Six override floors raised off stale pins.** No advisory names any of these today — that is the point. The v2.8.1 postcss lesson was that an override is a *pin*, not a minimum: pnpm will not float past whatever the lockfile already holds, so a floor written for an old advisory silently freezes the package and leaves this repo the *most* exposed when the next advisory lands. Floors realigned to current releases: `ajv` ≥8.18.0 → **≥8.20.0** (runtime-reachable, schema validation), `rollup` ≥4.59.0 → **≥4.62.3**, `express-rate-limit` ≥8.2.2 → **≥8.6.1**, `qs` ≥6.15.2 → **≥6.15.3**, `picomatch` ≥4.0.4 → **≥4.0.5**, `ip-address` ≥10.1.1 → **≥10.3.1**, `hono` ≥4.12.27 → **≥4.12.32**. Regeneration also floated `yaml` 2.8.3 → 2.9.0 and `postcss` 8.5.23 → 8.5.25 behind their existing selectors.
+- **Upper bounds added to every remaining unbounded override**, completing the "bound the top, keep the bottom current" doctrine: `@isaacs/brace-expansion` `<6`, `rollup` `<5`, `ajv` `<9`, `hono` `<5`, `@hono/node-server` `<3`, `express-rate-limit` `<9`, `qs` `<7`, `picomatch` `<5`, `follow-redirects` `<2`, `ip-address` `<11`, `body-parser` `<3`. Previously an unbounded floor could float a transitive across a major outside its parent's declared range — the exact failure mode that took `undici` to 8.x in a sibling repo with no error.
+- Floors verified as already current and left alone: `fast-uri` 3.1.4 (latest in the 3.x line `ajv` declares), `esbuild` 0.28.1, `form-data` 4.0.6, `body-parser` 2.3.0, `follow-redirects` 1.16.0, `vite` 7.3.6 (latest 7.x).
+
+### Notes
+
+- **Held back deliberately** (majors, no security driver, out of scope for a patch release): `typescript` 5.9.3 → 7.0.2, `vite` 7.3.6 → 8.x, `@types/node` 25.9.5 → 26.1.2 (kept on 25.x to match `engines: node >=24`), `lint-staged` 16.4.0 → 17.2.0. Worth recording for the vite one: `vitest` 4.1.10 now declares `vite: ^6 || ^7 || ^8`, so the peer constraint no longer blocks vite 8 — it is a deliberate scope call, not an ecosystem block, and `vite` remains a direct devDependency so its override still binds.
+- Verified before release: oxlint clean, `biome format` clean, `tsc --noEmit` clean, build OK, **904 tests passing / 23 skipped**, `pnpm audit` clean, `pnpm install --frozen-lockfile` clean (no CI drift). The 23 skips are the Neo4j integration tests, which need `TEST_INTEGRATION=true` and a live database — CI runs them against its Neo4j service container.
+
 ## [2.8.1] - 2026-07-28
 
 Dependency and security maintenance release. No source changes — resolves all 21 open Dependabot advisories and refreshes the direct dependency set to current minor/patch versions.
