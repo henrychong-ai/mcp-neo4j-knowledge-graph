@@ -631,6 +631,8 @@ See `CHANGELOG.md` for complete history.
 
 **An override FLOOR goes stale and then actively holds a package back.** `postcss: ">=8.5.10"` (written for an earlier advisory) left resolution pinned at 8.5.15 while sibling repos with no override floated freely to 8.5.23 — so when a new postcss advisory landed (`<= 8.5.17`, patched 8.5.18) this repo was the only one exposed. An override is a *pin*, not a *minimum guarantee*: pnpm will not float past whatever the lockfile already holds. When a new advisory names a package you already override, raise the floor — don't assume the existing override covers it. Corollary to the upper-bound rule above: bound the top, but keep the bottom current.
 
+**Floor hygiene is now a routine maintenance step, not an advisory response (v2.8.2).** Every override in the block carries an upper bound (`<MAJOR+1`), and the floors were realigned to current releases while `pnpm audit` was clean. Do the same on each maintenance pass: for every overridden package, compare the lockfile-resolved version against `pnpm view <pkg> version` and raise any floor that is holding the package behind. Waiting for an advisory to force the raise is what left this repo uniquely exposed on postcss.
+
 After any override change, regenerate the lockfile and confirm with `pnpm install --frozen-lockfile` — `pnpm update` alone leaves drift that `pnpm run check` does not catch.
 
 ## Publishing
