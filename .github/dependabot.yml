@@ -4,3 +4,24 @@ updates:
     directory: '/'
     schedule:
       interval: 'weekly'
+    open-pull-requests-limit: 10
+    groups:
+      # One combined PR per bucket for minor/patch bumps.
+      # Majors intentionally ungrouped — each gets its own PR and review
+      # (e.g. TypeScript 7 is ecosystem-blocked; see CLAUDE.md).
+      dev-dependencies:
+        dependency-type: 'development'
+        update-types: ['minor', 'patch']
+      prod-dependencies:
+        dependency-type: 'production'
+        update-types: ['minor', 'patch']
+
+  # CI workflow actions — weekly bumps (checkout, setup-node, CodeQL, etc.)
+  - package-ecosystem: 'github-actions'
+    directory: '/'
+    schedule:
+      interval: 'weekly'
+    open-pull-requests-limit: 5
+    groups:
+      actions:
+        patterns: ['*']
