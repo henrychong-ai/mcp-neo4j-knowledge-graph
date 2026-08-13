@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.8.2] - 2026-08-06
+
+Dependency and security maintenance release. No source changes — clears all 5 open advisories, unsticks six stale override floors, adds major-version ceilings to every previously unbounded override, and moves the CI actions to their Node 24 runtimes.
+
+### Security
+
+- **All 5 open advisories resolved** (2 high, 3 moderate). Every one was a *stale override floor*: the package was already pinned by an override written for an earlier advisory, so pnpm held it at that floor and never floated to the patched release.
+  - **fast-uri ≥3.1.5** (high, GHSA-7p8r-x3mc-p8w7 — host confusion via backslash authority introducer). **Runtime-material**: `fast-uri` is reached via `ajv`, which backs schema validation on the live request path. The `>=3.1.4 <4` floor from v2.8.1 held resolution at exactly 3.1.4 — one patch short. Raised to `>=3.1.5 <4`; resolved 3.1.5.
+  - **ip-address ≥10.3.1** (1 high GHSA-mwp4-54f8-5fhr + 2 moderate GHSA-4xrf-jv44-h6hh, GHSA-22jq-vg5j-6vgg — leading-zero octet, CIDR-suffix, and IPv4-mapped/NAT64 misclassification enabling SSRF and trust-boundary bypass). **Not runtime-reachable**: reached only via `@modelcontextprotocol/sdk > express-rate-limit`, part of the SDK's HTTP transport stack, which this server never loads (`src/index.ts` uses `StdioServerTransport` exclusively). The `>=10.1.1` floor held resolution at 10.2.0. Raised to `>=10.3.1 <11`; resolved 10.4.0.
+  - **hono ≥4.12.34** (moderate, GHSA-8j4g-w8fx-2239 — ReDoS in CORS middleware via `Access-Control-Request-Headers`). **Not runtime-reachable** (same SDK HTTP stack). The `>=4.12.27` floor held resolution at 4.12.32. Raised to `>=4.12.34 <5`; resolved 4.13.0.
+- `pnpm audit`: 5 vulnerabilities (2 high, 3 moderate) → **0**.
+
+### Changed
+
+- **Direct dependencies** (minor/patch only): axios ^1.18.1 → ^1.19.0 (runtime-reachable — embedding + reranker HTTP), @biomejs/biome ^2.5.5 → ^2.5.7, oxlint ^1.76.0 → ^1.77.0, tsx ^4.23.1 → ^4.23.9.
+- **Stale override floors unstuck** (no advisory, but each floor was pinning the package below current and would have been the next `postcss` incident): ajv `>=8.18.0` → `>=8.20.0 <9` (8.18.0 → 8.20.0), rollup `>=4.59.0` → `>=4.62.4 <5` (4.60.1 → 4.62.4), qs `>=6.15.2` → `>=6.15.3 <7` (6.15.2 → 6.15.3), picomatch `>=4.0.4` → `>=4.0.5 <5` (4.0.4 → 4.0.5), yaml `>=2.8.3` → `>=2.8.3 <3` (2.8.3 → 2.9.0). `postcss` floated 8.5.23 → 8.5.26 inside its existing bound.
+- **Major-version ceilings added to every unbounded override** — `@isaacs/brace-expansion <6`, `@hono/node-server <3`, `express-rate-limit <9`, `path-to-regexp <9`, `follow-redirects <2`, `body-parser <3`, plus the ceilings on the floors listed above. An unbounded `>=X` floor can silently float a transitive across a major boundary; this closes that hazard across the whole override block.
+- **CI actions to their Node 24 runtimes**: `actions/checkout` v6 → v7, `actions/setup-node` v6 → v7, `gitleaks/gitleaks-action` v2 → v3. The gitleaks bump is a deprecation fix, not a feature major — v2 runs on Node 20, which GitHub removes from runners on 2026-09-16 (v2 stops working); v3 changes no inputs, outputs, or behaviour. `checkout` v7's one breaking change (fork-PR checkout blocked for `pull_request_target` / `workflow_run`) does not apply — this workflow triggers only on `push`, `pull_request`, and `workflow_dispatch`.
+
+### Notes
+
+- **Held back deliberately** (majors, none advisory-driven): `typescript` 5.9.3 → 7.0.2 (compiler rewrite; needs its own validated change, not a dependency-maintenance patch), `vite` 7.3.6 → 8.x (peer-compatible with vitest 4.1.10, which declares `^6 || ^7 || ^8` — viable but unforced; `vite` is a direct devDependency here only so its override binds), `lint-staged` 16.4.0 → 17.3.0 (dev-only, exercised solely by the husky pre-commit hook, which CI never runs — cannot be validated by the gate), `@types/node` 25.9.5 → 26.1.2 (kept on 25.x to match `engines: node >=24`; typing against Node 26 APIs on a Node 24 runtime would let non-existent APIs typecheck clean).
+- **Known deviation**: `@modelcontextprotocol/sdk > express-rate-limit@8` pins `ip-address` at exactly `10.1.0`. The override forces 10.4.0 to clear the SSRF advisories — a deliberate, pre-existing deviation from an exact upstream pin, confined to the same major and to a transitive this server never loads.
+- Verified before release: oxlint clean, biome format clean, `tsc --noEmit` clean, build OK, 904 tests passing / 23 skipped, coverage above thresholds (statements 84.52%, branches 76.70%, functions 91.62%, lines 84.63%), `pnpm audit` clean, `pnpm install --frozen-lockfile` clean.
+
 ## [2.8.1] - 2026-07-28
 
 Dependency and security maintenance release. No source changes — resolves all 21 open Dependabot advisories and refreshes the direct dependency set to current minor/patch versions.
