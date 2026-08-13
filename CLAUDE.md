@@ -635,6 +635,8 @@ See `CHANGELOG.md` for complete history.
 
 **An override that rewrites a DIRECT dependency's specifier desyncs the lockfile importer under `pnpm update` (v2.8.2 landmine).** `vite` is both a direct devDependency (`^7.3.6`, declared so its override binds) and an override target (`>=7.3.6 <8`). `pnpm update` refreshed the resolved versions but left the importer specifier recorded as `^7.3.6`, so the very next `pnpm install --frozen-lockfile` failed with `specifiers in the lockfile don't match specifiers in package.json: vite (lockfile: ^7.3.6, manifest: >=7.3.6 <8)` — i.e. green locally, red in CI. A plain `pnpm install` reconciles it. This is the concrete mechanism behind the rule below; it only shows up when a package is simultaneously a direct dep and an override target.
 
+**A Dependabot PR that bumps a DIRECT dependency which is also an override target is dead on arrival (v2.8.3).** Dependabot reads `dependencies`/`devDependencies` and never touches `pnpm.overrides`, so PR #79 (`vite` `^7.3.6` → `^8.2.1`) left `vite: ">=7.3.6 <8"` in place — the override silently clamps resolution back to 7.x and the bump is a no-op with a misleading green diff. This is the inbound-direction counterpart to the desync landmine above: for any package that is simultaneously a direct dep and an override target (currently only `vite`), the specifier and the override ceiling must move in the SAME commit, by hand. Review such PRs by checking the override block, not just the manifest diff.
+
 After any override change, regenerate the lockfile and confirm with `pnpm install --frozen-lockfile` — `pnpm update` alone leaves drift that `pnpm run check` does not catch.
 
 ## Publishing
