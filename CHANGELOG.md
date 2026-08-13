@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.8.3] - 2026-08-13
+
+Routine dependency maintenance. No source changes — clears the one open advisory and refreshes three dev-tool dependencies to current minor/patch.
+
+### Security
+
+- **nanoid ≥3.3.18** (high, GHSA-2v37-7h3g-55p8 — custom generators can loop indefinitely when `size` is zero). **Not runtime-reachable**: the only path is `. > vite > postcss > nanoid`, i.e. the dev/build toolchain; the published server never loads it. Resolution sat at 3.3.17 because `postcss@8.5.26` declares `nanoid: ^3.3.16` and pnpm holds whatever the lockfile already has. Added a bounded override `nanoid: ">=3.3.18 <4"`; resolved 3.3.18. The `<4` ceiling keeps it inside postcss's declared major.
+- `pnpm audit`: 1 high → **0**.
+
+### Changed
+
+- **Dev dependencies** (minor/patch only, none runtime-reachable): tsx ^4.23.9 → ^4.23.12 (supersedes Dependabot #81), @biomejs/biome ^2.5.7 → ^2.5.8, oxlint ^1.77.0 → ^1.78.0.
+
+### Notes
+
+- **Held back deliberately** (all majors, none advisory-driven — each remains open as a Dependabot PR): `lint-staged` 16.4.0 → 17.3.0 (#80; dev-only, exercised solely by the husky pre-commit hook that CI never runs, so the gate cannot validate it — and it raises `engines.node` to `>=22.22.1` and drops the listr2 renderer), `vite` 7.3.6 → 8.2.1 (#79), `typescript` 5.9.3 → 7.0.2 (#73; compiler rewrite, needs its own validated change), `@types/node` 25.9.5 → 26.2.0 (#72; kept on 25.x to match `engines: node >=24` — typing against Node 26 APIs on a Node 24 runtime would let non-existent APIs typecheck clean).
+- **Dependabot #79 is internally contradictory as filed** and cannot merge green as-is: it bumps the direct `vite` specifier to `^8.2.1` but leaves the `vite: ">=7.3.6 <8"` override untouched, so the override clamps resolution back to 7.x. Any future vite 8 upgrade must move the direct specifier *and* the override ceiling in the same commit — `vite` is a direct devDependency here only so that its override binds (v2.8.1 auto-installed-peer landmine).
+- **Override floors audited against latest, no other staleness found.** Most overrides now sit exactly at their floor because the floor *is* the current release (rollup 4.62.4, ajv 8.20.0, qs 6.15.3, follow-redirects 1.16.0, form-data 4.0.6, body-parser 2.3.0 are all latest). `fast-uri` 3.1.5 is the latest 3.x and `ajv@8.20.0` declares `^3.0.1`, so the `<4` ceiling is correct rather than restrictive. Only `esbuild` sits one patch behind its bound (0.28.1 vs 0.28.2) with no advisory attached; left alone deliberately.
+- Verified before release: oxlint clean, biome format clean, `tsc --noEmit` clean, build OK, 904 tests passing / 23 skipped (unchanged from baseline), coverage steady (statements 84.52%, branches 76.70%, functions 91.62%, lines 84.63%), `pnpm audit` clean, `pnpm install --frozen-lockfile` clean.
+
 ## [2.8.2] - 2026-08-06
 
 Dependency and security maintenance release. No source changes — clears all 5 open advisories, unsticks six stale override floors, adds major-version ceilings to every previously unbounded override, and moves the CI actions to their Node 24 runtimes.
