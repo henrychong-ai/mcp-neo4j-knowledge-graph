@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.8.3] - 2026-08-20
+
+Dependency and security maintenance release. No source changes — clears the one open advisory, refreshes the direct dependency set to current minor/patch, and unsticks five override floors that had drifted behind their current releases.
+
+### Security
+
+- **`nanoid` ≥3.3.18** (high, GHSA-2v37-7h3g-55p8 — custom generators can loop indefinitely when `size` is zero). **Not runtime-reachable**: the only path is `. > vite > postcss > nanoid`, i.e. the dev/build toolchain; the published server (`src/index.ts`, `StdioServerTransport` only) never loads it. Cleared anyway so the advisory list stays actionable. `nanoid` had no override at all, and pnpm holds whatever the lockfile already contains rather than floating to the newest release satisfying `postcss`'s declared `^3.3.17` — so 3.3.17 persisted after 3.3.18 shipped. Added the bounded override `nanoid: ">=3.3.18 <4"`; resolved 3.3.18.
+- `pnpm audit`: 1 high → **0**.
+
+### Changed
+
+- **Direct dependencies** (minor/patch only): uuid ^14.0.1 → ^14.0.2 (runtime — entity/relation version ids), @biomejs/biome ^2.5.7 → ^2.5.9, oxlint ^1.77.0 → ^1.79.0, tsx ^4.23.9 → ^4.23.12, vitest + @vitest/coverage-v8 ^4.1.10 → ^4.1.11. Only `uuid` is runtime-reachable; the rest are dev toolchain.
+- **Stale override floors unstuck** (no advisory attached — the ledger's "keep the bottom current" rule, applied before the next advisory finds the tree pinned below the patched release): rollup `>=4.62.4` → `>=4.62.5 <5` (4.62.4 → 4.62.5), hono `>=4.12.34` → `>=4.13.3 <5` (4.13.0 → 4.13.3), @hono/node-server `>=2.0.5` → `>=2.1.1 <3` (2.1.0 → 2.1.1), ip-address `>=10.3.1` → `>=10.5.0 <11` (10.4.0 → 10.5.0), esbuild `>=0.28.1` → `>=0.28.2 <0.29` (0.28.1 → 0.28.2). Each raised floor was checked against the parent's declared range first: MCP SDK 1.30.0 declares `hono ^4.11.4` and `@hono/node-server ^1.19.9 || ^2.0.5`, vite 7.3.6 declares `rollup ^4.43.0` and `esbuild ^0.27.0 || ^0.28.0`.
+- Every override in the block still carries a `<MAJOR+1` ceiling, including the new `nanoid` entry.
+
+### Notes
+
+- **Held back deliberately** (majors, none advisory-driven): `typescript` 5.9.3 → 7.0.2 (compiler rewrite; needs its own validated change, not a dependency-maintenance patch), `vite` 7.3.6 → 8.2.2 (unforced; and `vite` is both a direct devDependency and an override target, so the specifier and the `<8` ceiling would have to move together in one hand-written commit), `lint-staged` 16.4.0 → 17.3.0 (dev-only, exercised solely by the husky pre-commit hook that CI never runs, so the gate cannot validate it), `@types/node` 25.9.5 → 26.2.0 (kept on 25.x to match `engines: node >=24`; typing against Node 26 APIs on a Node 24 runtime would let non-existent APIs typecheck clean).
+- **Override floor audit**: the remaining entries are at their current releases — ajv 8.20.0, qs 6.15.3, picomatch 4.0.5 (+ `micromatch>picomatch` 2.3.2, the latest 2.x), path-to-regexp 8.4.2, yaml 2.9.0, follow-redirects 1.16.0, form-data 4.0.6, body-parser 2.3.0, express-rate-limit 8.6.2, postcss 8.5.26. `fast-uri` 3.1.5 is the latest 3.x and `ajv@8.20.0` declares `^3.0.1`, so its `<4` ceiling is correct rather than restrictive. `@isaacs/brace-expansion` resolves to nothing in the current tree — the override is inert and left in place as a guard.
+- Verified before release: oxlint clean, biome format clean (149 files), `tsc --noEmit` clean, build OK, 904 tests passing / 23 skipped (the 23 are the Neo4j integration suite, which needs `TEST_INTEGRATION=true` and a live database), coverage unchanged (statements 84.52%, branches 76.70%, functions 91.62%, lines 84.63%), `pnpm audit` clean, `pnpm install --frozen-lockfile` clean.
+
 ## [2.8.2] - 2026-08-06
 
 Dependency and security maintenance release. No source changes — clears all 5 open advisories, unsticks six stale override floors, adds major-version ceilings to every previously unbounded override, and moves the CI actions to their Node 24 runtimes.
