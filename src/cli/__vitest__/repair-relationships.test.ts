@@ -87,6 +87,17 @@ describe('repair-relationships CLI', () => {
       }
     });
 
+    it('closes each duplicate live version of a name at a distinct validTo', () => {
+      // `entity_name` is UNIQUE on (name, validTo): stamping two losers of one
+      // name with the same `$now` violates it and rolls the whole step back.
+      const close = buildRepairSteps(5000)
+        .find(step => step.id === 4)!
+        .applyQueries.at(-1)!;
+      expect(close).toContain('UNWIND range(0, size(loserIds) - 1) AS i');
+      expect(close).toContain('SET loser.validTo = $now - i');
+      expect(close).not.toMatch(/SET loser\.validTo = \$now\s*\}/);
+    });
+
     it('copies relationships with MERGE on the relation id so a re-run is a no-op', () => {
       const steps = buildRepairSteps(5000).filter(step => step.id === 4 || step.id === 5);
       for (const step of steps) {

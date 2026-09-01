@@ -239,11 +239,18 @@ export function buildRepairSteps(batchSize: number): RepairStep[] {
         `,
         // 4c: close the loser versions themselves. Must run last — it is what
         // makes the name single-live, which 4a/4b's head depends on.
+        //
+        // The `entity_name` constraint is UNIQUE on (name, validTo), so two
+        // losers of the SAME name cannot both close at `$now`: loser i gets
+        // `$now - i` (milliseconds; losers are ordered newest-first, so the
+        // older a loser, the earlier its close). Relationships (4a/4b) carry
+        // no such constraint and keep the plain boundary.
         `
         ${DUPLICATE_LIVE_VERSION_HEAD}
-        UNWIND loserIds AS loserId
+        UNWIND range(0, size(loserIds) - 1) AS i
+        WITH loserIds[i] AS loserId, i
         MATCH (loser:Entity) WHERE elementId(loser) = loserId
-        CALL { WITH loser SET loser.validTo = $now } IN TRANSACTIONS OF ${rows}
+        CALL { WITH loser, i SET loser.validTo = $now - i } IN TRANSACTIONS OF ${rows}
         `,
       ],
       metrics: ['relationshipsCreated', 'propertiesSet'],

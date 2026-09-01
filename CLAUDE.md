@@ -282,6 +282,10 @@ Test files use Vitest with comprehensive mocking:
 
 ## Version History & Recent Bugfixes
 
+### v2.9.1 (2026-09-02) - `kg:repair` Step 4 Constraint Abort
+
+`kg:repair` step 4 stamped every duplicate live version of a name with the same `validTo`, violating the `(name, validTo)` uniqueness constraint whenever a name had three or more live versions and rolling the step back. Losers now close at `$now - i` (newest first).
+
 ### v2.9.0 (2026-09-02) - Versioning Relationship Duplication & Duplicate Live Versions
 
 Two production data-corruption defects fixed by consolidating every entity-versioning path into one `versionEntities` helper (see "Entity Temporal Versioning" above). Adds `NEO4J_TX_TIMEOUT_MS`, `NEO4J_MAX_LIVE_RELATIONSHIPS`, and the `kg:repair` CLI (dry run by default, `--apply` to execute). Full detail in CHANGELOG.md.

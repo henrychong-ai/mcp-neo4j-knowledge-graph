@@ -539,7 +539,8 @@ Five idempotent steps, run in order, each as its own implicit transaction
 3. Delete duplicate **historical** relationships the same way.
 4. Close duplicate live versions per name — keep the greatest `validFrom`, carry
    the losers' live relationships onto the survivor with `MERGE`, then stamp the
-   originals.
+   originals (loser `i` closes at `now - i` ms, because `(name, validTo)` is
+   unique).
 5. Re-point any remaining stale-attached live relationship onto the live version
    of the same name, then delete the original.
 

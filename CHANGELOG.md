@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.9.1] - 2026-09-02
+
+### Fixed
+
+- **`kg:repair` step 4 aborted on the `(name, validTo)` uniqueness constraint.** Closing the duplicate live versions of one name stamped every loser with the same `$now`, so a name with three live versions (two losers) violated the `entity_name` constraint on the second `SET` and Neo4j rolled the whole step back (`Node(…) already exists with label Entity and properties name = …, validTo = …`, 0 transactions committed). Loser `i` (newest first) now closes at `$now - i` milliseconds, which keeps the pair unique while still ordering the closures before the survivor. Steps 1–3 were unaffected and had already committed on the run that surfaced this.
+
 ## [2.9.0] - 2026-09-02
 
 Bug-fix release for two production data-corruption defects in entity temporal versioning, plus the guards and the repair tool that make them non-recurring. Every write path that supersedes an existing entity version now goes through one shared helper.
