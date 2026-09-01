@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **`kg:repair` step 4 aborted on the `(name, validTo)` uniqueness constraint.** Closing the duplicate live versions of one name stamped every loser with the same `$now`, so a name with three live versions (two losers) violated the `entity_name` constraint on the second `SET` and Neo4j rolled the whole step back (`Node(…) already exists with label Entity and properties name = …, validTo = …`, 0 transactions committed). Loser `i` (newest first) now closes at `$now - i` milliseconds, which keeps the pair unique while still ordering the closures before the survivor. Steps 1–3 were unaffected and had already committed on the run that surfaced this.
 
+### Changed
+
+- **`kg:repair --apply` runs up to `--passes` passes (default 3).** After each pass it re-counts and repeats while any step still reports work. One pass is not always enough: step 5 re-points relationships from the versions step 4 just closed onto the survivor, and the survivor may already hold an equivalent edge under a different id — a step-1 duplicate that only the next pass removes (59 of them on the production graph after an otherwise clean pass). The report now carries `passes` and `pendingAfter`, and the exit code is `1` when work is still pending after the last pass.
+
 ## [2.9.0] - 2026-09-02
 
 Bug-fix release for two production data-corruption defects in entity temporal versioning, plus the guards and the repair tool that make them non-recurring. Every write path that supersedes an existing entity version now goes through one shared helper.

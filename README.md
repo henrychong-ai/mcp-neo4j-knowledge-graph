@@ -527,6 +527,7 @@ pnpm run kg:repair                      # DRY RUN (default) — reports, writes 
 pnpm run kg:repair -- --apply           # execute the repair
 pnpm run kg:repair -- --json            # machine-readable output
 pnpm run kg:repair -- --batch-size 2000 # rows per inner transaction (default 5000)
+pnpm run kg:repair -- --apply --passes 5 # max full passes; repeats while work remains (default 3)
 ```
 
 Five idempotent steps, run in order, each as its own implicit transaction

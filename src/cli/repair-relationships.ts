@@ -60,7 +60,17 @@ export interface RepairOptions {
   batchSize: number;
   /** Emit JSON instead of a table. */
   json: boolean;
+  /**
+   * Apply mode: maximum number of full passes. After every pass the pending
+   * work is re-counted and another pass runs while any step still reports
+   * work — step 5 re-points edges next to the survivors step 4 just created,
+   * which can leave step-1 duplicates that only a further pass removes.
+   */
+  passes?: number;
 }
+
+/** Default pass ceiling for `--apply`. */
+export const DEFAULT_PASSES = 3;
 
 /** Outcome of one repair step. */
 export interface RepairStepResult {
@@ -76,6 +86,11 @@ export interface RepairStepResult {
 export interface RepairReport {
   apply: boolean;
   batchSize: number;
+  /** Passes executed (always 1 for a dry run). */
+  passes: number;
+  /** Work still pending after the last pass (dry run: equals `totalAffected`). */
+  pendingAfter: number;
+  /** Per step, summed across passes in apply mode. */
   steps: RepairStepResult[];
   totalAffected: number;
 }
@@ -331,48 +346,101 @@ function toNumber(value: unknown): number {
 }
 
 /**
+ * Count the pending work per step. Issues ONLY the counting queries.
+ *
+ * @param session Session-like runner
+ * @param steps Repair steps
+ * @returns Per-step pending counts
+ */
+async function countPending(
+  session: RepairSession,
+  steps: RepairStep[]
+): Promise<RepairStepResult[]> {
+  const results: RepairStepResult[] = [];
+  for (const step of steps) {
+    const result = await session.run(step.countQuery);
+    const affected = result.records.reduce(
+      (total, record) => total + toNumber(record.get('affected')),
+      0
+    );
+    results.push({ id: step.id, name: step.name, affected });
+  }
+  return results;
+}
+
+/**
  * Run the repair.
  *
  * In dry-run mode (`options.apply === false`) ONLY the counting queries are
  * issued; no write query is ever sent to the server.
  *
+ * In apply mode every pass runs the five steps in order, then re-counts; a
+ * further pass runs while any step still reports work, up to `options.passes`
+ * (default {@link DEFAULT_PASSES}). One pass is not always enough: step 5
+ * re-points relationships from the versions step 4 just closed onto the
+ * survivor, and the survivor may already hold an equivalent edge under a
+ * different id — a step-1 duplicate that only the next pass removes.
+ *
  * @param session Session-like runner (auto-commit — required by `CALL … IN TRANSACTIONS`)
  * @param options Run options
- * @returns Per-step report
+ * @returns Per-step report (summed across passes in apply mode)
  */
 export async function runRepair(
   session: RepairSession,
   options: RepairOptions
 ): Promise<RepairReport> {
   const steps = buildRepairSteps(options.batchSize);
-  const results: RepairStepResult[] = [];
 
-  for (const step of steps) {
-    if (!options.apply) {
-      const result = await session.run(step.countQuery);
-      const affected = result.records.reduce(
-        (total, record) => total + toNumber(record.get('affected')),
-        0
-      );
-      results.push({ id: step.id, name: step.name, affected });
-      continue;
-    }
-
-    const counters: Record<string, number> = {};
-    for (const query of step.applyQueries) {
-      const result = await session.run(query, { now: Date.now() });
-      const updates = result.summary?.counters?.updates() ?? {};
-      for (const [key, value] of Object.entries(updates)) {
-        counters[key] = (counters[key] ?? 0) + toNumber(value);
-      }
-    }
-    const affected = step.metrics.reduce((total, key) => total + (counters[key] ?? 0), 0);
-    results.push({ id: step.id, name: step.name, affected, counters });
+  if (!options.apply) {
+    const results = await countPending(session, steps);
+    const totalAffected = results.reduce((total, step) => total + step.affected, 0);
+    return {
+      apply: false,
+      batchSize: options.batchSize,
+      passes: 1,
+      pendingAfter: totalAffected,
+      steps: results,
+      totalAffected,
+    };
   }
 
+  const maxPasses = Math.max(1, options.passes ?? DEFAULT_PASSES);
+  const totals = new Map<number, RepairStepResult>(
+    steps.map(step => [step.id, { id: step.id, name: step.name, affected: 0, counters: {} }])
+  );
+  let passes = 0;
+  let pendingAfter = 0;
+
+  while (passes < maxPasses) {
+    passes += 1;
+    for (const step of steps) {
+      const counters: Record<string, number> = {};
+      for (const query of step.applyQueries) {
+        const result = await session.run(query, { now: Date.now() });
+        const updates = result.summary?.counters?.updates() ?? {};
+        for (const [key, value] of Object.entries(updates)) {
+          counters[key] = (counters[key] ?? 0) + toNumber(value);
+        }
+      }
+      const total = totals.get(step.id) as RepairStepResult;
+      total.affected += step.metrics.reduce((sum, key) => sum + (counters[key] ?? 0), 0);
+      const totalCounters = total.counters as Record<string, number>;
+      for (const [key, value] of Object.entries(counters)) {
+        totalCounters[key] = (totalCounters[key] ?? 0) + value;
+      }
+    }
+
+    const remaining = await countPending(session, steps);
+    pendingAfter = remaining.reduce((total, step) => total + step.affected, 0);
+    if (pendingAfter === 0) break;
+  }
+
+  const results = steps.map(step => totals.get(step.id) as RepairStepResult);
   return {
-    apply: options.apply,
+    apply: true,
     batchSize: options.batchSize,
+    passes,
+    pendingAfter,
     steps: results,
     totalAffected: results.reduce((total, step) => total + step.affected, 0),
   };
@@ -404,6 +472,13 @@ export function parseArgs(argv: string[]): RepairOptions {
         }
         break;
       }
+      case '--passes': {
+        const parsed = Number.parseInt(argv[++i], 10);
+        if (Number.isFinite(parsed) && parsed > 0) {
+          options.passes = parsed;
+        }
+        break;
+      }
       case '--help': {
         printHelp();
         process.exit(0);
@@ -429,13 +504,16 @@ Usage:
 Options:
   --apply             Execute the repair. WITHOUT THIS FLAG NOTHING IS WRITTEN.
   --batch-size <n>    Rows per inner transaction (default: 5000)
+  --passes <n>        Apply mode: maximum full passes; a pass repeats while the
+                      re-count still finds work (default: ${DEFAULT_PASSES})
   --json              Output machine-readable JSON instead of a table
   --help              Show this help message
 
 Environment Variables:
   NEO4J_URI / NEO4J_USERNAME / NEO4J_PASSWORD / NEO4J_DATABASE
 
-Exit code: 1 if a dry run finds work to do, 0 if clean or applied, 2 on error.
+Exit code: 1 if work is pending (dry run) or still pending after the last
+pass (apply), 0 if clean, 2 on error.
 `);
 }
 
@@ -455,6 +533,12 @@ function printReport(report: RepairReport): void {
     }
   }
   console.log(`\n  Total: ${report.totalAffected}\n`);
+  if (report.apply) {
+    console.log(`  Passes: ${report.passes}; pending after last pass: ${report.pendingAfter}\n`);
+    if (report.pendingAfter > 0) {
+      console.log('  ⚠️  Work remains — re-run, or raise `--passes`.\n');
+    }
+  }
   if (!report.apply && report.totalAffected > 0) {
     console.log('  Re-run with `--apply` to execute the repair.\n');
   }
@@ -492,7 +576,7 @@ export async function main(): Promise<number> {
       printReport(report);
     }
 
-    return !report.apply && report.totalAffected > 0 ? 1 : 0;
+    return report.pendingAfter > 0 ? 1 : 0;
   } finally {
     await session.close();
     await connectionManager.close();

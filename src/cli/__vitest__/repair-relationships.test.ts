@@ -52,6 +52,12 @@ describe('repair-relationships CLI', () => {
       expect(parseArgs(['--batch-size', '0']).batchSize).toBe(5000);
       expect(parseArgs(['--batch-size', 'nope']).batchSize).toBe(5000);
     });
+
+    it('accepts a pass ceiling and leaves it unset by default', () => {
+      expect(parseArgs([]).passes).toBeUndefined();
+      expect(parseArgs(['--passes', '2']).passes).toBe(2);
+      expect(parseArgs(['--passes', 'zero']).passes).toBeUndefined();
+    });
   });
 
   describe('buildRepairSteps', () => {
@@ -149,12 +155,34 @@ describe('repair-relationships CLI', () => {
 
       const report = await runRepair(session, { apply: true, batchSize: 5000, json: false });
 
-      // 1 + 1 + 1 + 3 + 2 write queries.
-      expect(queries).toHaveLength(8);
+      // 1 + 1 + 1 + 3 + 2 write queries, then one clean re-count (5 count queries).
+      expect(queries.filter(query => WRITE_CLAUSE.test(query))).toHaveLength(8);
+      expect(queries).toHaveLength(13);
       expect(queries.some(query => query.includes('IN TRANSACTIONS OF 5000 ROWS'))).toBe(true);
       expect(report.apply).toBe(true);
+      expect(report.passes).toBe(1);
+      expect(report.pendingAfter).toBe(0);
       expect(report.steps[0].counters?.relationshipsDeleted).toBe(3);
       expect(report.steps[0].affected).toBe(3);
+    });
+
+    it('repeats passes while the re-count still finds work, bounded by passes', async () => {
+      // Step 5 re-points edges next to the survivor step 4 just created, which
+      // can leave step-1 duplicates behind — so apply mode re-counts and goes again.
+      const { session, queries } = makeSession(3);
+
+      const report = await runRepair(session, {
+        apply: true,
+        batchSize: 5000,
+        json: false,
+        passes: 2,
+      });
+
+      expect(queries.filter(query => WRITE_CLAUSE.test(query))).toHaveLength(16);
+      expect(queries.filter(query => !WRITE_CLAUSE.test(query))).toHaveLength(10);
+      expect(report.passes).toBe(2);
+      expect(report.pendingAfter).toBe(15);
+      expect(report.steps[0].affected).toBe(6);
     });
 
     it('passes a boundary timestamp to the write queries', async () => {
@@ -163,8 +191,10 @@ describe('repair-relationships CLI', () => {
       await runRepair(session, { apply: true, batchSize: 5000, json: false });
 
       const calls = (session.run as ReturnType<typeof vi.fn>).mock.calls;
-      for (const [, params] of calls) {
-        expect(typeof params.now).toBe('number');
+      for (const [query, params] of calls) {
+        if (WRITE_CLAUSE.test(query)) {
+          expect(typeof params.now).toBe('number');
+        }
       }
     });
   });

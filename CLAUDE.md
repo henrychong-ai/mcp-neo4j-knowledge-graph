@@ -284,7 +284,7 @@ Test files use Vitest with comprehensive mocking:
 
 ### v2.9.1 (2026-09-02) - `kg:repair` Step 4 Constraint Abort
 
-`kg:repair` step 4 stamped every duplicate live version of a name with the same `validTo`, violating the `(name, validTo)` uniqueness constraint whenever a name had three or more live versions and rolling the step back. Losers now close at `$now - i` (newest first).
+`kg:repair` step 4 stamped every duplicate live version of a name with the same `validTo`, violating the `(name, validTo)` uniqueness constraint whenever a name had three or more live versions and rolling the step back. Losers now close at `$now - i` (newest first). Apply mode now re-counts after every pass and repeats while work remains (`--passes`, default 3), because step 5's re-pointing can leave step-1 duplicates behind.
 
 ### v2.9.0 (2026-09-02) - Versioning Relationship Duplication & Duplicate Live Versions
 
