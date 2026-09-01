@@ -5,6 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.9.0] - 2026-09-02
+
+Bug-fix release for two production data-corruption defects in entity temporal versioning, plus the guards and the repair tool that make them non-recurring. Every write path that supersedes an existing entity version now goes through one shared helper.
+
+### Fixed
+
+- **Relationships duplicated on every batch that versioned both of their endpoints.** `addObservationsBatch` copied a version's relationships with `CREATE` — once as the source's outgoing edge (step 6) and once as the target's incoming edge (step 7) — with no `MERGE` on the relation id. A chunk containing *both* ends of a relationship therefore wrote two physical copies carrying the same `id`, and the count doubled again on every subsequent joint batch. On the production graph one node reached **39,382 physical live relationships for 15 logical ones**, after which every write exhausted `db.memory.transaction.max` (512 MiB) and the database was effectively read-only. Copies are now `MERGE (newE)-[r:RELATES_TO {id: rel.id}]->(to) ON CREATE SET r += $props`, so the second copy of a jointly-versioned relationship is a no-op.
+- **Entity names left with more than one live version, and live relationships stranded on stale versions.** Three separate paths contributed. `createEntities` and `createEntitiesBatch` issued an unconditional `CREATE (e:Entity … validTo: null)` even when the name already had a live version — the composite `(name, validTo)` constraint does not reject this, because Neo4j exempts rows with a NULL in the constrained property set. `deleteObservations` versioned the node but neither closed nor copied its relationships, leaving every live edge bolted to the version it had just superseded. `updateEntitiesBatch` applied `entityType` and `domain` changes with an in-place `SET` on the live version — no new version, no temporal history. On the production graph **48 entity names had more than one live version and 358 live relationships were attached to stale versions with no live equivalent**. All of these now version through the shared helper, which closes **every** live version of a name (not just the one whose id was read first) and carries its relationships forward.
+- **Relationship copies could re-attach to a stale counterpart.** Copies are now resolved against the counterpart's single newest live version *after* the new versions exist, so a counterpart versioned in the same call resolves to its new version and a counterpart with no live version is dropped rather than re-attached to a stale one.
+- **Observations written as a Neo4j list instead of a JSON string.** `addObservationsBatch` stored `observations` as a list while every other path stored a JSON string. `searchNodes` matches with `e.observations =~ $query`, which silently matches nothing against a list — so observations added through the batch path were invisible to keyword search. All versioning paths now write the JSON-string form.
+- **Relationship timestamps no longer reset on every observation add.** The single-entity `addObservations` path rewrote each copied relationship's `validFrom` and `updatedAt` to the version boundary, making every relation look freshly created and skewing temporal-freshness scoring. Copies now preserve the original relationship's timestamps, matching the batch path.
+
+### Added
+
+- **`NEO4J_TX_TIMEOUT_MS`** (default `60000`) — a driver-level transaction timeout applied to every `beginTransaction()` in `Neo4jStorageProvider` and `Neo4jVectorStore`, and to `Neo4jConnectionManager.executeQuery`'s auto-commit queries. All 14 transaction sites previously passed no config, so an abandoned transaction held its write locks until the server killed the connection — which, on a server with no `db.transaction.timeout` set, is never.
+- **`NEO4J_MAX_LIVE_RELATIONSHIPS`** (default `5000`) — a pre-flight circuit breaker in the versioning helper. Before any relationship is loaded, each target entity's live relationships are counted with a streaming aggregate; over the ceiling the write is refused with an error naming the entity, its count, and the repair command, instead of loading the graph into transaction memory and taking the whole database down with it.
+- **`pnpm kg:repair`** (`src/cli/repair-relationships.ts`) — repairs an already-damaged graph. **Dry run by default**; `--apply` executes. Five idempotent steps, run in order, each as its own implicit transaction (required by `CALL … IN TRANSACTIONS`): delete duplicate live relationships between live versions; delete stale-attached live relationships that already have a live-to-live equivalent; delete duplicate historical relationships; close duplicate live versions per name, carrying their relationships onto the survivor; re-point any remaining stale-attached live relationship onto the live version of the same name. Exits `1` when a dry run finds work (so a cron can alert), `0` when clean or applied, `2` on failure. Grouping stages carry `min(elementId(r))` and `count(r)` only — a `collect()` over a 39k-edge group exceeds the 512 MiB transaction cap on its own, even with batched deletes.
+
+### Changed
+
+- **One shared `versionEntities` helper** replaces four divergent copies of the close-old / create-new / recreate-relationships sequence. Duplicate inputs for the same name in one call are folded into a single new version rather than producing two live versions. Return shapes of all public methods are unchanged.
+- **`updateEntitiesBatch` now creates a version per entity** covering `entityType`, `domain`, and `addObservations` together, instead of two in-place `SET` queries plus a separate `addObservationsBatch` call. A name with no live version is now reported in `failed` (`Entity not found: …`) rather than silently succeeding against a `MATCH` that found nothing.
+- **`createEntities` / `createEntitiesBatch` upsert an existing live name** instead of creating a second live version. New names still take the plain `CREATE` path.
+
+### Notes
+
+- Verified before release: oxlint clean, biome format clean, `tsc --noEmit` clean, build OK, **940 tests passing / 23 skipped** (36 new).
+- New tests run against an in-memory graph that interprets the Cypher the versioning helper emits, so they assert graph properties (relationship count constant across versionings, exactly one copy when both ends are versioned together, exactly one live version per name) rather than call shapes.
+- Legacy pre-temporal entities (nodes with no `id` property) keep their in-place update path in every caller; the shared helper never versions them.
+
 ## [2.8.2] - 2026-08-06
 
 Dependency and security maintenance release. No source changes — clears all 5 open advisories, unsticks six stale override floors, adds major-version ceilings to every previously unbounded override, and moves the CI actions to their Node 24 runtimes.

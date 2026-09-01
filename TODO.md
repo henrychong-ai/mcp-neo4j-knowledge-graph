@@ -34,6 +34,22 @@ _(No open items - all clear!)_
 
 ## ✅ Completed
 
+### Versioning relationship duplication & duplicate live versions — v2.9.0 (2026-09-02)
+
+**Status**: ✅ **COMPLETE** — fixed in v2.9.0 (see CHANGELOG.md)
+
+Every write path that supersedes an entity version now goes through one shared `versionEntities` helper: it closes **every** live version of a name, creates the new version, and copies relationships with `MERGE … {id: rel.id}` against the counterpart's newest live version. Fixes relationships doubling on every batch that versioned both endpoints (one production node reached 39,382 physical live relationships for 15 logical ones, exhausting `db.memory.transaction.max`), 48 names with more than one live version, and 358 live relationships stranded on stale versions. Adds `NEO4J_TX_TIMEOUT_MS`, `NEO4J_MAX_LIVE_RELATIONSHIPS`, and the `pnpm kg:repair` CLI (dry run by default).
+
+**Follow-up for the production deployment (vps-2)**, not code work:
+
+1. Deploy v2.9.0.
+2. `pnpm kg:repair` (dry run) to size the damage, then `pnpm kg:repair -- --apply`.
+3. Re-run the dry run to confirm it reports zero.
+4. Consider setting `db.transaction.timeout` on the Neo4j server itself as a second line of defence — the client-side timeout only covers this client.
+
+---
+
+
 ### Reranker keep-alive socket hang — v2.7.0 (2026-06-10)
 
 **Status**: ✅ **COMPLETE** — fixed in v2.7.0 (see CHANGELOG.md)

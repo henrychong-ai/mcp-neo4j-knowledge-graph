@@ -107,7 +107,9 @@ describe('Neo4jConnectionManager', () => {
 
     const result = await connectionManager.executeQuery('MATCH (n) RETURN n', {});
 
-    expect(mockRun).toHaveBeenCalledWith('MATCH (n) RETURN n', {});
+    // v2.9.0: auto-commit queries carry the same transaction timeout as
+    // explicit transactions (NEO4J_TX_TIMEOUT_MS, default 60000 ms).
+    expect(mockRun).toHaveBeenCalledWith('MATCH (n) RETURN n', {}, { timeout: 60_000 });
     expect(result).toBe(mockResult);
     expect(sessionInstance.close).toHaveBeenCalled();
   });

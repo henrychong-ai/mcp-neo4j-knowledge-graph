@@ -1,5 +1,7 @@
 import neo4j, { type Driver, type Session, type QueryResult } from 'neo4j-driver';
 
+import { getVersioningConfig } from '../../config/versioning.js';
+
 import { DEFAULT_NEO4J_CONFIG, type Neo4jConfig } from './Neo4jConfig.js';
 
 /**
@@ -63,7 +65,11 @@ export class Neo4jConnectionManager {
   async executeQuery(query: string, parameters: Record<string, unknown>): Promise<QueryResult> {
     const session = await this.getSession();
     try {
-      return await session.run(query, parameters);
+      // Auto-commit transactions get the same timeout as explicit ones: an
+      // abandoned query otherwise holds its locks until the server kills it.
+      return await session.run(query, parameters, {
+        timeout: getVersioningConfig().txTimeoutMs,
+      });
     } finally {
       await session.close();
     }

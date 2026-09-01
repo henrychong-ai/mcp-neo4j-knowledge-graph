@@ -1,7 +1,8 @@
 import { LRUCache } from 'lru-cache';
-import neo4j, { isInt } from 'neo4j-driver';
+import neo4j, { isInt, type Transaction } from 'neo4j-driver';
 import { v4 as uuidv4 } from 'uuid';
 
+import { getVersioningConfig, REPAIR_COMMAND_HINT } from '../../config/versioning.js';
 import type { EmbeddingService } from '../../embeddings/EmbeddingService.js';
 import { EmbeddingServiceFactory } from '../../embeddings/EmbeddingServiceFactory.js';
 import type { KnowledgeGraph, Entity } from '../../KnowledgeGraphManager.js';
@@ -110,6 +111,114 @@ interface KnowledgeGraphWithDiagnostics extends KnowledgeGraph {
 }
 
 /**
+ * Transaction configuration accepted by `session.beginTransaction()`.
+ *
+ * Declared locally because `neo4j-driver`'s top-level entry point re-exports
+ * `Transaction` but not `TransactionConfig`.
+ */
+interface Neo4jTransactionConfig {
+  /** Server-side transaction timeout in milliseconds. */
+  timeout: number;
+}
+
+/**
+ * Snapshot of the live entity version that a versioning operation supersedes.
+ */
+export interface CurrentEntityVersion {
+  /** Version UUID. `null` for legacy pre-temporal nodes. */
+  id: string | null;
+  name: string;
+  entityType: string;
+  domain: string | null;
+  observations: string[];
+  version: number;
+  createdAt: number;
+  validFrom: number;
+}
+
+/**
+ * Fields written onto the version being created. Anything omitted is inherited
+ * from the live version being superseded.
+ */
+export interface NextEntityFields {
+  observations?: string[];
+  entityType?: string;
+  domain?: string | null;
+  changedBy?: string | null;
+  /** When provided, written onto the new version; otherwise left NULL. */
+  embedding?: number[] | null;
+}
+
+/**
+ * One entity to version, keyed by name.
+ */
+export interface EntityVersionInput {
+  /** Entity name — the versioning key (NOT a version id). */
+  name: string;
+  /**
+   * Derives the new version's fields from the current live version.
+   * Return `null` to leave the entity untouched (no new version created).
+   */
+  apply: (current: CurrentEntityVersion) => NextEntityFields | null;
+}
+
+/**
+ * A successfully versioned entity.
+ */
+export interface VersionedEntity {
+  name: string;
+  /** Id of the version that was created. */
+  newId: string;
+  /** Ids of every live version that was closed (usually one). */
+  previousIds: string[];
+  version: number;
+  /** Version-boundary timestamp shared by every entity in the same call. */
+  now: number;
+  current: CurrentEntityVersion;
+  next: NextEntityFields;
+  /** Raw property map of the created node, ready for `nodeToEntity`. */
+  properties: Record<string, unknown>;
+}
+
+/**
+ * Result of one `versionEntities` call.
+ */
+export interface VersionEntitiesOutcome {
+  /** Entities that received a new version. */
+  versioned: VersionedEntity[];
+  /** Entities whose `apply` returned null — nothing to do. */
+  skipped: string[];
+  /** Names with no live version in the graph. */
+  notFound: string[];
+  /**
+   * Legacy pre-temporal entities (no `id` property). The caller decides how to
+   * mutate these in place; the helper never versions them.
+   */
+  legacy: { current: CurrentEntityVersion; next: NextEntityFields }[];
+  /** Number of relationship copies MERGEd onto the new versions. */
+  relationshipsCopied: number;
+}
+
+/** Internal: a live-version row as returned by the fetch query. */
+interface LiveVersionRow {
+  id: string | null;
+  entityType: string | null;
+  domain: string | null;
+  observations: unknown;
+  version: unknown;
+  createdAt: unknown;
+  validFrom: unknown;
+}
+
+/** Internal: one relationship copy to MERGE onto a new version. */
+interface RelationshipCopyRow {
+  newId: string;
+  otherName: string;
+  relId: string;
+  props: Record<string, unknown>;
+}
+
+/**
  * A storage provider that uses Neo4j to store the knowledge graph
  */
 export class Neo4jStorageProvider implements StorageProvider {
@@ -127,6 +236,22 @@ export class Neo4jStorageProvider implements StorageProvider {
   private searchCache: LRUCache<string, KnowledgeGraphWithDiagnostics>;
 
   /**
+   * Transaction configuration applied to EVERY transaction this provider opens.
+   *
+   * Without a timeout an abandoned transaction holds its write locks until the
+   * server kills the connection — which, on a server with no
+   * `db.transaction.timeout` configured, is never. Resolved once at
+   * construction from `NEO4J_TX_TIMEOUT_MS` (default 60000 ms).
+   */
+  private readonly txConfig: Neo4jTransactionConfig;
+
+  /**
+   * Maximum live relationships one entity version may carry before the
+   * versioning helper refuses to copy them. From `NEO4J_MAX_LIVE_RELATIONSHIPS`.
+   */
+  private readonly maxLiveRelationships: number;
+
+  /**
    * Create a new Neo4jStorageProvider
    * @param options Configuration options
    */
@@ -136,6 +261,12 @@ export class Neo4jStorageProvider implements StorageProvider {
       ...DEFAULT_NEO4J_CONFIG,
       ...options?.config,
     };
+
+    // Resolve versioning safety limits once — every transaction and every
+    // versioning pre-flight check reads them from here.
+    const versioningConfig = getVersioningConfig();
+    this.txConfig = Object.freeze({ timeout: versioningConfig.txTimeoutMs });
+    this.maxLiveRelationships = versioningConfig.maxLiveRelationships;
 
     // Configure decay settings
     this.decayConfig = {
@@ -486,7 +617,7 @@ export class Neo4jStorageProvider implements StorageProvider {
 
       try {
         // Begin transaction
-        const txc = session.beginTransaction();
+        const txc = session.beginTransaction(this.txConfig);
 
         try {
           // Delete all existing data
@@ -855,6 +986,498 @@ export class Neo4jStorageProvider implements StorageProvider {
     });
   }
 
+  // -------------------------------------------------------------------------
+  // Temporal versioning
+  //
+  // Every write path that supersedes an existing entity version funnels through
+  // `versionEntities`. Before v2.9.0 each path carried its own copy of the
+  // close-old / create-new / recreate-relationships dance, and they disagreed
+  // in ways that corrupted the graph (see CHANGELOG 2.9.0):
+  //
+  //   - relationship copies used CREATE, so a batch containing BOTH ends of a
+  //     relationship copied it twice (once as A's outgoing, once as B's
+  //     incoming) and the count doubled on every joint batch;
+  //   - some paths opened a new live version without closing the previous one,
+  //     leaving several `validTo IS NULL` versions per name (the composite
+  //     `(name, validTo)` constraint does not catch this — Neo4j exempts rows
+  //     with a NULL in the constrained property set);
+  //   - `deleteObservations` versioned the node but neither closed nor copied
+  //     its relationships, stranding live edges on a stale version.
+  // -------------------------------------------------------------------------
+
+  /**
+   * Pre-flight circuit breaker run before any relationship is loaded.
+   *
+   * Versioning an entity has to read every live relationship of the version it
+   * supersedes into transaction memory. Past a few thousand edges that alone
+   * exhausts `db.memory.transaction.max` and every write on the database starts
+   * failing. Counting first is cheap (a streaming aggregate, nothing is
+   * materialised) and turns an opaque out-of-memory failure into an actionable
+   * error naming the entity and the repair command.
+   *
+   * @param txc Open transaction
+   * @param names Entity names about to be versioned
+   * @throws Error when any name exceeds `NEO4J_MAX_LIVE_RELATIONSHIPS`
+   */
+  private async assertLiveRelationshipBudget(txc: Transaction, names: string[]): Promise<void> {
+    if (names.length === 0) {
+      return;
+    }
+
+    const result = await txc.run(
+      `
+      UNWIND $names AS name
+      MATCH (e:Entity {name: name})
+      WHERE e.validTo IS NULL
+      OPTIONAL MATCH (e)-[r:RELATES_TO]-()
+      WHERE r.validTo IS NULL
+      RETURN name AS name, count(r) AS relCount
+      `,
+      { names }
+    );
+
+    for (const record of result.records) {
+      const count = Number(this.convertNeo4jInt(record.get('relCount')) ?? 0);
+      if (count > this.maxLiveRelationships) {
+        const name = record.get('name') as string;
+        throw new Error(
+          `Refusing to version entity "${name}": it has ${count} live relationships, above the ` +
+            `NEO4J_MAX_LIVE_RELATIONSHIPS limit of ${this.maxLiveRelationships}. Copying them ` +
+            `would exhaust the Neo4j transaction memory budget — ${REPAIR_COMMAND_HINT}.`
+        );
+      }
+    }
+  }
+
+  /**
+   * Normalise one raw live-version row into a {@link CurrentEntityVersion}.
+   */
+  private toCurrentEntityVersion(name: string, row: LiveVersionRow): CurrentEntityVersion {
+    let observations: string[];
+    if (typeof row.observations === 'string') {
+      try {
+        observations = JSON.parse(row.observations) as string[];
+      } catch {
+        observations = [];
+      }
+    } else if (Array.isArray(row.observations)) {
+      observations = row.observations as string[];
+    } else {
+      observations = [];
+    }
+
+    return {
+      id: row.id ?? null,
+      name,
+      entityType: row.entityType ?? '',
+      domain: row.domain ?? null,
+      observations,
+      version: Number(this.convertNeo4jInt(row.version) ?? 0),
+      createdAt: Number(this.convertNeo4jInt(row.createdAt) ?? 0),
+      validFrom: Number(this.convertNeo4jInt(row.validFrom) ?? 0),
+    };
+  }
+
+  /**
+   * Create a new temporal version of one or more existing entities, carrying
+   * their live relationships onto the new version.
+   *
+   * Invariants this method upholds, which callers must not reimplement:
+   *
+   * 1. **Every** live version of a name is closed, not just the one whose id
+   *    happened to be read first. A name left with two `validTo IS NULL` rows
+   *    fans out every later relationship copy across both of them.
+   * 2. Relationship copies use `MERGE ... {id: rel.id}` keyed on the logical
+   *    relation id, so copying the same relationship twice in one call (which
+   *    happens whenever both of its endpoints are versioned together) is a
+   *    no-op the second time.
+   * 3. Copies attach to the counterpart's single newest **live** version,
+   *    resolved after the new versions exist, so a live edge is never left
+   *    pointing at a stale version.
+   *
+   * @param txc Open transaction — the caller owns commit/rollback
+   * @param inputs Entities to version, keyed by name (duplicates are folded)
+   * @returns What was versioned, skipped, missing, or left to the legacy path
+   */
+  private async versionEntities(
+    txc: Transaction,
+    inputs: EntityVersionInput[]
+  ): Promise<VersionEntitiesOutcome> {
+    const outcome: VersionEntitiesOutcome = {
+      versioned: [],
+      skipped: [],
+      notFound: [],
+      legacy: [],
+      relationshipsCopied: 0,
+    };
+
+    if (inputs.length === 0) {
+      return outcome;
+    }
+
+    // Fold duplicate names so one call never produces two live versions of the
+    // same entity — the exact failure mode this helper exists to prevent.
+    const inputsByName = new Map<string, EntityVersionInput[]>();
+    for (const input of inputs) {
+      const existing = inputsByName.get(input.name);
+      if (existing) {
+        existing.push(input);
+      } else {
+        inputsByName.set(input.name, [input]);
+      }
+    }
+    const names = [...inputsByName.keys()];
+
+    // Step 0: refuse before loading anything if a target is already oversized.
+    await this.assertLiveRelationshipBudget(txc, names);
+
+    // Step 1: read EVERY live version of each name (not just one).
+    const fetchResult = await txc.run(
+      `
+      UNWIND $names AS name
+      MATCH (e:Entity {name: name})
+      WHERE e.validTo IS NULL
+      RETURN name AS name, collect({
+        id: e.id,
+        entityType: e.entityType,
+        domain: e.domain,
+        observations: e.observations,
+        version: e.version,
+        createdAt: e.createdAt,
+        validFrom: e.validFrom
+      }) AS versions
+      `,
+      { names }
+    );
+
+    const liveByName = new Map<string, LiveVersionRow[]>();
+    for (const record of fetchResult.records) {
+      const name = record.get('name') as string | null;
+      if (typeof name === 'string') {
+        liveByName.set(name, (record.get('versions') as LiveVersionRow[]) ?? []);
+      }
+    }
+
+    // A single boundary timestamp for the whole call keeps validTo/validFrom
+    // pairs aligned across every entity versioned together.
+    const now = Date.now();
+
+    interface PendingUpdate {
+      name: string;
+      newId: string;
+      oldIds: string[];
+      version: number;
+      createdAt: number;
+      entityType: string;
+      domain: string | null;
+      observations: string;
+      changedBy: string | null;
+      embedding: number[] | null;
+      now: number;
+      current: CurrentEntityVersion;
+      next: NextEntityFields;
+    }
+    const updates: PendingUpdate[] = [];
+
+    for (const [name, nameInputs] of inputsByName) {
+      const rows = liveByName.get(name);
+      if (!rows || rows.length === 0) {
+        outcome.notFound.push(name);
+        continue;
+      }
+
+      // Newest live version wins as the property source; all of them get closed.
+      const sorted = [...rows].sort(
+        (a, b) =>
+          Number(this.convertNeo4jInt(b.validFrom) ?? 0) -
+          Number(this.convertNeo4jInt(a.validFrom) ?? 0)
+      );
+      const current = this.toCurrentEntityVersion(name, sorted[0]);
+
+      // Apply each caller mutation in order, feeding the previous result back so
+      // repeated inputs for one name compose into a single new version.
+      let working = current;
+      const next: NextEntityFields = {};
+      let changed = false;
+      for (const input of nameInputs) {
+        const produced = input.apply(working);
+        if (!produced) {
+          continue;
+        }
+        changed = true;
+        Object.assign(next, produced);
+        working = {
+          ...working,
+          observations: produced.observations ?? working.observations,
+          entityType: produced.entityType ?? working.entityType,
+          domain: produced.domain === undefined ? working.domain : produced.domain,
+        };
+      }
+
+      if (!changed) {
+        outcome.skipped.push(name);
+        continue;
+      }
+
+      // Legacy pre-temporal nodes have no id and cannot be versioned; hand them
+      // back so the caller can apply its own in-place update.
+      if (!current.id) {
+        outcome.legacy.push({ current, next });
+        continue;
+      }
+
+      const maxVersion = rows.reduce(
+        (max, row) => Math.max(max, Number(this.convertNeo4jInt(row.version) ?? 0)),
+        0
+      );
+
+      updates.push({
+        name,
+        newId: uuidv4(),
+        oldIds: rows.map(row => row.id).filter((id): id is string => typeof id === 'string'),
+        version: maxVersion + 1,
+        createdAt: current.createdAt,
+        entityType: next.entityType ?? current.entityType,
+        domain: next.domain === undefined ? current.domain : next.domain,
+        // Observations are stored as a JSON string throughout: `searchNodes`
+        // regex-matches `e.observations`, which silently matches nothing
+        // against a Neo4j list.
+        observations: JSON.stringify(next.observations ?? current.observations),
+        changedBy: next.changedBy ?? null,
+        embedding: next.embedding ?? null,
+        now,
+        current,
+        next,
+      });
+    }
+
+    if (updates.length === 0) {
+      return outcome;
+    }
+
+    // Step 2: read live relationships one row per relationship. Never collect()
+    // a whole group — a 39k-edge group blows the transaction memory cap.
+    const versionRows = updates.flatMap(update =>
+      update.oldIds.map(oldId => ({ newId: update.newId, oldId }))
+    );
+
+    const relationshipProjection = `{
+      relationType: r.relationType,
+      strength: r.strength,
+      confidence: r.confidence,
+      metadata: r.metadata,
+      version: r.version,
+      createdAt: r.createdAt,
+      updatedAt: r.updatedAt,
+      validFrom: r.validFrom,
+      changedBy: r.changedBy
+    }`;
+
+    const outgoingResult = await txc.run(
+      `
+      UNWIND $rows AS row
+      MATCH (e:Entity {id: row.oldId})
+      MATCH (e)-[r:RELATES_TO]->(other:Entity)
+      WHERE r.validTo IS NULL
+      RETURN row.newId AS newId, other.name AS otherName, r.id AS relId,
+             ${relationshipProjection} AS props
+      `,
+      { rows: versionRows }
+    );
+
+    const incomingResult = await txc.run(
+      `
+      UNWIND $rows AS row
+      MATCH (e:Entity {id: row.oldId})
+      MATCH (other:Entity)-[r:RELATES_TO]->(e)
+      WHERE r.validTo IS NULL
+      RETURN row.newId AS newId, other.name AS otherName, r.id AS relId,
+             ${relationshipProjection} AS props
+      `,
+      { rows: versionRows }
+    );
+
+    const toCopyRows = (
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      records: any[]
+    ): RelationshipCopyRow[] => {
+      const seen = new Set<string>();
+      const copies: RelationshipCopyRow[] = [];
+      for (const record of records) {
+        const newId = record.get('newId') as string | null;
+        const otherName = record.get('otherName') as string | null;
+        if (!newId || !otherName) {
+          continue;
+        }
+        // MERGE cannot key on a null property, and legacy rows may lack an id.
+        const relId = (record.get('relId') as string | null) ?? uuidv4();
+        const key = `${newId}|${relId}|${otherName}`;
+        if (seen.has(key)) {
+          continue;
+        }
+        seen.add(key);
+        copies.push({
+          newId,
+          otherName,
+          relId,
+          props: (record.get('props') as Record<string, unknown>) ?? {},
+        });
+      }
+      return copies;
+    };
+
+    const outgoingCopies = toCopyRows(outgoingResult.records);
+    const incomingCopies = toCopyRows(incomingResult.records);
+
+    // Step 3: close every live version of each name AND its live relationships.
+    // Rows are flattened to scalars in JS so `DISTINCT` never has to compare a
+    // map value.
+    await txc.run(
+      `
+      UNWIND $rows AS row
+      MATCH (e:Entity {id: row.oldId})
+      SET e.validTo = row.now
+      WITH DISTINCT e, row.now AS closedAt
+      OPTIONAL MATCH (e)-[r:RELATES_TO]->()
+      WHERE r.validTo IS NULL
+      SET r.validTo = closedAt
+      WITH DISTINCT e, closedAt
+      OPTIONAL MATCH ()-[r2:RELATES_TO]->(e)
+      WHERE r2.validTo IS NULL
+      SET r2.validTo = closedAt
+      `,
+      {
+        rows: updates.flatMap(update => update.oldIds.map(oldId => ({ oldId, now: update.now }))),
+      }
+    );
+
+    // Step 4: create the new versions.
+    await txc.run(
+      `
+      UNWIND $updates AS upd
+      CREATE (e:Entity {
+        id: upd.newId,
+        name: upd.name,
+        entityType: upd.entityType,
+        domain: upd.domain,
+        observations: upd.observations,
+        version: upd.version,
+        createdAt: upd.createdAt,
+        updatedAt: upd.now,
+        validFrom: upd.now,
+        validTo: null,
+        changedBy: upd.changedBy,
+        embedding: upd.embedding
+      })
+      `,
+      {
+        updates: updates.map(update => ({
+          newId: update.newId,
+          name: update.name,
+          entityType: update.entityType,
+          domain: update.domain,
+          observations: update.observations,
+          version: update.version,
+          createdAt: update.createdAt,
+          changedBy: update.changedBy,
+          embedding: update.embedding,
+          now: update.now,
+        })),
+      }
+    );
+
+    // Step 5: resolve each counterpart's single newest LIVE version. Done after
+    // step 4 so counterparts versioned in this same call resolve to their new
+    // version, and a counterpart with no live version is simply dropped rather
+    // than re-attached to a stale one.
+    const counterpartNames = [
+      ...new Set([...outgoingCopies, ...incomingCopies].map(copy => copy.otherName)),
+    ];
+    const liveIdByName = new Map<string, string>();
+    if (counterpartNames.length > 0) {
+      const resolved = await txc.run(
+        `
+        UNWIND $names AS name
+        MATCH (e:Entity {name: name})
+        WHERE e.validTo IS NULL
+        WITH name, e ORDER BY coalesce(e.validFrom, 0) DESC
+        RETURN name AS name, collect(e.id)[0] AS id
+        `,
+        { names: counterpartNames }
+      );
+      for (const record of resolved.records) {
+        const name = record.get('name') as string | null;
+        const id = record.get('id') as string | null;
+        if (name && id) {
+          liveIdByName.set(name, id);
+        }
+      }
+    }
+
+    // Step 6: MERGE the copies onto the new versions. MERGE on {id} makes the
+    // second copy of a relationship whose BOTH ends were versioned a no-op.
+    const outgoingRows = outgoingCopies
+      .map(copy => ({ ...copy, otherId: liveIdByName.get(copy.otherName) }))
+      .filter((copy): copy is RelationshipCopyRow & { otherId: string } => Boolean(copy.otherId));
+    const incomingRows = incomingCopies
+      .map(copy => ({ ...copy, otherId: liveIdByName.get(copy.otherName) }))
+      .filter((copy): copy is RelationshipCopyRow & { otherId: string } => Boolean(copy.otherId));
+
+    if (outgoingRows.length > 0) {
+      await txc.run(
+        `
+        UNWIND $rows AS row
+        MATCH (newE:Entity {id: row.newId})
+        MATCH (other:Entity {id: row.otherId})
+        MERGE (newE)-[r:RELATES_TO {id: row.relId}]->(other)
+        ON CREATE SET r += row.props
+        `,
+        { rows: outgoingRows }
+      );
+    }
+
+    if (incomingRows.length > 0) {
+      await txc.run(
+        `
+        UNWIND $rows AS row
+        MATCH (newE:Entity {id: row.newId})
+        MATCH (other:Entity {id: row.otherId})
+        MERGE (other)-[r:RELATES_TO {id: row.relId}]->(newE)
+        ON CREATE SET r += row.props
+        `,
+        { rows: incomingRows }
+      );
+    }
+
+    outcome.relationshipsCopied = outgoingRows.length + incomingRows.length;
+    for (const update of updates) {
+      outcome.versioned.push({
+        name: update.name,
+        newId: update.newId,
+        previousIds: update.oldIds,
+        version: update.version,
+        now: update.now,
+        current: update.current,
+        next: update.next,
+        properties: {
+          id: update.newId,
+          name: update.name,
+          entityType: update.entityType,
+          domain: update.domain,
+          observations: update.observations,
+          version: update.version,
+          createdAt: update.createdAt,
+          updatedAt: update.now,
+          validFrom: update.now,
+          validTo: null,
+          changedBy: update.changedBy,
+        },
+      });
+    }
+
+    return outcome;
+  }
+
   /**
    * Create new entities in the knowledge graph
    * @param entities Array of entities to create
@@ -872,9 +1495,29 @@ export class Neo4jStorageProvider implements StorageProvider {
 
       try {
         // Begin transaction
-        const txc = session.beginTransaction();
+        const txc = session.beginTransaction(this.txConfig);
 
         try {
+          // A name that already has a live version must be VERSIONED, not
+          // CREATEd again: the composite (name, validTo) constraint does not
+          // reject a second row with validTo NULL, so an unconditional CREATE
+          // silently leaves two live versions of the same entity.
+          const existingResult = await txc.run(
+            `
+            UNWIND $names AS name
+            MATCH (e:Entity {name: name})
+            WHERE e.validTo IS NULL
+            RETURN DISTINCT name AS name
+            `,
+            { names: entities.map(entity => entity.name) }
+          );
+          const existingNames = new Set(
+            existingResult.records
+              .map(record => record.get('name') as string | null)
+              .filter((name): name is string => typeof name === 'string')
+          );
+          const upserts: EntityVersionInput[] = [];
+
           for (const entity of entities) {
             // Generate temporal and identity metadata
             const now = Date.now();
@@ -913,6 +1556,22 @@ export class Neo4jStorageProvider implements StorageProvider {
               logger.warn(
                 `Neo4jStorageProvider: Skipping embedding for entity "${entity.name}" - No embedding service available`
               );
+            }
+
+            if (existingNames.has(entity.name)) {
+              // Upsert: supersede the live version through the shared helper so
+              // the old version is closed and its relationships carried over.
+              upserts.push({
+                name: entity.name,
+                apply: () => ({
+                  observations: Array.isArray(entity.observations) ? entity.observations : [],
+                  entityType: entity.entityType,
+                  domain: entity.domain || null,
+                  changedBy: entity.changedBy || null,
+                  embedding,
+                }),
+              });
+              continue;
             }
 
             // Create entity with parameters
@@ -962,6 +1621,16 @@ export class Neo4jStorageProvider implements StorageProvider {
             }
           }
 
+          if (upserts.length > 0) {
+            const outcome = await this.versionEntities(txc, upserts);
+            for (const versioned of outcome.versioned) {
+              createdEntities.push(this.nodeToEntity(versioned.properties));
+              logger.info(
+                `Superseded live version of entity: ${versioned.name} (v${versioned.version})`
+              );
+            }
+          }
+
           // Commit transaction
           await txc.commit();
 
@@ -1000,7 +1669,7 @@ export class Neo4jStorageProvider implements StorageProvider {
 
       try {
         // Begin transaction
-        const txc = session.beginTransaction();
+        const txc = session.beginTransaction(this.txConfig);
 
         try {
           for (const relation of relations) {
@@ -1122,218 +1791,71 @@ export class Neo4jStorageProvider implements StorageProvider {
 
       try {
         // Begin transaction
-        const txc = session.beginTransaction();
+        const txc = session.beginTransaction(this.txConfig);
 
         try {
+          // One shared versioning pass for the whole call. `apply` records what
+          // was genuinely new per entity so the return shape is unchanged.
+          const addedByName = new Map<string, string[]>();
+          const inputs: EntityVersionInput[] = [];
+
           for (const obs of observations) {
             if (!obs.entityName || !obs.contents || obs.contents.length === 0) {
               continue;
             }
-
-            // Step 1: Get the current entity and its relationships
-            const getQuery = `
-              MATCH (e:Entity {name: $name})
-              WHERE e.validTo IS NULL
-              OPTIONAL MATCH (e)-[r:RELATES_TO]->(to:Entity)
-              WHERE r.validTo IS NULL
-              OPTIONAL MATCH (from:Entity)-[r2:RELATES_TO]->(e)
-              WHERE r2.validTo IS NULL
-              RETURN e, collect(DISTINCT {rel: r, to: to}) as outgoing,
-                        collect(DISTINCT {rel: r2, from: from}) as incoming
-            `;
-
-            const getResult = await txc.run(getQuery, { name: obs.entityName });
-
-            if (getResult.records.length === 0) {
-              logger.warn(`Entity not found: ${obs.entityName}`);
-              continue;
-            }
-
-            // Get entity properties
-            const currentNode = getResult.records[0].get('e').properties;
-            const currentObservations = Array.isArray(currentNode.observations)
-              ? currentNode.observations
-              : JSON.parse(currentNode.observations || '[]');
-            const outgoingRels = getResult.records[0].get('outgoing');
-            const incomingRels = getResult.records[0].get('incoming');
-
-            // Step 2: Create a new version of the entity with updated observations
-            const now = Date.now();
-            const newVersion = (currentNode.version ? Number(currentNode.version) : 0) + 1; // Convert BigInt to Number
-            const newEntityId = uuidv4();
-
-            // Filter out duplicates
-            const newObservations = obs.contents.filter(
-              content => !currentObservations.includes(content)
-            );
-
-            // Skip if no new observations
-            if (newObservations.length === 0) {
-              results.push({
-                entityName: obs.entityName,
-                addedObservations: [],
-              });
-              continue;
-            }
-
-            // Combine observations
-            const allObservations = [...currentObservations, ...newObservations];
-
-            // Check if this entity has temporal versioning fields (id, version, etc.)
-            if (!currentNode.id) {
-              // Legacy entity without temporal versioning - use simple update
-              const updateQuery = `
-                MATCH (e:Entity {name: $name})
-                SET e.observations = $observations
-                RETURN e
-              `;
-
-              await txc.run(updateQuery, {
-                name: obs.entityName,
-                observations: allObservations,
-              });
-
-              results.push({
-                entityName: obs.entityName,
-                addedObservations: newObservations,
-              });
-              continue;
-            }
-
-            // Step 3: Mark the old entity and its relationships as invalid
-            const invalidateQuery = `
-              MATCH (e:Entity {id: $id})
-              SET e.validTo = $now
-              WITH e
-              OPTIONAL MATCH (e)-[r:RELATES_TO]->()
-              WHERE r.validTo IS NULL
-              SET r.validTo = $now
-              WITH e
-              OPTIONAL MATCH ()-[r2:RELATES_TO]->(e)
-              WHERE r2.validTo IS NULL
-              SET r2.validTo = $now
-            `;
-
-            await txc.run(invalidateQuery, {
-              id: currentNode.id,
-              now,
+            inputs.push({
+              name: obs.entityName,
+              apply: current => {
+                const fresh = obs.contents.filter(
+                  content => !current.observations.includes(content)
+                );
+                addedByName.set(obs.entityName, [
+                  ...(addedByName.get(obs.entityName) ?? []),
+                  ...fresh,
+                ]);
+                if (fresh.length === 0) {
+                  return null;
+                }
+                return { observations: [...current.observations, ...fresh] };
+              },
             });
+          }
 
-            // Step 4: Create the new version
-            const createQuery = `
-              CREATE (e:Entity {
-                id: $id,
-                name: $name,
-                entityType: $entityType,
-                domain: $domain,
-                observations: $observations,
-                version: $version,
-                createdAt: $createdAt,
-                updatedAt: $now,
-                validFrom: $now,
-                validTo: null,
-                changedBy: $changedBy
-              })
+          const outcome = await this.versionEntities(txc, inputs);
+
+          // Legacy pre-temporal entities keep their in-place update path.
+          for (const { current, next } of outcome.legacy) {
+            await txc.run(
+              `
+              MATCH (e:Entity {name: $name})
+              SET e.observations = $observations
               RETURN e
-            `;
+              `,
+              {
+                name: current.name,
+                observations: next.observations ?? current.observations,
+              }
+            );
+          }
 
-            const createParams = {
-              id: newEntityId,
-              name: currentNode.name,
-              entityType: currentNode.entityType,
-              domain: currentNode.domain || null,
-              observations: JSON.stringify(allObservations),
-              version: newVersion,
-              createdAt: Number(currentNode.createdAt), // Convert BigInt to Number
-              now,
-              changedBy: null,
-            };
+          for (const name of outcome.notFound) {
+            logger.warn(`Entity not found: ${name}`);
+          }
 
-            await txc.run(createQuery, createParams);
-
-            // Step 5: Recreate relationships for the new version
-            for (const outRel of outgoingRels) {
-              if (!outRel.rel || !outRel.to) continue;
-
-              const relProps = outRel.rel.properties;
-              const newRelId = uuidv4();
-
-              const createOutRelQuery = `
-                MATCH (from:Entity {id: $fromId})
-                MATCH (to:Entity {id: $toId})
-                CREATE (from)-[r:RELATES_TO {
-                  id: $id,
-                  relationType: $relationType,
-                  strength: $strength,
-                  confidence: $confidence,
-                  metadata: $metadata,
-                  version: $version,
-                  createdAt: $createdAt,
-                  updatedAt: $now,
-                  validFrom: $now,
-                  validTo: null,
-                  changedBy: $changedBy
-                }]->(to)
-              `;
-
-              await txc.run(createOutRelQuery, {
-                fromId: newEntityId,
-                toId: outRel.to.properties.id,
-                id: newRelId,
-                relationType: relProps.relationType,
-                strength: relProps.strength === undefined ? 0.9 : relProps.strength,
-                confidence: relProps.confidence === undefined ? 0.95 : relProps.confidence,
-                metadata: relProps.metadata || null,
-                version: relProps.version || 1,
-                createdAt: relProps.createdAt ? Number(relProps.createdAt) : Date.now(), // Convert BigInt to Number
-                now,
-                changedBy: null,
-              });
+          const handled = new Set<string>([
+            ...outcome.versioned.map(entity => entity.name),
+            ...outcome.skipped,
+            ...outcome.legacy.map(entry => entry.current.name),
+          ]);
+          const reported = new Set<string>();
+          for (const obs of observations) {
+            if (!handled.has(obs.entityName) || reported.has(obs.entityName)) {
+              continue;
             }
-
-            for (const inRel of incomingRels) {
-              if (!inRel.rel || !inRel.from) continue;
-
-              const relProps = inRel.rel.properties;
-              const newRelId = uuidv4();
-
-              const createInRelQuery = `
-                MATCH (from:Entity {id: $fromId})
-                MATCH (to:Entity {id: $toId})
-                CREATE (from)-[r:RELATES_TO {
-                  id: $id,
-                  relationType: $relationType,
-                  strength: $strength,
-                  confidence: $confidence,
-                  metadata: $metadata,
-                  version: $version,
-                  createdAt: $createdAt,
-                  updatedAt: $now,
-                  validFrom: $now,
-                  validTo: null,
-                  changedBy: $changedBy
-                }]->(to)
-              `;
-
-              await txc.run(createInRelQuery, {
-                fromId: inRel.from.properties.id,
-                toId: newEntityId,
-                id: newRelId,
-                relationType: relProps.relationType,
-                strength: relProps.strength === undefined ? 0.9 : relProps.strength,
-                confidence: relProps.confidence === undefined ? 0.95 : relProps.confidence,
-                metadata: relProps.metadata || null,
-                version: relProps.version || 1,
-                createdAt: relProps.createdAt ? Number(relProps.createdAt) : Date.now(), // Convert BigInt to Number
-                now,
-                changedBy: null,
-              });
-            }
-
-            // Step 6: Add result to return array
+            reported.add(obs.entityName);
             results.push({
               entityName: obs.entityName,
-              addedObservations: newObservations,
+              addedObservations: addedByName.get(obs.entityName) ?? [],
             });
           }
 
@@ -1374,7 +1896,7 @@ export class Neo4jStorageProvider implements StorageProvider {
 
       try {
         // Begin transaction
-        const txc = session.beginTransaction();
+        const txc = session.beginTransaction(this.txConfig);
 
         try {
           // Delete entities and their relations
@@ -1423,9 +1945,11 @@ export class Neo4jStorageProvider implements StorageProvider {
 
       try {
         // Begin transaction
-        const txc = session.beginTransaction();
+        const txc = session.beginTransaction(this.txConfig);
 
         try {
+          const inputs: EntityVersionInput[] = [];
+
           for (const deletion of deletions) {
             if (
               !deletion.entityName ||
@@ -1434,95 +1958,38 @@ export class Neo4jStorageProvider implements StorageProvider {
             ) {
               continue;
             }
-
-            // Step 1: Get the current entity
-            const getQuery = `
-              MATCH (e:Entity {name: $name})
-              WHERE e.validTo IS NULL
-              RETURN e
-            `;
-
-            const getResult = await txc.run(getQuery, { name: deletion.entityName });
-
-            if (getResult.records.length === 0) {
-              logger.warn(`Entity not found: ${deletion.entityName}`);
-              continue;
-            }
-
-            // Get entity properties
-            const currentNode = getResult.records[0].get('e').properties;
-            const currentObservations = Array.isArray(currentNode.observations)
-              ? currentNode.observations
-              : JSON.parse(currentNode.observations || '[]');
-
-            // Step 2: Remove the observations
-            const updatedObservations = currentObservations.filter(
-              (obs: string) => !deletion.observations.includes(obs)
-            );
-
-            // Check if this entity has temporal versioning fields (id, version, etc.)
-            if (!currentNode.id) {
-              // Legacy entity without temporal versioning - use simple update
-              const updateQuery = `
-                MATCH (e:Entity {name: $name})
-                SET e.observations = $observations
-                RETURN e
-              `;
-
-              await txc.run(updateQuery, {
-                name: deletion.entityName,
-                observations: updatedObservations,
-              });
-              continue;
-            }
-
-            // Step 3: Create a new version of the entity with updated observations
-            const now = Date.now();
-            const newVersion = (currentNode.version ? Number(currentNode.version) : 0) + 1; // Convert BigInt to Number
-            const newEntityId = uuidv4();
-
-            // Step 4: Mark the old entity as invalid
-            const invalidateQuery = `
-              MATCH (e:Entity {id: $id})
-              SET e.validTo = $now
-            `;
-
-            await txc.run(invalidateQuery, {
-              id: currentNode.id,
-              now,
+            inputs.push({
+              name: deletion.entityName,
+              apply: current => ({
+                observations: current.observations.filter(
+                  (obs: string) => !deletion.observations.includes(obs)
+                ),
+              }),
             });
+          }
 
-            // Step 5: Create the new version
-            const createQuery = `
-              CREATE (e:Entity {
-                id: $id,
-                name: $name,
-                entityType: $entityType,
-                domain: $domain,
-                observations: $observations,
-                version: $version,
-                createdAt: $createdAt,
-                updatedAt: $now,
-                validFrom: $now,
-                validTo: null,
-                changedBy: $changedBy
-              })
+          // Before v2.9.0 this path versioned the node but neither closed nor
+          // copied its relationships, stranding every live edge on the stale
+          // version. The shared helper does both.
+          const outcome = await this.versionEntities(txc, inputs);
+
+          // Legacy pre-temporal entities keep their in-place update path.
+          for (const { current, next } of outcome.legacy) {
+            await txc.run(
+              `
+              MATCH (e:Entity {name: $name})
+              SET e.observations = $observations
               RETURN e
-            `;
+              `,
+              {
+                name: current.name,
+                observations: next.observations ?? current.observations,
+              }
+            );
+          }
 
-            const createParams = {
-              id: newEntityId,
-              name: currentNode.name,
-              entityType: currentNode.entityType,
-              domain: currentNode.domain || null,
-              observations: JSON.stringify(updatedObservations),
-              version: newVersion,
-              createdAt: currentNode.createdAt,
-              now,
-              changedBy: null,
-            };
-
-            await txc.run(createQuery, createParams);
+          for (const name of outcome.notFound) {
+            logger.warn(`Entity not found: ${name}`);
           }
 
           // Commit transaction
@@ -1560,7 +2027,7 @@ export class Neo4jStorageProvider implements StorageProvider {
 
       try {
         // Begin transaction
-        const txc = session.beginTransaction();
+        const txc = session.beginTransaction(this.txConfig);
 
         try {
           for (const relation of relations) {
@@ -1781,7 +2248,7 @@ export class Neo4jStorageProvider implements StorageProvider {
 
       try {
         // Begin transaction
-        const txc = session.beginTransaction();
+        const txc = session.beginTransaction(this.txConfig);
 
         try {
           // Step 1: Get the current relation
@@ -2184,7 +2651,7 @@ export class Neo4jStorageProvider implements StorageProvider {
 
       try {
         // Begin transaction
-        const txc = session.beginTransaction();
+        const txc = session.beginTransaction(this.txConfig);
 
         try {
           // Update the entity with the embedding + provenance metadata.
@@ -2994,10 +3461,33 @@ export class Neo4jStorageProvider implements StorageProvider {
         // Use UNWIND for bulk insert
         const session = await this.connectionManager.getSession();
         try {
-          const txc = session.beginTransaction();
+          const txc = session.beginTransaction(this.txConfig);
 
           try {
-            const query = `
+            // Names that already have a live version must be VERSIONED, not
+            // CREATEd again — the composite (name, validTo) constraint does not
+            // reject a second row whose validTo is NULL, so an unconditional
+            // CREATE silently leaves two live versions of the same entity.
+            const existingResult = await txc.run(
+              `
+              UNWIND $names AS name
+              MATCH (e:Entity {name: name})
+              WHERE e.validTo IS NULL
+              RETURN DISTINCT name AS name
+              `,
+              { names: entitiesWithEmbeddings.map(entity => entity.name) }
+            );
+            const existingNames = new Set(
+              existingResult.records
+                .map(record => record.get('name') as string | null)
+                .filter((name): name is string => typeof name === 'string')
+            );
+
+            const fresh = entitiesWithEmbeddings.filter(entity => !existingNames.has(entity.name));
+            const upserts = entitiesWithEmbeddings.filter(entity => existingNames.has(entity.name));
+
+            if (fresh.length > 0) {
+              const query = `
               UNWIND $entities AS entity
               CREATE (e:Entity {
                 id: entity.id,
@@ -3016,7 +3506,25 @@ export class Neo4jStorageProvider implements StorageProvider {
               RETURN e
             `;
 
-            await txc.run(query, { entities: entitiesWithEmbeddings });
+              await txc.run(query, { entities: fresh });
+            }
+
+            if (upserts.length > 0) {
+              await this.versionEntities(
+                txc,
+                upserts.map(entity => ({
+                  name: entity.name,
+                  apply: () => ({
+                    observations: JSON.parse(entity.observations) as string[],
+                    entityType: entity.entityType,
+                    domain: entity.domain,
+                    changedBy: entity.changedBy,
+                    embedding: entity.embedding,
+                  }),
+                }))
+              );
+            }
+
             await txc.commit();
 
             successful.push(...chunk);
@@ -3082,7 +3590,7 @@ export class Neo4jStorageProvider implements StorageProvider {
       for (const chunk of chunks) {
         const session = await this.connectionManager.getSession();
         try {
-          const txc = session.beginTransaction();
+          const txc = session.beginTransaction(this.txConfig);
 
           try {
             const now = Date.now();
@@ -3188,219 +3696,70 @@ export class Neo4jStorageProvider implements StorageProvider {
       for (const chunk of chunks) {
         const session = await this.connectionManager.getSession();
         try {
-          const txc = session.beginTransaction();
+          const txc = session.beginTransaction(this.txConfig);
 
           try {
-            // Step 1: Fetch all current entities in bulk
-            const entityNames = chunk.map(b => b.entityName);
-            const fetchQuery = `
-              UNWIND $names AS name
-              MATCH (e:Entity {name: name})
-              WHERE e.validTo IS NULL
-              RETURN e, name
-            `;
-            const fetchResult = await txc.run(fetchQuery, { names: entityNames });
-
-            // Build map of current entities
-            const entityMap = new Map();
-            for (const record of fetchResult.records) {
-              const entity = record.get('e').properties;
-              const name = record.get('name');
-              entityMap.set(name, entity);
+            const inputs: EntityVersionInput[] = [];
+            for (const batch of chunk) {
+              inputs.push({
+                name: batch.entityName,
+                apply: current => {
+                  const fresh = (batch.observations ?? []).filter(
+                    obs => !current.observations.includes(obs)
+                  );
+                  if (fresh.length === 0) {
+                    return null;
+                  }
+                  return { observations: [...current.observations, ...fresh] };
+                },
+              });
             }
 
-            // Process each batch item
-            const updates = [];
+            // Before v2.9.0 this method copied relationships with CREATE, once
+            // as the source's outgoing edge and once as the target's incoming
+            // edge. A chunk holding BOTH ends of a relationship therefore
+            // doubled it, and doubled again on every subsequent joint batch.
+            // The shared helper MERGEs on the relation id, so the second copy
+            // is a no-op.
+            const outcome = await this.versionEntities(txc, inputs);
+
+            // Legacy pre-temporal entities keep their in-place update path.
+            for (const { current, next } of outcome.legacy) {
+              await txc.run(
+                `
+                MATCH (e:Entity {name: $name})
+                SET e.observations = $observations
+                RETURN e
+                `,
+                {
+                  name: current.name,
+                  observations: next.observations ?? current.observations,
+                }
+              );
+            }
+
+            const resolved = new Map<string, 'ok' | 'notFound'>();
+            for (const name of outcome.notFound) {
+              resolved.set(name, 'notFound');
+            }
+            for (const name of outcome.skipped) {
+              resolved.set(name, 'ok');
+            }
+            for (const entity of outcome.versioned) {
+              resolved.set(entity.name, 'ok');
+            }
+            for (const entry of outcome.legacy) {
+              resolved.set(entry.current.name, 'ok');
+            }
+
             for (const batch of chunk) {
-              const currentEntity = entityMap.get(batch.entityName);
-              if (!currentEntity) {
+              if (resolved.get(batch.entityName) === 'ok') {
+                successful.push(batch);
+              } else {
                 failed.push({
                   item: batch,
                   error: `Entity not found: ${batch.entityName}`,
                 });
-                continue;
-              }
-
-              const currentObservations = Array.isArray(currentEntity.observations)
-                ? currentEntity.observations
-                : JSON.parse(currentEntity.observations || '[]');
-
-              const newObservations = batch.observations.filter(
-                obs => !currentObservations.includes(obs)
-              );
-
-              if (newObservations.length === 0) {
-                successful.push(batch);
-                continue;
-              }
-
-              const allObservations = [...currentObservations, ...newObservations];
-              const now = Date.now();
-              const newVersion = (currentEntity.version ? Number(currentEntity.version) : 0) + 1;
-
-              updates.push({
-                id: currentEntity.id,
-                name: batch.entityName,
-                entityType: currentEntity.entityType,
-                domain: currentEntity.domain || null,
-                observations: allObservations,
-                version: newVersion,
-                createdAt: Number(currentEntity.createdAt),
-                now: now,
-                newId: uuidv4(),
-              });
-
-              successful.push(batch);
-            }
-
-            if (updates.length > 0) {
-              // Step 2: Query relationships BEFORE invalidation
-              const outgoingRels = await txc.run(
-                `
-                UNWIND $updates AS upd
-                MATCH (e:Entity {id: upd.id})
-                MATCH (e)-[r:RELATES_TO]->(to:Entity)
-                WHERE r.validFrom <= upd.now AND r.validTo IS NULL
-                RETURN upd.newId as newId, collect({
-                  id: r.id,
-                  relationType: r.relationType,
-                  strength: r.strength,
-                  confidence: r.confidence,
-                  metadata: r.metadata,
-                  version: r.version,
-                  createdAt: r.createdAt,
-                  updatedAt: r.updatedAt,
-                  validFrom: r.validFrom,
-                  validTo: r.validTo,
-                  changedBy: r.changedBy,
-                  toName: to.name
-                }) as rels
-              `,
-                { updates }
-              );
-
-              // Step 3: Query incoming relationships BEFORE invalidation
-              const incomingRels = await txc.run(
-                `
-                UNWIND $updates AS upd
-                MATCH (e:Entity {id: upd.id})
-                MATCH (from:Entity)-[r:RELATES_TO]->(e)
-                WHERE r.validFrom <= upd.now AND r.validTo IS NULL
-                RETURN upd.newId as newId, collect({
-                  id: r.id,
-                  relationType: r.relationType,
-                  strength: r.strength,
-                  confidence: r.confidence,
-                  metadata: r.metadata,
-                  version: r.version,
-                  createdAt: r.createdAt,
-                  updatedAt: r.updatedAt,
-                  validFrom: r.validFrom,
-                  validTo: r.validTo,
-                  changedBy: r.changedBy,
-                  fromName: from.name
-                }) as rels
-              `,
-                { updates }
-              );
-
-              // Step 4: Invalidate old versions in bulk
-              await txc.run(
-                `
-                UNWIND $updates AS upd
-                MATCH (e:Entity {id: upd.id})
-                SET e.validTo = upd.now
-                WITH e, upd
-                OPTIONAL MATCH (e)-[r:RELATES_TO]->()
-                WHERE r.validTo IS NULL
-                SET r.validTo = upd.now
-                WITH e, upd
-                OPTIONAL MATCH ()-[r2:RELATES_TO]->(e)
-                WHERE r2.validTo IS NULL
-                SET r2.validTo = upd.now
-              `,
-                { updates }
-              );
-
-              // Step 5: Create new versions in bulk
-              await txc.run(
-                `
-                UNWIND $updates AS upd
-                CREATE (e:Entity {
-                  id: upd.newId,
-                  name: upd.name,
-                  entityType: upd.entityType,
-                  domain: upd.domain,
-                  observations: upd.observations,
-                  version: upd.version,
-                  createdAt: upd.createdAt,
-                  updatedAt: upd.now,
-                  validFrom: upd.now,
-                  validTo: null,
-                  changedBy: null
-                })
-              `,
-                { updates }
-              );
-
-              // Step 6: Recreate outgoing relationships with fresh validTo
-              for (const record of outgoingRels.records) {
-                const newId = record.get('newId');
-                const rels = record.get('rels');
-                if (rels && rels.length > 0) {
-                  await txc.run(
-                    `
-                    MATCH (newE:Entity {id: $newId})
-                    UNWIND $rels AS rel
-                    MATCH (to:Entity {name: rel.toName})
-                    WHERE to.validTo IS NULL
-                    CREATE (newE)-[newR:RELATES_TO {
-                      id: rel.id,
-                      relationType: rel.relationType,
-                      strength: rel.strength,
-                      confidence: rel.confidence,
-                      metadata: rel.metadata,
-                      version: rel.version,
-                      createdAt: rel.createdAt,
-                      updatedAt: rel.updatedAt,
-                      validFrom: rel.validFrom,
-                      validTo: null,
-                      changedBy: rel.changedBy
-                    }]->(to)
-                  `,
-                    { newId, rels }
-                  );
-                }
-              }
-
-              // Step 7: Recreate incoming relationships with fresh validTo
-              for (const record of incomingRels.records) {
-                const newId = record.get('newId');
-                const rels = record.get('rels');
-                if (rels && rels.length > 0) {
-                  await txc.run(
-                    `
-                    MATCH (newE:Entity {id: $newId})
-                    UNWIND $rels AS rel
-                    MATCH (from:Entity {name: rel.fromName})
-                    WHERE from.validTo IS NULL
-                    CREATE (from)-[newR:RELATES_TO {
-                      id: rel.id,
-                      relationType: rel.relationType,
-                      strength: rel.strength,
-                      confidence: rel.confidence,
-                      metadata: rel.metadata,
-                      version: rel.version,
-                      createdAt: rel.createdAt,
-                      updatedAt: rel.updatedAt,
-                      validFrom: rel.validFrom,
-                      validTo: null,
-                      changedBy: rel.changedBy
-                    }]->(newE)
-                  `,
-                    { newId, rels }
-                  );
-                }
               }
             }
 
@@ -3448,109 +3807,96 @@ export class Neo4jStorageProvider implements StorageProvider {
     const failed: { item: EntityUpdate; error: string }[] = [];
 
     try {
-      // Batch process entityType updates using UNWIND
-      const entityTypeUpdates = updates.filter(u => u.entityType);
-      if (entityTypeUpdates.length > 0) {
-        const session = await this.connectionManager.getSession();
-        try {
-          const now = Date.now();
-          const updateData = entityTypeUpdates.map(u => ({
-            name: u.name,
-            entityType: u.entityType,
-            now: now,
-          }));
+      // One versioning pass per entity, covering entityType, domain, and
+      // observation additions together. Before v2.9.0 entityType and domain
+      // changes were applied with an in-place SET on the live version — no new
+      // version, no temporal history, and no relationship carry-over — while
+      // observation additions went through a separate addObservationsBatch
+      // call. Folding all three into one versionEntities call yields exactly
+      // one new version per entity per call, with its relationships intact.
+      const maxBatchSize = config?.maxBatchSize || 100;
+      const versionable = updates.filter(
+        update =>
+          Boolean(update.entityType) ||
+          update.domain !== undefined ||
+          (update.addObservations !== undefined && update.addObservations.length > 0)
+      );
 
-          await session.run(
-            `
-            UNWIND $updates AS upd
-            MATCH (e:Entity {name: upd.name})
-            WHERE e.validTo IS NULL
-            SET e.entityType = upd.entityType,
-                e.updatedAt = upd.now
-          `,
-            { updates: updateData }
-          );
-        } catch (error) {
-          // Mark entityType updates as failed
-          for (const update of entityTypeUpdates) {
-            failed.push({
-              item: update,
-              error: error instanceof Error ? error.message : String(error),
-            });
-          }
-        } finally {
-          await session.close();
-        }
+      const chunks: EntityUpdate[][] = [];
+      for (let i = 0; i < versionable.length; i += maxBatchSize) {
+        chunks.push(versionable.slice(i, i + maxBatchSize));
       }
 
-      // Batch process domain updates using UNWIND
-      const domainUpdates = updates.filter(u => u.domain !== undefined);
-      if (domainUpdates.length > 0) {
+      for (const chunk of chunks) {
         const session = await this.connectionManager.getSession();
         try {
-          const now = Date.now();
-          const updateData = domainUpdates.map(u => ({
-            name: u.name,
-            domain: u.domain,
-            now: now,
-          }));
+          const txc = session.beginTransaction(this.txConfig);
 
-          await session.run(
-            `
-            UNWIND $updates AS upd
-            MATCH (e:Entity {name: upd.name})
-            WHERE e.validTo IS NULL
-            SET e.domain = upd.domain,
-                e.updatedAt = upd.now
-          `,
-            { updates: updateData }
-          );
-        } catch (error) {
-          // Mark domain updates as failed
-          for (const update of domainUpdates) {
-            failed.push({
-              item: update,
-              error: error instanceof Error ? error.message : String(error),
-            });
-          }
-        } finally {
-          await session.close();
-        }
-      }
+          try {
+            const inputs: EntityVersionInput[] = chunk.map(update => ({
+              name: update.name,
+              apply: current => {
+                const next: NextEntityFields = {};
+                if (update.entityType) {
+                  next.entityType = update.entityType;
+                }
+                if (update.domain !== undefined) {
+                  next.domain = update.domain;
+                }
+                if (update.addObservations !== undefined && update.addObservations.length > 0) {
+                  const fresh = update.addObservations.filter(
+                    obs => !current.observations.includes(obs)
+                  );
+                  if (fresh.length > 0) {
+                    next.observations = [...current.observations, ...fresh];
+                  }
+                }
+                return Object.keys(next).length > 0 ? next : null;
+              },
+            }));
 
-      // Batch process observation additions
-      const addObsBatches = updates
-        .filter(u => u.addObservations && u.addObservations.length > 0)
-        .map(u => ({
-          entityName: u.name,
-          observations: u.addObservations!,
-        }));
+            const outcome = await this.versionEntities(txc, inputs);
 
-      if (addObsBatches.length > 0) {
-        try {
-          const addObsResult = await this.addObservationsBatch(addObsBatches, config);
+            // Legacy pre-temporal entities keep their in-place update path.
+            for (const { current, next } of outcome.legacy) {
+              await txc.run(
+                `
+                MATCH (e:Entity {name: $name})
+                SET e.entityType = coalesce($entityType, e.entityType),
+                    e.domain = $domain,
+                    e.observations = $observations,
+                    e.updatedAt = $now
+                RETURN e
+                `,
+                {
+                  name: current.name,
+                  entityType: next.entityType ?? null,
+                  domain: next.domain === undefined ? current.domain : next.domain,
+                  observations: next.observations ?? current.observations,
+                  now: Date.now(),
+                }
+              );
+            }
 
-          // Propagate failures from batch operation
-          for (const failure of addObsResult.failed) {
-            // Find the corresponding EntityUpdate
-            const failedUpdate = updates.find(u => u.name === failure.item.entityName);
-            if (failedUpdate) {
+            await txc.commit();
+
+            for (const name of outcome.notFound) {
+              const update = chunk.find(item => item.name === name);
+              if (update) {
+                failed.push({ item: update, error: `Entity not found: ${name}` });
+              }
+            }
+          } catch (error) {
+            await txc.rollback();
+            for (const update of chunk) {
               failed.push({
-                item: failedUpdate,
-                error: failure.error,
+                item: update,
+                error: error instanceof Error ? error.message : String(error),
               });
             }
           }
-        } catch (error) {
-          // Mark all observation additions as failed on exception
-          for (const update of updates.filter(
-            u => u.addObservations && u.addObservations.length > 0
-          )) {
-            failed.push({
-              item: update,
-              error: error instanceof Error ? error.message : String(error),
-            });
-          }
+        } finally {
+          await session.close();
         }
       }
 

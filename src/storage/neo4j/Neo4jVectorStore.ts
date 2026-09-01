@@ -1,5 +1,6 @@
 import neo4j from 'neo4j-driver';
 
+import { getVersioningConfig } from '../../config/versioning.js';
 import type { VectorStore, VectorSearchResult } from '../../types/vector-store.js';
 import { logger } from '../../utils/logger.js';
 
@@ -101,7 +102,7 @@ export class Neo4jVectorStore implements VectorStore {
 
     try {
       const session = await this.connectionManager.getSession();
-      const tx = session.beginTransaction();
+      const tx = session.beginTransaction({ timeout: getVersioningConfig().txTimeoutMs });
 
       try {
         // Store embedding directly on the entity node

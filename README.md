@@ -485,6 +485,72 @@ whole — split it from its source before it grows further.
 Thresholds and scan size are configurable via the `MAX_MCP_OUTPUT_TOKENS` /
 `ENTITY_SIZE_*` environment variables (see [Configuration](#environment-variables)).
 
+## Versioning safety & graph repair (v2.9.0+)
+
+Every write path that supersedes an existing entity version — `add_observations`,
+`add_observations_batch`, `delete_observations`, `update_entities_batch`, and the
+upsert case of `create_entities` / `create_entities_batch` — goes through one
+shared versioning helper. It closes **every** live version of the name, creates
+the new version, and copies the old version's live relationships onto it with
+`MERGE (newE)-[r:RELATES_TO {id: rel.id}]->(to)`, resolved against the
+counterpart's single newest live version.
+
+Before v2.9.0 each path carried its own copy of that logic and they disagreed,
+which corrupted graphs in two ways:
+
+- **Duplicated relationships.** Relationship copies used `CREATE`, once as the
+  source's outgoing edge and once as the target's incoming edge. Any batch
+  holding *both* endpoints of a relationship therefore copied it twice, and the
+  count doubled again on every subsequent joint batch. One production node
+  reached 39,382 physical live relationships for 15 logical ones, after which
+  every write exhausted `db.memory.transaction.max` (512 MiB).
+- **Multiple live versions and stranded edges.** Some paths opened a new live
+  version without closing the previous one — the composite `(name, validTo)`
+  constraint does not catch this, because Neo4j exempts rows with a NULL in the
+  constrained property set — and `delete_observations` versioned the node
+  without closing or copying its relationships at all. 48 names ended up with
+  more than one live version and 358 live relationships were left attached to
+  stale versions.
+
+Two guards now bound the damage, both configurable (see
+[Environment Variables](#environment-variables)):
+
+| Variable | Default | What it does |
+| --- | --- | --- |
+| `NEO4J_TX_TIMEOUT_MS` | `60000` | Transaction timeout on every transaction and auto-commit query |
+| `NEO4J_MAX_LIVE_RELATIONSHIPS` | `5000` | Refuses to version an entity whose live-relationship count is already above the ceiling, naming the entity and the repair command instead of loading the graph into transaction memory |
+
+### Repairing an already-damaged graph — `kg:repair`
+
+```bash
+pnpm run kg:repair                      # DRY RUN (default) — reports, writes nothing
+pnpm run kg:repair -- --apply           # execute the repair
+pnpm run kg:repair -- --json            # machine-readable output
+pnpm run kg:repair -- --batch-size 2000 # rows per inner transaction (default 5000)
+```
+
+Five idempotent steps, run in order, each as its own implicit transaction
+(required by `CALL … IN TRANSACTIONS`):
+
+1. Delete duplicate **live** relationships, keeping one per
+   `(startNode, endNode, relationType)` between live versions.
+2. Delete live relationships attached to a stale version that already have a
+   live-to-live equivalent.
+3. Delete duplicate **historical** relationships the same way.
+4. Close duplicate live versions per name — keep the greatest `validFrom`, carry
+   the losers' live relationships onto the survivor with `MERGE`, then stamp the
+   originals.
+5. Re-point any remaining stale-attached live relationship onto the live version
+   of the same name, then delete the original.
+
+Exit code is `1` when a dry run finds work to do (so a cron can alert), `0` when
+the graph is clean or `--apply` completed, `2` on failure. Grouping stages carry
+`min(elementId(r))` and `count(r)` only and never `collect()` a relationship
+group — a `collect()` over a 39k-edge group exceeds the 512 MiB transaction cap
+on its own, even with batched deletes.
+
+Running the repair twice is a no-op the second time.
+
 ## MCP API Tools
 
 The following tools are available to LLM client hosts through the Model Context Protocol:
@@ -885,6 +951,18 @@ ENTITY_SIZE_CRITICAL_RATIO=1.0       # Fraction of the cap at/above which an ent
 ENTITY_SIZE_WARN_ON_WRITE=true       # When true, write tools (create/add/update batch) append a non-fatal
                                      # warnings[] field naming any touched entity that crosses WARN/CRITICAL.
 ENTITY_SIZE_SCAN_LIMIT=50            # Default number of largest entities scanned/ranked per pass.
+
+# Temporal Versioning Safety (v2.9.0+) — see "Versioning safety & graph repair".
+NEO4J_TX_TIMEOUT_MS=60000            # Transaction timeout (ms) applied to EVERY transaction and
+                                     # auto-commit query. Without it an abandoned transaction holds
+                                     # its write locks until the server kills the connection, which on
+                                     # a server with no db.transaction.timeout configured is never.
+NEO4J_MAX_LIVE_RELATIONSHIPS=5000    # Pre-flight ceiling on the live relationships one entity version
+                                     # may carry. Versioning has to read them all into transaction
+                                     # memory; past a few thousand that alone exhausts
+                                     # db.memory.transaction.max and every write on the database fails.
+                                     # Over the limit the write is refused with an error naming the
+                                     # entity, its count, and `pnpm kg:repair`.
 
 # Logging Configuration
 LOG_LEVEL=warn              # Log level: debug, info, warn, error, silent (default: warn)

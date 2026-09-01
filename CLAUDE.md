@@ -64,11 +64,14 @@ pnpm run format:check      # Biome format check (CI)
 pnpm run fix               # lint:fix + format
 ```
 
-### Neo4j Setup
+### Neo4j Setup & Maintenance
 
 ```bash
 pnpm run neo4j:init        # Initialize Neo4j schema
 pnpm run neo4j:test        # Test Neo4j connection
+pnpm run kg:oversized      # Report entities near the open_nodes cap
+pnpm run kg:repair         # Repair duplicated relations / duplicate live versions (DRY RUN)
+pnpm run kg:repair -- --apply   # ...and execute it
 ```
 
 ### Running Single Tests
@@ -231,6 +234,11 @@ EMBEDDING_BACKFILL_CRON='0 19 * * *' # Cron for scheduleIncrementalRegeneration.
                                     # '*/1 * * * *' on the server-side instance for ~1-min latency.
 EMBEDDING_STALE_CLAIM_MS=300000      # v2.4.0+. Claimed jobs older than this auto-release back
                                     # to 'pending' on the next processJobs tick. Default 5 min.
+
+# v2.9.0+ — temporal-versioning safety
+NEO4J_TX_TIMEOUT_MS=60000            # Transaction timeout on EVERY transaction + auto-commit query.
+NEO4J_MAX_LIVE_RELATIONSHIPS=5000    # Pre-flight ceiling; over it, versioning is refused with the
+                                    # entity name + `pnpm kg:repair`, instead of OOMing the database.
 ```
 
 ## Testing Strategy
@@ -273,6 +281,12 @@ Test files use Vitest with comprehensive mocking:
 - **Version Check**: Tag must match `package.json` version
 
 ## Version History & Recent Bugfixes
+
+### v2.9.0 (2026-09-02) - Versioning Relationship Duplication & Duplicate Live Versions
+
+Two production data-corruption defects fixed by consolidating every entity-versioning path into one `versionEntities` helper (see "Entity Temporal Versioning" above). Adds `NEO4J_TX_TIMEOUT_MS`, `NEO4J_MAX_LIVE_RELATIONSHIPS`, and the `kg:repair` CLI (dry run by default, `--apply` to execute). Full detail in CHANGELOG.md.
+
+---
 
 ### v2.2.0 (2026-03-04) - Public Release Preparation
 
@@ -579,6 +593,17 @@ services:
 - **Production mock-guard**: `EmbeddingServiceFactory.hasEmbeddingProvider(env)` rejects `MOCK_EMBEDDINGS` under `NODE_ENV=production`; `shouldWriteEmbeddings(service, env)` refuses a `DefaultEmbeddingService` (mock OR silent fallback) in production — index.ts then runs keyword-only. Random vectors never drive a production store.
 - **Startup consistency check**: `checkDimensionConsistency(env)` warns at boot when `EMBEDDING_DIMENSIONS` != `NEO4J_VECTOR_DIMENSIONS`.
 - **Version source of truth**: `setup.ts getPackageVersion()` reads package.json via `createRequire` — never hardcode the MCP serverInfo version.
+
+### Entity Temporal Versioning (v2.9.0) — LANDMINE
+
+**One helper owns versioning: `Neo4jStorageProvider.versionEntities(txc, inputs)`.** Every path that supersedes an existing entity version routes through it — `addObservations`, `addObservationsBatch`, `deleteObservations`, `updateEntitiesBatch`, and the upsert case of `createEntities`/`createEntitiesBatch`. Never hand-roll the close-old / create-new / recreate-relationships sequence again; four divergent copies of it caused two production data-corruption incidents.
+
+- **Copy relationships with `MERGE (newE)-[r:RELATES_TO {id: rel.id}]->(to) ON CREATE SET r += $props`, never `CREATE`.** A batch holding BOTH ends of a relationship copies it twice (outgoing for one entity, incoming for the other); `CREATE` doubled the count on every joint batch, reaching 39,382 physical edges for 15 logical ones and exhausting `db.memory.transaction.max` (512 MiB).
+- **Close EVERY live version of the name, not just the id you read.** The composite `(name, validTo)` UNIQUE constraint does **not** prevent multiple live versions — Neo4j exempts rows with a NULL in the constrained property set. This is why 48 names ended up multi-live.
+- **Resolve counterparts to their newest live version AFTER creating the new versions,** so a counterpart versioned in the same call resolves to its new version and a dead counterpart is dropped rather than re-attached to a stale one.
+- **Never `collect()` a relationship group.** Both the helper and `kg:repair` carry `min(elementId(r))` + `count(r)` and re-match; a `collect()` over a 39k-edge group blows the 512 MiB cap on its own.
+- **Observations are stored as a JSON string, never a Neo4j list.** `searchNodes` uses `e.observations =~ $query`, which silently matches nothing against a list.
+- **Every `beginTransaction()` takes `this.txConfig`** (`NEO4J_TX_TIMEOUT_MS`, default 60 s). An untimed transaction holds write locks until the server kills it, and the production server had no `db.transaction.timeout`.
 
 ### Reranker & Ordering (v2.7.0)
 

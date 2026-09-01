@@ -1,6 +1,6 @@
 {
   "name": "@henrychong-ai/mcp-neo4j-knowledge-graph",
-  "version": "2.8.2",
+  "version": "2.9.0",
   "description": "Neo4j-based knowledge graph MCP server with temporal versioning and semantic search",
   "license": "MIT",
   "author": "Henry Chong <henry@henrychong.ai>",
@@ -55,6 +55,7 @@
     "embeddings:generate": "tsx src/cli/generate-embeddings.ts",
     "embeddings:test": "tsx src/cli/generate-embeddings.ts -- --limit 5",
     "kg:oversized": "tsx src/cli/report-oversized.ts",
+    "kg:repair": "tsx src/cli/repair-relationships.ts",
     "kg:oversized:json": "tsx src/cli/report-oversized.ts -- --json"
   },
   "dependencies": {
