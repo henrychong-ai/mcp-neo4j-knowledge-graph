@@ -5,6 +5,47 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.9.2] - 2026-09-03
+
+Dependency and security maintenance release. No source changes — clears all 7 open advisories, unsticks nine stale override floors, adds the first `nanoid` override, and refreshes eight direct dependencies to their latest minor/patch. No major-version bumps.
+
+### Security
+
+- **All 7 open advisories resolved** (5 high, 2 moderate). `pnpm audit`: 7 → **0**.
+  - **fast-uri ≥3.1.7** (4 high — GHSA-5jgf-p345-68v8, GHSA-f65p-4m7j-42xc, GHSA-fph4-wmhf-6fwf, GHSA-jqff-g426-hqxp; all patched in 3.1.6). **Runtime-material**: reached via `ajv`, which backs schema validation on the live request path. Another *stale floor* — the `>=3.1.5 <4` pin from v2.8.2 held resolution at exactly 3.1.5 while the patch sat one release away. Raised to `>=3.1.7 <4`; resolved 3.1.7.
+  - **qs ≥6.16.0** (2 moderate — GHSA-x5fp-wj9c-mxmx `arrayLimit`/`throwOnLimitExceeded` bypass via bracket keys with `comma: true`; GHSA-4mjr-xmp4-gh2g). **Not runtime-reachable**: reached only via `@modelcontextprotocol/sdk > express`, part of the SDK's HTTP transport stack, which this server never loads (`src/index.ts` uses `StdioServerTransport` exclusively). Stale floor again — `>=6.15.3 <7` held resolution at the vulnerable 6.15.3. Raised to `>=6.16.0 <7`.
+  - **nanoid ≥3.3.18** (high, GHSA-2v37-7h3g-55p8 / CVE-2026-67213 — infinite loop in `customAlphabet`/`customRandom` when `size` is 0). **Not runtime-reachable**: dev-tree only, via `vite > postcss > nanoid`. This one had **no override at all** — `postcss` was already pinned, but a floor on the parent says nothing about the child, so `nanoid` sat at 3.3.17 behind a current `postcss` 8.5.26. Added `nanoid: ">=3.3.18 <4"`; resolved 3.3.18.
+
+### Changed
+
+- **Nine override floors raised to the current release within their pinned major** (the standing "keep the bottom current" rule — an override is a pin, not a minimum guarantee, so a floor left behind actively holds the package back until an advisory finds it):
+  - `rollup` `>=4.62.4` → `>=4.63.1 <5` (resolved 4.63.1)
+  - `hono` `>=4.12.34` → `>=4.13.5 <5` (resolved 4.13.5)
+  - `@hono/node-server` `>=2.0.5` → `>=2.1.1 <3` (resolved 2.1.1; still within MCP SDK 1.30.0's `^1.19.9 || ^2.0.5` range)
+  - `express-rate-limit` `>=8.2.2` → `>=8.7.0 <9` (resolved 8.7.0)
+  - `qs` `>=6.15.3` → `>=6.16.0 <7` (advisory, above)
+  - `picomatch` `>=4.0.5` → `>=4.0.7 <5` (resolved 4.0.7; the separate `micromatch>picomatch: ^2.3.2` selector is unchanged and still at the latest 2.x)
+  - `fast-uri` `>=3.1.5` → `>=3.1.7 <4` (advisory, above)
+  - `ip-address` `>=10.3.1` → `>=10.7.0 <11` (resolved 10.7.0)
+  - `postcss` `>=8.5.18` → `>=8.5.28 <9` (resolved 8.5.28)
+  - `esbuild` `>=0.28.1` → `>=0.28.2 <0.29` (resolved 0.28.2)
+- **Overrides left unchanged because they are already at the latest release within their major**: `@isaacs/brace-expansion` (5.0.1), `ajv` (8.20.0), `vite` (7.3.6), `micromatch>picomatch` (2.3.2), `path-to-regexp@>=8.0.0 <8.4.0` (8.4.2), `yaml@>=2.0.0 <2.8.3` (2.9.0), `follow-redirects` (1.16.0), `form-data` (4.0.6), `body-parser` (2.3.0). Every entry in the block still carries a `<MAJOR+1` ceiling.
+- **Direct dependencies — minor/patch only:**
+  - `axios` 1.19.0 → 1.20.0 (runtime-reachable: embeddings + reranker)
+  - `uuid` 14.0.1 → 14.0.2
+  - `zod` 4.4.3 → 4.5.4
+  - `@biomejs/biome` 2.5.7 → 2.5.12 (dev)
+  - `@vitest/coverage-v8` 4.1.10 → 4.1.11 (dev)
+  - `oxlint` 1.77.0 → 1.81.0 (dev)
+  - `tsx` 4.23.9 → 4.23.13 (dev)
+  - `vitest` 4.1.10 → 4.1.11 (dev)
+
+### Notes
+
+- **Deliberately not taken (major bumps, out of scope for a patch release):** `typescript` 5.9.3 → 7.0.2, `vite` 7.3.6 → 8.2.2, `vitest`/`@vitest/coverage-v8` 4.x → 5.0.0, `lint-staged` 16.4.0 → 17.4.1, `@types/node` 25.9.5 → 26.4.1. Each is already at the latest release within its current major.
+- **`prom-client` is flagged deprecated upstream** (renamed to `@prometheus-io/client`). Not addressed here — a package rename is a source change, not a version bump.
+- Verified before release: oxlint clean, biome format clean, `tsc --noEmit` clean, build OK, **943 tests passing / 23 skipped** (integration tests require a live Neo4j and stay skipped without `TEST_INTEGRATION=true`). `pnpm install --frozen-lockfile` clean after the override edits.
+
 ## [2.9.1] - 2026-09-02
 
 ### Fixed
