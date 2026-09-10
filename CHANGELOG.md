@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.9.2] - 2026-09-10
+
+Dependency-maintenance release. No source changes — every advisory here was cleared by moving a resolution, not by editing code. Twelve advisories reported by `pnpm audit` before this release; zero after.
+
+### Security
+
+- **`fast-uri` 3.1.5 → 3.1.7** (4 high advisories, **runtime-reachable**). Reaches the tree via `ajv` schema validation. Host confusion via skipped IDN canonicalisation and via percent-encoded scheme normalisation; SSRF via malformed IPv6 and via repeated hostnames. The existing `>=3.1.5 <4` floor was written for an earlier advisory and was itself pinning the tree at the vulnerable 3.1.5 — the exact stale-floor failure mode recorded for `postcss` in v2.8.2.
+- **`nanoid` 3.3.17 → 3.3.19** (high, GHSA — custom generators can loop indefinitely when size is zero). Arrives only as `postcss` → `vite`, so it is dev/build-tooling exposure, not server runtime. It had **no** entry in the overrides block at all, which is why no floor covered it; one has been added.
+- **`qs` 6.15.3 → 6.16.0** (2 moderate — array-limit bypass via bracket-key comma parsing; DoS via attacker-controlled `isBuffer`). Another stale floor: `>=6.15.3 <7` held resolution exactly at the highest vulnerable version.
+- **`hono` 4.13.0 → 4.13.7** (3 moderate — `toSSG()` path escape, unbounded dot-notation nesting in `parseBody()`, query parser reading past the URL fragment). Transitive via the MCP SDK's HTTP stack; `src/index.ts` uses `StdioServerTransport` only and never loads it, so this is not runtime exposure — patched to keep the advisory list actionable.
+- **`vitest` / `@vitest/mocker` 4.1.10 → 4.1.11** (moderate — path traversal / arbitrary file read via the mocker redirect). Test-time only.
+
+### Changed
+
+- **Overrides: nine stale floors raised, one entry added.** An override is a *pin*, not a minimum — pnpm will not float past whatever the lockfile already holds, so a floor left behind actively holds its package back. Every entry was re-checked against current advisories and against the latest release within its existing major: `rollup` `>=4.62.4` → `>=4.63.1`, `hono` `>=4.12.34` → `>=4.13.7`, `@hono/node-server` `>=2.0.5` → `>=2.1.1`, `express-rate-limit` `>=8.2.2` → `>=8.7.0`, `qs` `>=6.15.3` → `>=6.16.0`, `picomatch` `>=4.0.5` → `>=4.0.7`, `fast-uri` `>=3.1.5` → `>=3.1.7`, `ip-address` `>=10.3.1` → `>=10.7.0`, `postcss` `>=8.5.18` → `>=8.5.28`, `esbuild` `>=0.28.1` → `>=0.28.2`, plus a new `nanoid` `>=3.3.19 <4`. Every entry keeps its `<MAJOR+1` ceiling. `@hono/node-server >=2.1.1` stays inside the MCP SDK 1.30.0 declared range (`^1.19.9 || ^2.0.5`).
+- **Dependencies** (minor/patch within major): `axios` 1.19.0 → 1.20.0, `uuid` 14.0.1 → 14.0.2, `zod` 4.4.3 → 4.6.1.
+- **Dev dependencies**: `@biomejs/biome` 2.5.7 → 2.5.13, `@types/node` 25.9.5 → 25.9.6, `@vitest/coverage-v8` 4.1.10 → 4.1.11, `oxlint` 1.77.0 → 1.82.0, `tsx` 4.23.9 → 4.23.13, `vitest` 4.1.10 → 4.1.11.
+
+### Deferred
+
+No major-version bump was taken. Outstanding, each behind an open Dependabot PR: `typescript` 5.9.3 → 7.0.2, `@types/node` 25 → 26, `vite` 7 → 8, `lint-staged` 16 → 17, `vitest` / `@vitest/coverage-v8` 4 → 5. None of them carries an unpatched advisory — every advisory above was clearable within its existing major. `prom-client` is flagged deprecated upstream in favour of `@prometheus-io/client`; that is a package rename rather than a version bump, so it is left for a deliberate change.
+
 ## [2.9.1] - 2026-09-02
 
 ### Fixed
