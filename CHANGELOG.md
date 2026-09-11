@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.9.2] - 2026-09-11
+
+Dependency security sweep. No source changes.
+
+### Security
+
+- **Cleared 12 advisories (5 high, 7 moderate).** `pnpm audit` now reports no known vulnerabilities.
+  - `fast-uri` raised to 3.1.7 — GHSA-5jgf-p345-68v8, GHSA-f65p-4m7j-42xc, GHSA-fph4-wmhf-6fwf, GHSA-jqff-g426-hqxp. Runtime-reachable (schema validation via `ajv`), so the highest-priority item in this sweep.
+  - `nanoid` raised to 3.3.19 — GHSA-2v37-7h3g-55p8.
+  - `qs` raised to 6.16.0 — GHSA-x5fp-wj9c-mxmx, GHSA-4mjr-xmp4-gh2g.
+  - `hono` raised to 4.13.7 — GHSA-gqvv-2mrq-wpjv, GHSA-g6gw-c38x-mqfc, GHSA-crvj-82cr-hjcx. Reached only through the MCP SDK's HTTP stack, which this server does not load (stdio transport only).
+  - `vitest` / `@vitest/mocker` raised to 4.1.11 — GHSA-82fw-gwwq-j7x9 (dev-only).
+
+### Changed
+
+- **Override floors raised** for the advisories above: `hono` `>=4.12.34 <5` -> `>=4.13.5 <5`, `qs` `>=6.15.3 <7` -> `>=6.16.0 <7`, `fast-uri` `>=3.1.5 <4` -> `>=3.1.6 <4`. A floor is a pin, not a minimum guarantee — each had to be raised by hand rather than left to float.
+- **Override added:** `nanoid` `>=3.3.18 <4`. It had been resolving at 3.3.17 with no override to hold it up.
+- **Dead override removed:** `@isaacs/brace-expansion` matched nothing in the lockfile.
+- **Every remaining floor keeps its `<MAJOR+1` ceiling**; bounding is unchanged from v2.8.2.
+- **In-range sweep** (`pnpm update -r`, never `--latest`): biome 2.5.13, oxlint 1.82.0, tsx 4.23.13, axios 1.20.0, zod 4.6.2, uuid 14.0.2, @types/node 25.9.6, vitest and @vitest/coverage-v8 4.1.11. Lint stays green at zero warnings on oxlint 1.82 with no rule disabled.
+- **Deferred majors, unchanged:** TypeScript 7, vitest 5 (and @vitest/coverage-v8 5), vite 8, lint-staged 17.
+- `prom-client` is deprecated upstream at its latest version (15.1.3). Left in place; replacement is a separate decision.
+
 ## [2.9.1] - 2026-09-02
 
 ### Fixed
