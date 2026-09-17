@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.9.3] - 2026-09-17
+
+Routine dependency sweep. No source changes, no override changes.
+
+### Security
+
+- **`pnpm audit` reports no known vulnerabilities**, before and after this sweep. There were no advisories to close — unlike v2.9.2, this release clears nothing because nothing was open. The clean result was verified against a control (a deliberately vulnerable `lodash@4.17.20` in a scratch project), so it reflects a live advisory-database response rather than a silent audit failure.
+- **`fast-uri` floated 3.1.7 -> 3.1.8** on its existing `>=3.1.6 <4` override. No advisory attached; recorded because it is one of the two runtime-reachable transitives here (schema validation via `ajv`), so its movement is always material.
+
+### Changed
+
+- **In-range sweep** (`pnpm update`, never `--latest`): `zod` 4.6.2 -> 4.6.5, `@biomejs/biome` 2.5.13 -> 2.5.14, `oxlint` 1.82.0 -> 1.83.0, `@types/node` 25.9.6 -> 25.9.7. Lint stays green at zero warnings on oxlint 1.83 with no rule disabled.
+- **Transitive drift carried by the same sweep:** `hono` 4.13.7 -> 4.13.8, `rollup` 4.63.1 -> 4.63.3, `ip-address` 10.7.0 -> 10.7.2, `yaml` 2.9.0 -> 2.9.1, `is-core-module` 2.16.2 -> 2.17.0, `proxy-addr` 2.0.7 -> 2.0.8, `magicast` 0.5.4 -> 0.5.5, `get-east-asian-width` 1.6.0 -> 1.7.0. The `hono` movement is **not** runtime exposure: it is reached only through the MCP SDK's HTTP stack, and `src/index.ts` uses `StdioServerTransport` exclusively and never loads it.
+- **Override block unchanged — audited, not edited.** Every floor was checked against the latest published version of its target rather than assumed current, per the stale-floor rule. The six entries sitting exactly at their floor (`ajv` 8.20.0, `qs` 6.16.0, `follow-redirects` 1.16.0, `form-data` 4.0.6, `body-parser` 2.3.0, `vite` 7.3.6) are each at the newest release that exists, so no floor is holding anything back. All 19 entries retain their `<MAJOR+1` ceiling.
+- **Deferred majors, unchanged:** TypeScript 7, vitest 5 (and `@vitest/coverage-v8` 5), vite 8, lint-staged 17, `@types/node` 26.
+- `prom-client` remains deprecated upstream at its latest version (15.1.3); upstream now names `@prometheus-io/client` as the successor. Left in place — a package rename is a migration, not a version bump, and is a separate decision.
+
+### Notes
+
+- The v2.8.2 lockfile-desync landmine reproduced exactly as documented: `pnpm update` left the importer specifier for `vite` recorded as `^7.3.6` against a manifest rewritten to `>=7.3.6 <8` by its own override, and `pnpm install --frozen-lockfile` failed on the mismatch — green locally, red in CI. A plain `pnpm install` reconciled it, and the frozen-lockfile install was re-run as the gate.
+
 ## [2.9.2] - 2026-09-11
 
 Dependency security sweep. No source changes.

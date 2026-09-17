@@ -282,6 +282,10 @@ Test files use Vitest with comprehensive mocking:
 
 ## Version History & Recent Bugfixes
 
+### v2.9.3 (2026-09-17) - Routine Dependency Sweep
+
+`pnpm audit` clean before and after — no advisories were open, so unlike v2.9.2 this release closes none (verified against a deliberately vulnerable control package, so the clean result is a live registry response, not a silent audit failure). In-range sweep only: zod 4.6.5, biome 2.5.14, oxlint 1.83.0, @types/node 25.9.7, plus transitive drift incl. `fast-uri` 3.1.8 (runtime-reachable via `ajv`) and `hono` 4.13.8 (MCP SDK HTTP stack — not loaded under stdio transport). **Override block audited and deliberately left unchanged**: every floor was checked against its target's latest published version, and the six entries sitting exactly at their floor are each at the newest release that exists, so no floor is stale. The v2.8.2 `vite` lockfile-desync landmine reproduced exactly and was reconciled with a plain `pnpm install`. No source changes. Full detail in CHANGELOG.md.
+
 ### v2.9.2 (2026-09-11) - Dependency Security Sweep
 
 Cleared 12 advisories (5 high, 7 moderate) — `fast-uri` 3.1.7 (runtime-reachable via `ajv`), `nanoid` 3.3.19, `qs` 6.16.0, `hono` 4.13.7, `vitest`/`@vitest/mocker` 4.1.11. Raised the `hono`, `qs`, and `fast-uri` override floors, added a `nanoid` floor, removed the dead `@isaacs/brace-expansion` override, and ran the in-range sweep (oxlint 1.82.0, biome 2.5.13, tsx 4.23.13, axios 1.20.0, zod 4.6.2, uuid 14.0.2). No source changes. Full detail in CHANGELOG.md.
