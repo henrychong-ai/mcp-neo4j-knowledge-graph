@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.9.3] - 2026-09-24
+
+In-range dependency sweep. No source changes, no override changes.
+
+### Security
+
+- `pnpm audit` reports no known vulnerabilities, before and after the sweep. No advisories to clear.
+- `fast-uri` floated 3.1.7 -> 3.1.8 under its existing override (no advisory attached; runtime-reachable via `ajv`, so recorded).
+
+### Changed
+
+- **Direct, in range** (`pnpm update`, never `--latest`): `@modelcontextprotocol/sdk` 1.30.0 -> 1.30.1, `zod` 4.6.2 -> 4.6.5, `lru-cache` 11.5.2 -> 11.5.3, `oxlint` 1.82.0 -> 1.85.0, `@biomejs/biome` 2.5.13 -> 2.5.14, `tsx` 4.23.13 -> 4.23.15, `@types/node` 25.9.6 -> 25.9.8. Lint stays green at zero warnings on oxlint 1.85 with no rule disabled.
+- **Transitive drift:** `hono` 4.13.7 -> 4.13.9 (MCP SDK HTTP stack, not loaded by the stdio server), `rollup` 4.63.1 -> 4.63.5, `ip-address` 10.7.0 -> 10.7.2, `yaml` 2.9.0 -> 2.9.1, `proxy-addr` 2.0.7 -> 2.0.8, `is-core-module` 2.16.2 -> 2.17.0, `magicast` 0.5.4 -> 0.5.5, `string-width` 8.2.2 -> 8.3.0, `get-east-asian-width` 1.6.0 -> 1.7.0, `ast-v8-to-istanbul` 1.0.6 -> 1.0.7, `@babel/parser` 7.29.8 -> 7.29.9.
+- **Override block audited, unchanged:** every target resolves to its newest release below its `<MAJOR+1` ceiling, so no floor is stale.
+- **Lockfile reconciled:** `pnpm update` reproduced the documented vite specifier desync (`lockfile: ^7.3.6, manifest: >=7.3.6 <8`); a plain `pnpm install` fixed it and `pnpm install --frozen-lockfile` passes.
+- **Deferred majors, unchanged:** TypeScript 7, vitest 5 (and `@vitest/coverage-v8` 5), vite 8, lint-staged 17, `@types/node` 26, dotenv 18. `prom-client` remains deprecated upstream at 15.1.3; replacement is a separate decision.
+
 ## [2.9.2] - 2026-09-11
 
 Dependency security sweep. No source changes.

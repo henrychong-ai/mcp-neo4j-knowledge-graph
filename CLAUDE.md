@@ -282,6 +282,10 @@ Test files use Vitest with comprehensive mocking:
 
 ## Version History & Recent Bugfixes
 
+### v2.9.3 (2026-09-24) - In-Range Dependency Sweep
+
+Minor/patch sweep only; `pnpm audit` clean before and after, so no override floors changed (every override target already resolves to its newest release under its `<MAJOR+1` ceiling). MCP SDK 1.30.1, zod 4.6.5, lru-cache 11.5.3, oxlint 1.85.0, biome 2.5.14, tsx 4.23.15, @types/node 25.9.8; transitive `fast-uri` 3.1.8 (runtime-reachable), `hono` 4.13.9, `rollup` 4.63.5. The vite specifier-desync landmine reproduced under `pnpm update` and was reconciled with a plain `pnpm install`. Majors deferred. No source changes. Full detail in CHANGELOG.md.
+
 ### v2.9.2 (2026-09-11) - Dependency Security Sweep
 
 Cleared 12 advisories (5 high, 7 moderate) — `fast-uri` 3.1.7 (runtime-reachable via `ajv`), `nanoid` 3.3.19, `qs` 6.16.0, `hono` 4.13.7, `vitest`/`@vitest/mocker` 4.1.11. Raised the `hono`, `qs`, and `fast-uri` override floors, added a `nanoid` floor, removed the dead `@isaacs/brace-expansion` override, and ran the in-range sweep (oxlint 1.82.0, biome 2.5.13, tsx 4.23.13, axios 1.20.0, zod 4.6.2, uuid 14.0.2). No source changes. Full detail in CHANGELOG.md.
