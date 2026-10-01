@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.9.3] - 2026-10-01
+
+Dependency security sweep. No source changes.
+
+### Security
+
+- **Cleared 3 moderate advisories.** `pnpm audit` now reports no known vulnerabilities.
+  - `fast-uri` raised to 3.1.8 — GHSA-hrr3-gc8f-f4qj (inconsistent host case). Runtime-reachable (schema validation via `ajv`), so the priority item in this sweep.
+  - `ip-address` raised to 10.7.2 — GHSA-j6r3-76f7-8jcv (`isInSubnet()`/`isHostInSubnet()` comparison), GHSA-h3mg-xc3c-68pw (unbounded `Address6` parse diagnostic). Reached only through the MCP SDK's HTTP stack (`express-rate-limit`), which this server does not load (stdio transport only).
+
+### Changed
+
+- **Override floors raised** for the advisories above: `fast-uri` `>=3.1.6 <4` -> `>=3.1.8 <4`, `ip-address` `>=10.3.1 <11` -> `>=10.7.1 <11`. Every override keeps its `<MAJOR+1` ceiling.
+- **In-range sweep** (caret floors raised to the latest minor/patch, never a major): @modelcontextprotocol/sdk 1.31.0, lru-cache 11.5.3, zod 4.6.5, biome 2.5.15, oxlint 1.86.0, tsx 4.23.15, @types/node 25.9.8. Lint stays green at zero warnings on oxlint 1.86 with no rule disabled; biome 2.5.15 reformats nothing.
+- **Deferred majors, unchanged:** TypeScript 7, vitest 5 (and @vitest/coverage-v8 5), vite 8, lint-staged 17, @types/node 26, dotenv 18.
+- `prom-client` remains deprecated upstream at 15.1.3; replacement is still a separate decision.
+
 ## [2.9.2] - 2026-09-11
 
 Dependency security sweep. No source changes.
