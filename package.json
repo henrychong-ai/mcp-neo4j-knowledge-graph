@@ -31,7 +31,6 @@
   ],
   "files": [
     "dist",
-    "SETUP_AUTOMATION.md",
     "example.env"
   ],
   "scripts": {
