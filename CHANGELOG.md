@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.10.0] - 2026-10-02
+
+Tool input is now validated before a tool runs.
+
+### Added
+
+- **Tool input validation gate.** Every tool call is checked against a per-tool Zod schema before dispatch (`src/server/handlers/validateToolInput.ts`, schemas in `src/schemas/index.ts`). Handlers still receive the original arguments: nothing is stripped, defaulted or coerced, and unknown keys are accepted. A rejected call fails before any storage access with an error that names the tool and the argument path and never includes argument values.
+- 350 tests covering parity between the advertised tool list and the schemas, accept and reject cases for each of the 25 tools, and the existing in-band `add_observations` error results.
+
+### Changed
+
+- **Calls that used to do nothing, or act on a missing value, are now rejected with a clear error:**
+  - a missing top-level required key that was a silent no-op: `create_entities.entities`, `create_relations.relations`, `delete_entities.entityNames`, `delete_observations.deletions`, `delete_relations.relations`, `open_nodes.names`;
+  - a missing `query` (`search_nodes`, `semantic_search`) or `entity_name` (`get_entity_embedding`) that was acted on as the literal `undefined`;
+  - missing keys on `get_entity_history`, `get_relation_history` and `get_graph_at_time`, which returned an in-band error text and now throw;
+  - a negative `config.maxBatchSize` on the batch tools, which looped forever;
+  - wrong-typed required fields, which previously failed deeper in the stack.
+- Calls that succeed and do something today are unaffected. An entity without `observations` is still accepted by `create_entities`, and optionals the handlers read by truthiness or coerce are accepted as before.
+- TypeScript: `noUncheckedIndexedAccess` enabled; 54 sites narrowed. The CLIs and storage layer gained explicit checks where a value could be absent. Published type declarations change only for the schemas and the new validation module.
+- Lint: the Oxlint config is now `.oxlintrc.json` (the previous `oxlint.json` was never loaded) with the `typescript`, `unicorn` and `oxc` plugins and the `style` category off. `preserve-caught-error` is off for `OpenAIEmbeddingService.ts`: an HTTP client error there can carry the `Authorization` header and must not be chained as `cause`.
+- `@types/node` moved from `^25` to `^24` to match the Node 24 runtime line; `packageManager` carries the pnpm hash; the pre-commit hook scans staged changes with gitleaks.
+
+### Known issues (not changed in this release)
+
+- `include_null_domain: "false"` (a string) is treated as true, and `hybrid_search: "true"` (a string) disables hybrid retrieval. Pass booleans.
+
 ## [2.9.2] - 2026-09-11
 
 Dependency security sweep. No source changes.

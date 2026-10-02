@@ -284,6 +284,10 @@ Test files use Vitest with comprehensive mocking:
 
 ## Version History & Recent Bugfixes
 
+### v2.10.0 (2026-10-02) - Tool Input Validation Gate
+
+Every tool call is validated against a per-tool Zod schema before dispatch (see "Tool Input Validation Gate" below). Handlers still receive the original arguments. Calls that were silent no-ops (a missing top-level required key), a missing `query`/`entity_name`, and a negative `config.maxBatchSize` (previously an infinite loop) are now rejected with a clear error. Also: `noUncheckedIndexedAccess` on, Oxlint config actually loaded (`.oxlintrc.json`), `@types/node` on 24, gitleaks pre-commit. Full detail in CHANGELOG.md.
+
 ### v2.9.2 (2026-09-11) - Dependency Security Sweep
 
 Cleared 12 advisories (5 high, 7 moderate) — `fast-uri` 3.1.7 (runtime-reachable via `ajv`), `nanoid` 3.3.19, `qs` 6.16.0, `hono` 4.13.7, `vitest`/`@vitest/mocker` 4.1.11. Raised the `hono`, `qs`, and `fast-uri` override floors, added a `nanoid` floor, removed the dead `@isaacs/brace-expansion` override, and ran the in-range sweep (oxlint 1.82.0, biome 2.5.13, tsx 4.23.13, axios 1.20.0, zod 4.6.2, uuid 14.0.2). No source changes. Full detail in CHANGELOG.md.
