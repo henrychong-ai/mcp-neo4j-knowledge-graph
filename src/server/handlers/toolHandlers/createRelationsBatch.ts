@@ -5,6 +5,8 @@
  * Provides 10-50x performance improvement over individual creates.
  */
 
+import { normaliseBatchConfig } from './batchConfig.js';
+
 /**
  * Handle create_relations_batch tool calls
  *
@@ -17,7 +19,10 @@ export async function handleCreateRelationsBatch(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   knowledgeGraphManager: any
 ): Promise<{ content: { type: string; text: string }[] }> {
-  const result = await knowledgeGraphManager.createRelationsBatch(args.relations, args.config);
+  const result = await knowledgeGraphManager.createRelationsBatch(
+    args.relations,
+    normaliseBatchConfig(args.config)
+  );
 
   return {
     content: [

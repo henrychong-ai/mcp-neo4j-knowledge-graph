@@ -701,7 +701,7 @@ describe('validation is a gate, not a transform', () => {
     const manager = createMockManager();
 
     await callTool('read_graph', { random_string: 42 }, manager);
-    await callTool('flag_oversized_entities', { limit: '20', include_ok: 'yes' }, manager);
+    await callTool('flag_oversized_entities', { limit: '20', warn_ratio: 'high' }, manager);
     await callTool(
       'add_observations',
       { observations: [{ entityName: 'A', contents: ['x'], strength: 'high' }], metadata: 'n/a' },
@@ -781,35 +781,17 @@ describe('calls that work today keep working', () => {
     expect(manager.deleteObservations.mock.calls[0][0]).toBe(deletions);
   });
 
-  it('accepts every value for keys the code reads by truthiness or normalises itself', async () => {
+  it('accepts every value for keys the code normalises itself or never acts on', async () => {
     const manager = createMockManager();
 
-    await callTool('search_nodes', { query: 'q', include_null_domain: 'true' }, manager);
-    await callTool(
-      'semantic_search',
-      {
-        query: 'q',
-        limit: '5',
-        hybrid_search: 'true',
-        semantic_weight: '0.6',
-        include_null_domain: 1,
-      },
-      manager
-    );
+    await callTool('semantic_search', { query: 'q', limit: '5', semantic_weight: '0.6' }, manager);
     await callTool(
       'get_decayed_graph',
       { reference_time: { at: 'noon' }, decay_factor: true },
       manager
     );
 
-    expect(manager.searchNodes).toHaveBeenCalledWith(
-      'q',
-      expect.objectContaining({ includeNullDomain: 'true' })
-    );
-    expect(manager.search).toHaveBeenCalledWith(
-      'q',
-      expect.objectContaining({ limit: '5', hybridSearch: 'true', includeNullDomain: 1 })
-    );
+    expect(manager.search).toHaveBeenCalledWith('q', expect.objectContaining({ limit: '5' }));
     expect(manager.getDecayedGraph).toHaveBeenCalledTimes(1);
   });
 
@@ -876,6 +858,209 @@ describe('calls that work today keep working', () => {
     await callTool('create_entities_batch', { entities: [], config }, manager);
 
     expect(manager.createEntitiesBatch).toHaveBeenCalledWith([], config);
+  });
+});
+
+/**
+ * Every tool input that means a boolean. `send` builds the arguments carrying
+ * `value` (or omitting the key for ABSENT), `seen` reads what the manager was
+ * given, and `whenAbsent` / `whenNull` are what the handler has always passed
+ * on for a missing or null value.
+ */
+const ABSENT = Symbol('absent');
+
+function withKey(key: string, value: unknown): Record<string, unknown> {
+  return value === ABSENT ? {} : { [key]: value };
+}
+
+interface BooleanInput {
+  label: string;
+  tool: string;
+  path: string;
+  send: (value: unknown) => Record<string, unknown>;
+  seen: (manager: MockManager) => unknown;
+  whenAbsent: unknown;
+  whenNull: unknown;
+}
+
+const batchEnableParallel = (
+  tool: string,
+  key: string,
+  method:
+    | 'createEntitiesBatch'
+    | 'createRelationsBatch'
+    | 'addObservationsBatch'
+    | 'updateEntitiesBatch'
+): BooleanInput => ({
+  label: `${tool} config.enableParallel`,
+  tool,
+  path: 'config.enableParallel',
+  send: value => ({ [key]: [], config: { maxBatchSize: 10, ...withKey('enableParallel', value) } }),
+  seen: manager => manager[method].mock.calls[0][1].enableParallel,
+  whenAbsent: undefined,
+  whenNull: null,
+});
+
+const booleanInputs: BooleanInput[] = [
+  {
+    label: 'search_nodes include_null_domain',
+    tool: 'search_nodes',
+    path: 'include_null_domain',
+    send: value => ({ query: 'q', ...withKey('include_null_domain', value) }),
+    seen: manager => manager.searchNodes.mock.calls[0][1].includeNullDomain,
+    whenAbsent: undefined,
+    whenNull: null,
+  },
+  {
+    label: 'semantic_search include_null_domain',
+    tool: 'semantic_search',
+    path: 'include_null_domain',
+    send: value => ({ query: 'q', ...withKey('include_null_domain', value) }),
+    seen: manager => manager.search.mock.calls[0][1].includeNullDomain,
+    whenAbsent: undefined,
+    whenNull: null,
+  },
+  {
+    label: 'semantic_search hybrid_search',
+    tool: 'semantic_search',
+    path: 'hybrid_search',
+    send: value => ({ query: 'q', ...withKey('hybrid_search', value) }),
+    seen: manager => manager.search.mock.calls[0][1].hybridSearch,
+    whenAbsent: true,
+    whenNull: null,
+  },
+  {
+    label: 'semantic_search enable_hybrid_retrieval (not advertised)',
+    tool: 'semantic_search',
+    path: 'enable_hybrid_retrieval',
+    send: value => ({ query: 'q', ...withKey('enable_hybrid_retrieval', value) }),
+    seen: manager => manager.search.mock.calls[0][1].enableHybridRetrieval,
+    whenAbsent: true,
+    whenNull: true,
+  },
+  {
+    label: 'semantic_search hybrid_config.enable_score_debug (not advertised)',
+    tool: 'semantic_search',
+    path: 'hybrid_config.enable_score_debug',
+    send: value => ({
+      query: 'q',
+      hybrid_config: { vector_weight: 0.7, ...withKey('enable_score_debug', value) },
+    }),
+    seen: manager => manager.search.mock.calls[0][1].hybridConfig.enableScoreDebug,
+    whenAbsent: undefined,
+    whenNull: null,
+  },
+  {
+    label: 'flag_oversized_entities include_ok',
+    tool: 'flag_oversized_entities',
+    path: 'include_ok',
+    send: value => withKey('include_ok', value),
+    seen: manager => manager.flagOversizedEntities.mock.calls[0][0].includeOk,
+    whenAbsent: false,
+    whenNull: false,
+  },
+  batchEnableParallel('create_entities_batch', 'entities', 'createEntitiesBatch'),
+  batchEnableParallel('create_relations_batch', 'relations', 'createRelationsBatch'),
+  batchEnableParallel('add_observations_batch', 'observations', 'addObservationsBatch'),
+  batchEnableParallel('update_entities_batch', 'updates', 'updateEntitiesBatch'),
+];
+
+describe.each(booleanInputs.map(input => [input.label, input] as const))(
+  'boolean input: %s',
+  (_label, input) => {
+    const seenFor = async (value: unknown): Promise<unknown> => {
+      const manager = createMockManager();
+      await callTool(input.tool, input.send(value), manager);
+      return input.seen(manager);
+    };
+
+    it.each([true, false])('passes the real boolean %s on unchanged', async value => {
+      expect(await seenFor(value)).toBe(value);
+    });
+
+    it.each([
+      ['true', true],
+      ['TRUE', true],
+      ['True', true],
+      ['false', false],
+      ['FALSE', false],
+      ['False', false],
+    ])('reads the string %j as %s', async (text, expected) => {
+      expect(await seenFor(text)).toBe(expected);
+    });
+
+    it('keeps the default for an absent value and for null', async () => {
+      expect(await seenFor(ABSENT)).toBe(input.whenAbsent);
+      expect(await seenFor(null)).toBe(input.whenNull);
+    });
+
+    it.each([1, 0, 'yes', 'no', '', ' true', ['true'], { value: true }])(
+      'rejects %j before any storage call',
+      async value => {
+        const manager = createMockManager();
+
+        await expect(callTool(input.tool, input.send(value), manager)).rejects.toThrow(
+          `Invalid arguments for tool ${input.tool}: ${input.path}: Invalid input: expected boolean (true or false)`
+        );
+        expectNothingCalled(manager);
+      }
+    );
+  }
+);
+
+describe('boolean inputs: handling at the handler boundary', () => {
+  it('lists every boolean the tools advertise', () => {
+    const advertised: string[] = [];
+    for (const tool of advertisedTools) {
+      for (const entry of advertisedPaths(tool.inputSchema)) {
+        if (entry.schema.type === 'boolean') {
+          advertised.push(`${tool.name} ${pathText(entry.path)}`);
+        }
+      }
+    }
+    const covered = booleanInputs.map(input => `${input.tool} ${input.path}`);
+
+    expect(advertised).toHaveLength(8);
+    expect(covered).toEqual(expect.arrayContaining(advertised));
+  });
+
+  it("hands the manager the caller's own config unless a string had to be converted", async () => {
+    const manager = createMockManager();
+    const withBoolean = { maxBatchSize: 5, enableParallel: false, extra: 'kept' };
+    const withString = { maxBatchSize: 5, enableParallel: 'FALSE', extra: 'kept' };
+
+    await callTool('create_entities_batch', { entities: [], config: withBoolean }, manager);
+    await callTool('create_entities_batch', { entities: [], config: withString }, manager);
+
+    expect(manager.createEntitiesBatch.mock.calls[0][1]).toBe(withBoolean);
+    expect(manager.createEntitiesBatch.mock.calls[1][1]).toEqual({
+      maxBatchSize: 5,
+      enableParallel: false,
+      extra: 'kept',
+    });
+    // The caller's object is copied, never mutated.
+    expect(withString.enableParallel).toBe('FALSE');
+  });
+
+  it('the strings that used to be read as their opposite now mean what they say', async () => {
+    const manager = createMockManager();
+
+    await callTool('search_nodes', { query: 'q', include_null_domain: 'false' }, manager);
+    await callTool(
+      'semantic_search',
+      { query: 'q', hybrid_search: 'true', enable_hybrid_retrieval: 'false' },
+      manager
+    );
+    await callTool('flag_oversized_entities', { include_ok: 'true' }, manager);
+
+    // Was the truthy string "false" -> filtered to null-domain entities only.
+    expect(manager.searchNodes.mock.calls[0][1].includeNullDomain).toBe(false);
+    // Was the string "true", which the storage provider's `=== true` check rejected.
+    expect(manager.search.mock.calls[0][1].hybridSearch).toBe(true);
+    // Was `"false" !== false`, i.e. enabled.
+    expect(manager.search.mock.calls[0][1].enableHybridRetrieval).toBe(false);
+    // Was `"true" === true`, i.e. false.
+    expect(manager.flagOversizedEntities.mock.calls[0][0].includeOk).toBe(true);
   });
 });
 

@@ -5,6 +5,7 @@
  * Provides 10-50x performance improvement over individual updates.
  */
 
+import { normaliseBatchConfig } from './batchConfig.js';
 import {
   attachWriteWarnings,
   collectWriteSizeWarnings,
@@ -23,7 +24,10 @@ export async function handleUpdateEntitiesBatch(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   knowledgeGraphManager: any
 ): Promise<{ content: { type: string; text: string }[] }> {
-  const result = await knowledgeGraphManager.updateEntitiesBatch(args.updates, args.config);
+  const result = await knowledgeGraphManager.updateEntitiesBatch(
+    args.updates,
+    normaliseBatchConfig(args.config)
+  );
 
   // Additive, fail-open: flag any entity this write pushed near the open_nodes cap.
   const warnings = await collectWriteSizeWarnings(knowledgeGraphManager, extractWrittenNames(args));

@@ -5,6 +5,7 @@
  * Provides 10-50x performance improvement over individual adds.
  */
 
+import { normaliseBatchConfig } from './batchConfig.js';
 import {
   attachWriteWarnings,
   collectWriteSizeWarnings,
@@ -23,7 +24,10 @@ export async function handleAddObservationsBatch(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   knowledgeGraphManager: any
 ): Promise<{ content: { type: string; text: string }[] }> {
-  const result = await knowledgeGraphManager.addObservationsBatch(args.observations, args.config);
+  const result = await knowledgeGraphManager.addObservationsBatch(
+    args.observations,
+    normaliseBatchConfig(args.config)
+  );
 
   // Additive, fail-open: flag any entity this write pushed near the open_nodes cap.
   const warnings = await collectWriteSizeWarnings(knowledgeGraphManager, extractWrittenNames(args));

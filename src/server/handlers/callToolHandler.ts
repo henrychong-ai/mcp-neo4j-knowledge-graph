@@ -1,3 +1,4 @@
+import { normaliseBooleanInput } from '../../schemas/index.js';
 import { logger } from '../../utils/logger.js';
 
 import * as toolHandlers from './toolHandlers/index.js';
@@ -109,7 +110,7 @@ export async function handleCallToolRequest(
             text: JSON.stringify(
               await knowledgeGraphManager.searchNodes(args.query, {
                 domain: args.domain,
-                includeNullDomain: args.include_null_domain,
+                includeNullDomain: normaliseBooleanInput(args.include_null_domain),
               }),
               null,
               2
@@ -135,7 +136,7 @@ export async function handleCallToolRequest(
         const result = await knowledgeGraphManager.flagOversizedEntities({
           scanLimit: typeof args.limit === 'number' ? args.limit : undefined,
           warnRatio: typeof args.warn_ratio === 'number' ? args.warn_ratio : undefined,
-          includeOk: args.include_ok === true,
+          includeOk: normaliseBooleanInput(args.include_ok) === true,
         });
         return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
       } catch (error: unknown) {
@@ -356,7 +357,7 @@ export async function handleCallToolRequest(
               graphWeight: hybridConfigRaw.graph_weight,
               temporalWeight: hybridConfigRaw.temporal_weight,
               connectionWeight: hybridConfigRaw.connection_weight,
-              enableScoreDebug: hybridConfigRaw.enable_score_debug,
+              enableScoreDebug: normaliseBooleanInput(hybridConfigRaw.enable_score_debug),
               referenceTime: hybridConfigRaw.reference_time,
               temporalHalfLife: hybridConfigRaw.temporal_half_life,
             }
@@ -365,17 +366,18 @@ export async function handleCallToolRequest(
         // Extract search options from args. limit and min_similarity pass through
         // undefined-preserving — the manager resolves defaults (reranker-aware for
         // limit), and an explicit min_similarity of 0 must not collapse to a default.
+        const hybridSearch = normaliseBooleanInput(args.hybrid_search);
         const searchOptions = {
           limit: args.limit as number | undefined,
           minSimilarity: args.min_similarity as number | undefined,
           entityTypes: args.entity_types || [],
-          hybridSearch: args.hybrid_search === undefined ? true : args.hybrid_search,
+          hybridSearch: hybridSearch === undefined ? true : hybridSearch,
           semanticWeight: args.semantic_weight || 0.6,
           semanticSearch: true,
           hybridConfig,
-          enableHybridRetrieval: args.enable_hybrid_retrieval !== false,
+          enableHybridRetrieval: normaliseBooleanInput(args.enable_hybrid_retrieval) !== false,
           domain: args.domain,
-          includeNullDomain: args.include_null_domain,
+          includeNullDomain: normaliseBooleanInput(args.include_null_domain),
         };
 
         // Call the search method with semantic search options

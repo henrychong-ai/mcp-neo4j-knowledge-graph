@@ -18,8 +18,14 @@
  * - A value read behind a truthiness guard (`x || fallback`, `if (x)`) accepts
  *   every falsy value, because the code treats them all as absent (`whenTruthy`).
  * - A value the code acts on whatever its type accepts any value (`anyValue`):
- *   keys read purely by truthiness, keys the handler type-guards or normalises
- *   itself, and keys that cannot change what is stored or returned.
+ *   keys the handler type-guards or normalises itself, and keys that cannot
+ *   change what is stored or returned.
+ * - A key that means a boolean accepts `true` / `false` and the strings
+ *   `"true"` / `"false"` in any letter case (`booleanLike`). The handler turns
+ *   the string into the boolean with `normaliseBooleanInput` before using it —
+ *   the one normalisation in the input path, and it happens in the handler, not
+ *   here. Anything else (a number, any other string) is a caller error and is
+ *   rejected. Absent and `null` keep whatever the handler does by default.
  * - A value the code coerces (`String(x)`, `Number(x)`) accepts the coercible
  *   type too.
  * - Unknown keys pass at every object level (`z.looseObject`).
@@ -46,11 +52,55 @@ const optionalString = z.string().nullish();
 const stringArray = z.array(z.string());
 
 /**
- * Any value is accepted: the code acts on this key whatever its type (it is read
- * purely by truthiness, type-guarded or normalised by the handler, or never
- * able to change what is stored or returned).
+ * Any value is accepted: the code acts on this key whatever its type (it is
+ * type-guarded or normalised by the handler, or never able to change what is
+ * stored or returned).
  */
 const anyValue = z.unknown().optional();
+
+/**
+ * Turn the strings `"true"` / `"false"` (any letter case) into the boolean they
+ * spell. Every other value is returned exactly as given, so a real boolean, an
+ * absent value, and `null` behave as they always have.
+ *
+ * Handlers call this on each boolean-meaning tool input before reading it.
+ * Without it a string is read as its opposite: `"false"` is truthy, and
+ * `"true" === true` is false.
+ *
+ * @param value A tool argument that means a boolean
+ * @returns `true` / `false` for the two strings, otherwise the value unchanged
+ */
+export function normaliseBooleanInput(value: unknown): unknown {
+  if (typeof value !== 'string') {
+    return value;
+  }
+  const text = value.toLowerCase();
+  if (text === 'true') {
+    return true;
+  }
+  if (text === 'false') {
+    return false;
+  }
+  return value;
+}
+
+const EXPECTED_BOOLEAN = 'Invalid input: expected boolean (true or false)';
+
+/**
+ * A boolean-meaning input: `true`, `false`, or the string `"true"` / `"false"`
+ * in any letter case; absent and `null` mean the handler's default.
+ */
+const booleanLike = z
+  .union(
+    [
+      z.boolean(),
+      z.string().refine(text => typeof normaliseBooleanInput(text) === 'boolean', {
+        error: EXPECTED_BOOLEAN,
+      }),
+    ],
+    { error: EXPECTED_BOOLEAN }
+  )
+  .nullish();
 
 /**
  * Check `schema` only when the code would actually use the value. `handled`
@@ -315,7 +365,7 @@ export type AddObservationsInput = z.infer<typeof AddObservationsInputSchema>;
  * `maxBatchSize` drives `for (i = 0; i < n; i += maxBatchSize)`: a positive
  * number or a positive-integer string chunks every item, while a negative
  * number loops forever, so that is rejected. `enableParallel` has no effect in
- * any batch method.
+ * any batch method, but it means a boolean, so it is checked as one.
  */
 const EXPECTED_POSITIVE_NUMBER = 'Invalid input: expected a positive number';
 const BatchConfigInputSchema = unless(
@@ -330,7 +380,7 @@ const BatchConfigInputSchema = unless(
         { error: EXPECTED_POSITIVE_NUMBER }
       )
     ),
-    enableParallel: anyValue,
+    enableParallel: booleanLike,
   })
 );
 
@@ -361,12 +411,12 @@ export type AddObservationsBatchInput = z.infer<typeof AddObservationsBatchInput
 /**
  * Schema for `search_nodes` tool input. `query` is interpolated into a regex
  * pattern, so a number works as well as a string. `domain` is used only when
- * truthy, and `include_null_domain` is read purely by truthiness.
+ * truthy.
  */
 export const SearchNodesInputSchema = z.looseObject({
   query: stringOrNumber,
   domain: whenTruthy(z.string()),
-  include_null_domain: anyValue,
+  include_null_domain: booleanLike,
 });
 
 export type SearchNodesInput = z.infer<typeof SearchNodesInputSchema>;
@@ -383,22 +433,30 @@ export type SearchNodesInput = z.infer<typeof SearchNodesInputSchema>;
  * - `min_similarity`: read as `value ?? 0` and compared with scores in Cypher,
  *   so it must be a number when present.
  * - `entity_types`, `domain`: used only when truthy.
- * - `hybrid_search`, `include_null_domain`: read by truthiness or strict
- *   comparison, never by type.
  * - `semantic_weight`: only reaches the search cache key.
+ * - `hybrid_search`, `include_null_domain`: booleans.
  *
- * The handler also reads the unadvertised `hybrid_config` and
- * `enable_hybrid_retrieval`; they pass through unvalidated as unknown keys.
+ * The handler also reads two keys the tool does not advertise:
+ * `enable_hybrid_retrieval` and `hybrid_config`. Their boolean-meaning values
+ * (`enable_hybrid_retrieval`, `hybrid_config.enable_score_debug`) are checked;
+ * the numeric weights in `hybrid_config` pass through as unknown keys.
  */
 export const SemanticSearchInputSchema = z.looseObject({
   query: stringOrNumber,
   limit: anyValue,
   min_similarity: z.number().nullish(),
   entity_types: whenTruthy(stringArray),
-  hybrid_search: anyValue,
+  hybrid_search: booleanLike,
   semantic_weight: anyValue,
   domain: whenTruthy(z.string()),
-  include_null_domain: anyValue,
+  include_null_domain: booleanLike,
+  enable_hybrid_retrieval: booleanLike,
+  hybrid_config: unless(
+    isNotPlainObject,
+    z.looseObject({
+      enable_score_debug: booleanLike,
+    })
+  ),
 });
 
 export type SemanticSearchInput = z.infer<typeof SemanticSearchInputSchema>;
@@ -544,14 +602,14 @@ export const OpenNodesInputSchema = z.looseObject({
 export type OpenNodesInput = z.infer<typeof OpenNodesInputSchema>;
 
 /**
- * Schema for `flag_oversized_entities` tool input. The handler type-guards each
- * argument itself (a non-number `limit` or `warn_ratio` falls back to the
- * default, and `include_ok` counts only when it is exactly `true`).
+ * Schema for `flag_oversized_entities` tool input. The handler type-guards the
+ * two numbers itself (a non-number `limit` or `warn_ratio` falls back to the
+ * default). `include_ok` is a boolean.
  */
 export const FlagOversizedEntitiesInputSchema = z.looseObject({
   limit: anyValue,
   warn_ratio: anyValue,
-  include_ok: anyValue,
+  include_ok: booleanLike,
 });
 
 export type FlagOversizedEntitiesInput = z.infer<typeof FlagOversizedEntitiesInputSchema>;
