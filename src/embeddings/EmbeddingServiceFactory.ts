@@ -111,9 +111,9 @@ export class EmbeddingServiceFactory {
     // Check if we should use mock embeddings (for testing / explicit opt-in).
     // NEVER honoured in production — a stale MOCK_EMBEDDINGS=true must not beat a
     // real key (or silently produce random vectors) on a production deployment.
-    const isProduction = process.env.NODE_ENV === 'production';
-    const useMockEmbeddings = process.env.MOCK_EMBEDDINGS === 'true' && !isProduction;
-    if (process.env.MOCK_EMBEDDINGS === 'true' && isProduction) {
+    const isProduction = process.env['NODE_ENV'] === 'production';
+    const useMockEmbeddings = process.env['MOCK_EMBEDDINGS'] === 'true' && !isProduction;
+    if (process.env['MOCK_EMBEDDINGS'] === 'true' && isProduction) {
       logger.error(
         'EmbeddingServiceFactory: MOCK_EMBEDDINGS=true ignored under NODE_ENV=production — ' +
           'random vectors must never drive a production store.'
@@ -123,16 +123,18 @@ export class EmbeddingServiceFactory {
     // New EMBEDDING_* env vars (provider-neutral) fall back to the legacy OPENAI_* names,
     // so existing deployments are unaffected. Point EMBEDDING_API_ENDPOINT / EMBEDDING_API_BASE_URL
     // at any OpenAI-compatible endpoint (e.g. Cloudflare Workers AI) to switch providers.
-    const apiKey = process.env.EMBEDDING_API_KEY || process.env.OPENAI_API_KEY;
+    const apiKey = process.env['EMBEDDING_API_KEY'] || process.env['OPENAI_API_KEY'];
     const embeddingModel =
-      process.env.EMBEDDING_MODEL || process.env.OPENAI_EMBEDDING_MODEL || 'text-embedding-3-small';
+      process.env['EMBEDDING_MODEL'] ||
+      process.env['OPENAI_EMBEDDING_MODEL'] ||
+      'text-embedding-3-small';
     const apiEndpoint =
-      process.env.EMBEDDING_API_ENDPOINT ||
-      (process.env.EMBEDDING_API_BASE_URL
-        ? `${process.env.EMBEDDING_API_BASE_URL.replace(/\/$/, '')}/embeddings`
+      process.env['EMBEDDING_API_ENDPOINT'] ||
+      (process.env['EMBEDDING_API_BASE_URL']
+        ? `${process.env['EMBEDDING_API_BASE_URL'].replace(/\/$/, '')}/embeddings`
         : undefined);
-    const dimensions = process.env.EMBEDDING_DIMENSIONS
-      ? Number.parseInt(process.env.EMBEDDING_DIMENSIONS, 10)
+    const dimensions = process.env['EMBEDDING_DIMENSIONS']
+      ? Number.parseInt(process.env['EMBEDDING_DIMENSIONS'], 10)
       : undefined;
 
     logger.debug('EmbeddingServiceFactory: Creating service from environment variables', {
@@ -194,10 +196,10 @@ export class EmbeddingServiceFactory {
    * @returns true if embeddings should be enabled
    */
   static hasEmbeddingProvider(env: NodeJS.ProcessEnv = process.env): boolean {
-    if (env.EMBEDDING_API_KEY || env.OPENAI_API_KEY) {
+    if (env['EMBEDDING_API_KEY'] || env['OPENAI_API_KEY']) {
       return true;
     }
-    return env.MOCK_EMBEDDINGS === 'true' && env.NODE_ENV !== 'production';
+    return env['MOCK_EMBEDDINGS'] === 'true' && env['NODE_ENV'] !== 'production';
   }
 
   /**
@@ -215,7 +217,7 @@ export class EmbeddingServiceFactory {
     service: EmbeddingService,
     env: NodeJS.ProcessEnv = process.env
   ): boolean {
-    if (env.NODE_ENV !== 'production') {
+    if (env['NODE_ENV'] !== 'production') {
       return true;
     }
     // instanceof + model-name sentinel: instanceof alone is brittle across
@@ -236,8 +238,8 @@ export class EmbeddingServiceFactory {
    * @returns a human-readable warning when inconsistent, else null
    */
   static checkDimensionConsistency(env: NodeJS.ProcessEnv = process.env): string | null {
-    const rawEmbedding = env.EMBEDDING_DIMENSIONS;
-    const rawIndex = env.NEO4J_VECTOR_DIMENSIONS;
+    const rawEmbedding = env['EMBEDDING_DIMENSIONS'];
+    const rawIndex = env['NEO4J_VECTOR_DIMENSIONS'];
     const parsedEmbedding = rawEmbedding ? Number.parseInt(rawEmbedding, 10) : undefined;
     const parsedIndex = rawIndex ? Number.parseInt(rawIndex, 10) : undefined;
 

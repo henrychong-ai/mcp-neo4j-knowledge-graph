@@ -109,8 +109,8 @@ export class Neo4jSchemaManager {
     const allConstraints = await this.listConstraints();
     const entityConstraints = allConstraints.filter(c => {
       // Neo4j returns either 'labelsOrTypes' or 'entityType' depending on version
-      const label = c.labelsOrTypes || c.entityType;
-      const properties = c.properties;
+      const label = c['labelsOrTypes'] || c['entityType'];
+      const properties = c['properties'];
 
       return (
         (label === 'Entity' || (Array.isArray(label) && label.includes('Entity'))) &&
@@ -122,14 +122,14 @@ export class Neo4jSchemaManager {
     // Warn about conflicting constraints
     let hasConflicts = false;
     for (const constraint of entityConstraints) {
-      if (constraint.name !== constraintName) {
+      if (constraint['name'] !== constraintName) {
         hasConflicts = true;
-        this.log(`⚠️  WARNING: Found conflicting Entity constraint: ${constraint.name}`);
-        this.log(`   Properties: ${JSON.stringify(constraint.properties)}`);
+        this.log(`⚠️  WARNING: Found conflicting Entity constraint: ${constraint['name']}`);
+        this.log(`   Properties: ${JSON.stringify(constraint['properties'])}`);
 
         if (recreate) {
-          this.log(`   Dropping conflicting constraint: ${constraint.name}`);
-          await this.dropConstraintIfExists(constraint.name as string);
+          this.log(`   Dropping conflicting constraint: ${constraint['name']}`);
+          await this.dropConstraintIfExists(constraint['name'] as string);
         } else {
           this.log(`   Run with recreate=true to automatically remove conflicting constraints`);
         }
@@ -158,7 +158,7 @@ export class Neo4jSchemaManager {
 
     // Verify the constraint was created
     const constraints = await this.listConstraints();
-    const found = constraints.some(c => c.name === constraintName);
+    const found = constraints.some(c => c['name'] === constraintName);
     this.log(`Constraint verification: ${found ? 'FOUND' : 'NOT FOUND'}`);
   }
 

@@ -462,26 +462,26 @@ export class Neo4jStorageProvider implements StorageProvider {
   private nodeToEntity(node: Record<string, unknown>): ExtendedEntity {
     // Handle observations - Neo4j can return as string (JSON) or array
     let observations: string[];
-    if (typeof node.observations === 'string') {
-      observations = JSON.parse(node.observations);
-    } else if (Array.isArray(node.observations)) {
-      observations = node.observations;
+    if (typeof node['observations'] === 'string') {
+      observations = JSON.parse(node['observations']);
+    } else if (Array.isArray(node['observations'])) {
+      observations = node['observations'];
     } else {
       observations = [];
     }
 
     return {
-      name: node.name as string,
-      entityType: node.entityType as string,
-      domain: node.domain as string | null | undefined,
+      name: node['name'] as string,
+      entityType: node['entityType'] as string,
+      domain: node['domain'] as string | null | undefined,
       observations,
-      id: node.id as string | undefined,
-      version: this.convertNeo4jInt(node.version) as number | undefined,
-      createdAt: this.convertNeo4jInt(node.createdAt) as number | undefined,
-      updatedAt: this.convertNeo4jInt(node.updatedAt) as number | undefined,
-      validFrom: this.convertNeo4jInt(node.validFrom) as number | undefined,
-      validTo: this.convertNeo4jInt(node.validTo),
-      changedBy: node.changedBy as string | null | undefined,
+      id: node['id'] as string | undefined,
+      version: this.convertNeo4jInt(node['version']) as number | undefined,
+      createdAt: this.convertNeo4jInt(node['createdAt']) as number | undefined,
+      updatedAt: this.convertNeo4jInt(node['updatedAt']) as number | undefined,
+      validFrom: this.convertNeo4jInt(node['validFrom']) as number | undefined,
+      validTo: this.convertNeo4jInt(node['validTo']),
+      changedBy: node['changedBy'] as string | null | undefined,
     };
   }
 
@@ -507,8 +507,8 @@ export class Neo4jStorageProvider implements StorageProvider {
     // Extract timestamps from the Neo4j relation for metadata
     // Convert Neo4j Integer objects to numbers
     const now = Date.now();
-    const createdAt = this.convertNeo4jInt(rel.createdAt) || now;
-    const updatedAt = this.convertNeo4jInt(rel.updatedAt) || now;
+    const createdAt = this.convertNeo4jInt(rel['createdAt']) || now;
+    const updatedAt = this.convertNeo4jInt(rel['updatedAt']) || now;
 
     // Create metadata with required fields
     const metadata = {
@@ -517,9 +517,9 @@ export class Neo4jStorageProvider implements StorageProvider {
     };
 
     // Try to merge any additional metadata from the relation
-    if (typeof rel.metadata === 'string' && rel.metadata) {
+    if (typeof rel['metadata'] === 'string' && rel['metadata']) {
       try {
-        const parsedMetadata = JSON.parse(rel.metadata);
+        const parsedMetadata = JSON.parse(rel['metadata']);
         Object.assign(metadata, parsedMetadata);
       } catch {
         logger.warn(`Failed to parse metadata for relation from ${fromNode} to ${toNode}`);
@@ -528,13 +528,13 @@ export class Neo4jStorageProvider implements StorageProvider {
 
     // Create a standard Relation object with proper type handling
     // Convert Neo4j Integer objects for strength and confidence
-    const strength = this.convertNeo4jInt(rel.strength);
-    const confidence = this.convertNeo4jInt(rel.confidence);
+    const strength = this.convertNeo4jInt(rel['strength']);
+    const confidence = this.convertNeo4jInt(rel['confidence']);
 
     return {
       from: fromNode,
       to: toNode,
-      relationType: rel.relationType as string,
+      relationType: rel['relationType'] as string,
       // Convert null to undefined for compatibility with Relation interface
       strength: strength === null ? undefined : strength,
       confidence: confidence === null ? undefined : confidence,
@@ -750,7 +750,7 @@ export class Neo4jStorageProvider implements StorageProvider {
       let entityTypeFilter = '';
       if (options.entityTypes && options.entityTypes.length > 0) {
         entityTypeFilter = 'AND e.entityType IN $entityTypes';
-        parameters.entityTypes = options.entityTypes;
+        parameters['entityTypes'] = options.entityTypes;
       }
 
       // Add domain filter if provided
@@ -760,7 +760,7 @@ export class Neo4jStorageProvider implements StorageProvider {
         domainFilter = 'AND e.domain IS NULL';
       } else if (options.domain) {
         domainFilter = 'AND e.domain = $domain';
-        parameters.domain = options.domain;
+        parameters['domain'] = options.domain;
       }
 
       // Build the search query
@@ -2887,7 +2887,7 @@ export class Neo4jStorageProvider implements StorageProvider {
       };
 
       // Log start of semantic search
-      diagnostics.stepsTaken.push({
+      diagnostics['stepsTaken'].push({
         step: 'start',
         timestamp: Date.now(),
         options: {
@@ -2912,7 +2912,7 @@ export class Neo4jStorageProvider implements StorageProvider {
       // Ensure vector store is initialized
       if (!this.vectorStore.initialized) {
         logger.info('Neo4jStorageProvider: Vector store not initialized, initializing now');
-        diagnostics.stepsTaken.push({
+        diagnostics['stepsTaken'].push({
           step: 'vectorStoreInitialization',
           timestamp: Date.now(),
           status: 'started',
@@ -2923,7 +2923,7 @@ export class Neo4jStorageProvider implements StorageProvider {
           logger.info(
             'Neo4jStorageProvider: Vector store initialized successfully for semantic search'
           );
-          diagnostics.stepsTaken.push({
+          diagnostics['stepsTaken'].push({
             step: 'vectorStoreInitialization',
             timestamp: Date.now(),
             status: 'success',
@@ -2933,7 +2933,7 @@ export class Neo4jStorageProvider implements StorageProvider {
             'Neo4jStorageProvider: Failed to initialize vector store for semantic search',
             initError
           );
-          diagnostics.stepsTaken.push({
+          diagnostics['stepsTaken'].push({
             step: 'vectorStoreInitialization',
             timestamp: Date.now(),
             status: 'error',
@@ -2945,7 +2945,7 @@ export class Neo4jStorageProvider implements StorageProvider {
 
       // If no embedding service, log a warning
       if (this.embeddingService) {
-        diagnostics.stepsTaken.push({
+        diagnostics['stepsTaken'].push({
           step: 'embeddingServiceCheck',
           timestamp: Date.now(),
           status: 'available',
@@ -2954,7 +2954,7 @@ export class Neo4jStorageProvider implements StorageProvider {
         });
       } else {
         logger.warn('Neo4jStorageProvider: No embedding service available for semantic search');
-        diagnostics.stepsTaken.push({
+        diagnostics['stepsTaken'].push({
           step: 'embeddingServiceCheck',
           timestamp: Date.now(),
           status: 'unavailable',
@@ -2965,7 +2965,7 @@ export class Neo4jStorageProvider implements StorageProvider {
       if (!options.queryVector && this.embeddingService) {
         try {
           logger.debug('Neo4jStorageProvider: Generating query vector for semantic search');
-          diagnostics.stepsTaken.push({
+          diagnostics['stepsTaken'].push({
             step: 'generateQueryEmbedding',
             timestamp: Date.now(),
             status: 'started',
@@ -2973,7 +2973,7 @@ export class Neo4jStorageProvider implements StorageProvider {
 
           options.queryVector = await this.embeddingService.generateEmbedding(query);
 
-          diagnostics.stepsTaken.push({
+          diagnostics['stepsTaken'].push({
             step: 'generateQueryEmbedding',
             timestamp: Date.now(),
             status: 'success',
@@ -2985,7 +2985,7 @@ export class Neo4jStorageProvider implements StorageProvider {
             vectorLength: options.queryVector.length,
           });
         } catch (embedError) {
-          diagnostics.stepsTaken.push({
+          diagnostics['stepsTaken'].push({
             step: 'generateQueryEmbedding',
             timestamp: Date.now(),
             status: 'error',
@@ -3000,7 +3000,7 @@ export class Neo4jStorageProvider implements StorageProvider {
       }
 
       if (options.queryVector) {
-        diagnostics.stepsTaken.push({
+        diagnostics['stepsTaken'].push({
           step: 'searchMethod',
           timestamp: Date.now(),
           method: 'vectorOnly',
@@ -3011,7 +3011,7 @@ export class Neo4jStorageProvider implements StorageProvider {
         // Default 0 (no similarity floor) — `??` so an explicit 0 is honoured
         const minSimilarity = options.minSimilarity ?? 0;
 
-        diagnostics.stepsTaken.push({
+        diagnostics['stepsTaken'].push({
           step: 'vectorSearch',
           timestamp: Date.now(),
           status: 'started',
@@ -3039,7 +3039,7 @@ export class Neo4jStorageProvider implements StorageProvider {
               minScore: minSimilarity,
             };
             if (options.domain && !options.includeNullDomain) {
-              queryParams.domain = options.domain;
+              queryParams['domain'] = options.domain;
             }
 
             const vectorResult = await session.run(
@@ -3079,7 +3079,7 @@ export class Neo4jStorageProvider implements StorageProvider {
 
               const entities = (await Promise.all(entityPromises)).filter(Boolean);
 
-              diagnostics.stepsTaken.push({
+              diagnostics['stepsTaken'].push({
                 step: 'vectorSearch',
                 timestamp: Date.now(),
                 status: 'completed',
@@ -3088,12 +3088,12 @@ export class Neo4jStorageProvider implements StorageProvider {
 
               // If no entities found after filtering, return empty result
               if (entities.length === 0) {
-                diagnostics.endTime = Date.now();
-                diagnostics.totalTimeTaken = diagnostics.endTime - diagnostics.startTime;
+                diagnostics['endTime'] = Date.now();
+                diagnostics['totalTimeTaken'] = diagnostics['endTime'] - diagnostics['startTime'];
 
                 // Only include diagnostics if DEBUG is enabled
                 const result: KnowledgeGraphWithDiagnostics = { entities: [], relations: [] };
-                if (process.env.DEBUG === 'true') {
+                if (process.env['DEBUG'] === 'true') {
                   result.diagnostics = diagnostics;
                 }
 
@@ -3109,7 +3109,7 @@ export class Neo4jStorageProvider implements StorageProvider {
               let finalEntityNames = entities.map(e => e.name);
 
               if (enableHybridRetrieval) {
-                diagnostics.stepsTaken.push({
+                diagnostics['stepsTaken'].push({
                   step: 'hybridReranking',
                   timestamp: Date.now(),
                   status: 'started',
@@ -3131,7 +3131,7 @@ export class Neo4jStorageProvider implements StorageProvider {
                   const hybridRetriever = new HybridRetriever({
                     config: {
                       ...options.hybridConfig,
-                      enableScoreDebug: process.env.DEBUG === 'true',
+                      enableScoreDebug: process.env['DEBUG'] === 'true',
                     },
                   });
 
@@ -3151,15 +3151,15 @@ export class Neo4jStorageProvider implements StorageProvider {
                   finalEntityNames = hybridResults.map(r => r.entity.name);
 
                   // Add hybrid scores to diagnostics if debug mode
-                  if (process.env.DEBUG === 'true') {
-                    diagnostics.hybridScores = hybridResults.map(r => ({
+                  if (process.env['DEBUG'] === 'true') {
+                    diagnostics['hybridScores'] = hybridResults.map(r => ({
                       entityName: r.entity.name,
                       scores: r.scores,
                       explanation: r.scores.explanation,
                     }));
                   }
 
-                  diagnostics.stepsTaken.push({
+                  diagnostics['stepsTaken'].push({
                     step: 'hybridReranking',
                     timestamp: Date.now(),
                     status: 'completed',
@@ -3174,7 +3174,7 @@ export class Neo4jStorageProvider implements StorageProvider {
                     `Neo4jStorageProvider: Hybrid reranking failed, falling back to vector-only results`,
                     error
                   );
-                  diagnostics.stepsTaken.push({
+                  diagnostics['stepsTaken'].push({
                     step: 'hybridReranking',
                     timestamp: Date.now(),
                     status: 'error',
@@ -3191,12 +3191,12 @@ export class Neo4jStorageProvider implements StorageProvider {
                 finalEntityNames
               );
 
-              diagnostics.endTime = Date.now();
-              diagnostics.totalTimeTaken = diagnostics.endTime - diagnostics.startTime;
+              diagnostics['endTime'] = Date.now();
+              diagnostics['totalTimeTaken'] = diagnostics['endTime'] - diagnostics['startTime'];
 
               // Prepare result and cache it
               const result: KnowledgeGraphWithDiagnostics =
-                process.env.DEBUG === 'true' ? { ...finalGraph, diagnostics } : finalGraph;
+                process.env['DEBUG'] === 'true' ? { ...finalGraph, diagnostics } : finalGraph;
 
               // Cache the result if caching enabled
               if (useCaching) {
@@ -3211,19 +3211,19 @@ export class Neo4jStorageProvider implements StorageProvider {
               return result;
             } else {
               // No results from vector search
-              diagnostics.stepsTaken.push({
+              diagnostics['stepsTaken'].push({
                 step: 'vectorSearch',
                 timestamp: Date.now(),
                 status: 'completed',
                 resultsCount: 0,
               });
 
-              diagnostics.endTime = Date.now();
-              diagnostics.totalTimeTaken = diagnostics.endTime - diagnostics.startTime;
+              diagnostics['endTime'] = Date.now();
+              diagnostics['totalTimeTaken'] = diagnostics['endTime'] - diagnostics['startTime'];
 
               // Only include diagnostics if DEBUG is enabled
               const result: KnowledgeGraphWithDiagnostics = { entities: [], relations: [] };
-              if (process.env.DEBUG === 'true') {
+              if (process.env['DEBUG'] === 'true') {
                 result.diagnostics = diagnostics;
               }
 
@@ -3238,7 +3238,7 @@ export class Neo4jStorageProvider implements StorageProvider {
             logger.error(
               `Neo4jStorageProvider: Direct vector search error: ${error instanceof Error ? error.message : String(error)}`
             );
-            diagnostics.stepsTaken.push({
+            diagnostics['stepsTaken'].push({
               step: 'vectorSearch',
               timestamp: Date.now(),
               status: 'error',
@@ -3270,7 +3270,7 @@ export class Neo4jStorageProvider implements StorageProvider {
           })
           .slice(0, searchLimit);
 
-        diagnostics.stepsTaken.push({
+        diagnostics['stepsTaken'].push({
           step: 'filterResults',
           timestamp: Date.now(),
           status: 'completed',
@@ -3279,18 +3279,18 @@ export class Neo4jStorageProvider implements StorageProvider {
 
         // If no results, return empty graph
         if (filteredResults.length === 0) {
-          diagnostics.stepsTaken.push({
+          diagnostics['stepsTaken'].push({
             step: 'finalResult',
             timestamp: Date.now(),
             status: 'empty',
           });
 
-          diagnostics.endTime = Date.now();
-          diagnostics.totalTimeTaken = diagnostics.endTime - diagnostics.startTime;
+          diagnostics['endTime'] = Date.now();
+          diagnostics['totalTimeTaken'] = diagnostics['endTime'] - diagnostics['startTime'];
 
           // Only include diagnostics if DEBUG is enabled
           const result: KnowledgeGraphWithDiagnostics = { entities: [], relations: [] };
-          if (process.env.DEBUG === 'true') {
+          if (process.env['DEBUG'] === 'true') {
             result.diagnostics = diagnostics;
           }
 
@@ -3300,7 +3300,7 @@ export class Neo4jStorageProvider implements StorageProvider {
         // Get the entities and relations
         const entityNames = filteredResults.map(r => r.name);
 
-        diagnostics.stepsTaken.push({
+        diagnostics['stepsTaken'].push({
           step: 'openNodes',
           timestamp: Date.now(),
           status: 'started',
@@ -3314,7 +3314,7 @@ export class Neo4jStorageProvider implements StorageProvider {
           entityNames
         );
 
-        diagnostics.stepsTaken.push({
+        diagnostics['stepsTaken'].push({
           step: 'openNodes',
           timestamp: Date.now(),
           status: 'completed',
@@ -3322,12 +3322,12 @@ export class Neo4jStorageProvider implements StorageProvider {
           relationsCount: finalGraph.relations.length,
         });
 
-        diagnostics.endTime = Date.now();
-        diagnostics.totalTimeTaken = diagnostics.endTime - diagnostics.startTime;
+        diagnostics['endTime'] = Date.now();
+        diagnostics['totalTimeTaken'] = diagnostics['endTime'] - diagnostics['startTime'];
 
         // Prepare result and cache it
         const result: KnowledgeGraphWithDiagnostics =
-          process.env.DEBUG === 'true' ? { ...finalGraph, diagnostics } : finalGraph;
+          process.env['DEBUG'] === 'true' ? { ...finalGraph, diagnostics } : finalGraph;
 
         // Cache the result if caching enabled
         if (useCaching) {
@@ -3338,7 +3338,7 @@ export class Neo4jStorageProvider implements StorageProvider {
       }
 
       // If no query vector provided, fall back to text search
-      diagnostics.stepsTaken.push({
+      diagnostics['stepsTaken'].push({
         step: 'searchMethod',
         timestamp: Date.now(),
         method: 'textOnly',
@@ -3347,7 +3347,7 @@ export class Neo4jStorageProvider implements StorageProvider {
 
       const textSearchLimit = Math.floor(options.limit ?? 10);
 
-      diagnostics.stepsTaken.push({
+      diagnostics['stepsTaken'].push({
         step: 'textSearch',
         timestamp: Date.now(),
         status: 'started',
@@ -3356,7 +3356,7 @@ export class Neo4jStorageProvider implements StorageProvider {
 
       const textResults = await this.searchNodes(query, { ...options, limit: textSearchLimit });
 
-      diagnostics.stepsTaken.push({
+      diagnostics['stepsTaken'].push({
         step: 'textSearch',
         timestamp: Date.now(),
         status: 'completed',
@@ -3364,12 +3364,12 @@ export class Neo4jStorageProvider implements StorageProvider {
         timeTaken: textResults.timeTaken,
       });
 
-      diagnostics.endTime = Date.now();
-      diagnostics.totalTimeTaken = diagnostics.endTime - diagnostics.startTime;
+      diagnostics['endTime'] = Date.now();
+      diagnostics['totalTimeTaken'] = diagnostics['endTime'] - diagnostics['startTime'];
 
       // Prepare result and cache it
       const result: KnowledgeGraphWithDiagnostics =
-        process.env.DEBUG === 'true' ? { ...textResults, diagnostics } : textResults;
+        process.env['DEBUG'] === 'true' ? { ...textResults, diagnostics } : textResults;
 
       // Cache the text search fallback result if caching enabled
       if (useCaching) {

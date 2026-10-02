@@ -92,7 +92,7 @@ export class PrometheusMetrics {
    * Only starts if ENABLE_PROMETHEUS_METRICS=true in environment
    */
   public startServer(port = 9091): void {
-    const enabled = process.env.ENABLE_PROMETHEUS_METRICS === 'true';
+    const enabled = process.env['ENABLE_PROMETHEUS_METRICS'] === 'true';
 
     if (!enabled) {
       logger.info(

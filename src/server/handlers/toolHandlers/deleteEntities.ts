@@ -10,7 +10,7 @@ export async function handleDeleteEntities(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   knowledgeGraphManager: any
 ): Promise<{ content: { type: string; text: string }[] }> {
-  await knowledgeGraphManager.deleteEntities(args.entityNames);
+  await knowledgeGraphManager.deleteEntities(args['entityNames']);
   return {
     content: [
       {

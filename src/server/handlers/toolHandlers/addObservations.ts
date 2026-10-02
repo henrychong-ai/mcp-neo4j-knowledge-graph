@@ -12,7 +12,7 @@ export async function handleAddObservations(
 ): Promise<{ content: { type: string; text: string }[] }> {
   try {
     // Validate the observations array
-    if (!args.observations || !Array.isArray(args.observations)) {
+    if (!args['observations'] || !Array.isArray(args['observations'])) {
       throw new Error('Invalid observations: must be an array');
     }
 
@@ -21,13 +21,13 @@ export async function handleAddObservations(
     const defaultConfidence = 0.95;
 
     // Force add strength to args if it doesn't exist
-    if (args.strength === undefined) {
-      args.strength = defaultStrength;
+    if (args['strength'] === undefined) {
+      args['strength'] = defaultStrength;
     }
 
     // Ensure each observation has the required fields
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const processedObservations = args.observations.map((obs: any) => {
+    const processedObservations = args['observations'].map((obs: any) => {
       // Validate required fields
       if (!obs.entityName) {
         throw new Error('Missing required parameter: entityName');
@@ -37,7 +37,7 @@ export async function handleAddObservations(
       }
 
       // Always set strength value
-      const obsStrength = obs.strength === undefined ? args.strength : obs.strength;
+      const obsStrength = obs.strength === undefined ? args['strength'] : obs.strength;
 
       // Set defaults for each observation
       return {
@@ -45,8 +45,8 @@ export async function handleAddObservations(
         contents: obs.contents,
         strength: obsStrength,
         confidence:
-          obs.confidence === undefined ? args.confidence || defaultConfidence : obs.confidence,
-        metadata: obs.metadata || args.metadata || { source: 'API call' },
+          obs.confidence === undefined ? args['confidence'] || defaultConfidence : obs.confidence,
+        metadata: obs.metadata || args['metadata'] || { source: 'API call' },
       };
     });
 

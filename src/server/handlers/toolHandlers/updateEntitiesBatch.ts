@@ -25,8 +25,8 @@ export async function handleUpdateEntitiesBatch(
   knowledgeGraphManager: any
 ): Promise<{ content: { type: string; text: string }[] }> {
   const result = await knowledgeGraphManager.updateEntitiesBatch(
-    args.updates,
-    normaliseBatchConfig(args.config)
+    args['updates'],
+    normaliseBatchConfig(args['config'])
   );
 
   // Additive, fail-open: flag any entity this write pushed near the open_nodes cap.

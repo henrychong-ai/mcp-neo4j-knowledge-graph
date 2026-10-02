@@ -10,7 +10,7 @@ export async function handleCreateEntities(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   knowledgeGraphManager: any
 ): Promise<{ content: { type: string; text: string }[] }> {
-  const result = await knowledgeGraphManager.createEntities(args.entities);
+  const result = await knowledgeGraphManager.createEntities(args['entities']);
   return {
     content: [
       {

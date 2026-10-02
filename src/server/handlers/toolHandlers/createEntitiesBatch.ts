@@ -25,8 +25,8 @@ export async function handleCreateEntitiesBatch(
   knowledgeGraphManager: any
 ): Promise<{ content: { type: string; text: string }[] }> {
   const result = await knowledgeGraphManager.createEntitiesBatch(
-    args.entities,
-    normaliseBatchConfig(args.config)
+    args['entities'],
+    normaliseBatchConfig(args['config'])
   );
 
   // Additive, fail-open: flag any entity this write created near the open_nodes cap.

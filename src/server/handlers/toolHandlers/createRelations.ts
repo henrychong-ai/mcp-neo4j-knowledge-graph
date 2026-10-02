@@ -10,7 +10,7 @@ export async function handleCreateRelations(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   knowledgeGraphManager: any
 ): Promise<{ content: { type: string; text: string }[] }> {
-  const result = await knowledgeGraphManager.createRelations(args.relations);
+  const result = await knowledgeGraphManager.createRelations(args['relations']);
   return {
     content: [
       {

@@ -20,8 +20,8 @@ export async function handleCreateRelationsBatch(
   knowledgeGraphManager: any
 ): Promise<{ content: { type: string; text: string }[] }> {
   const result = await knowledgeGraphManager.createRelationsBatch(
-    args.relations,
-    normaliseBatchConfig(args.config)
+    args['relations'],
+    normaliseBatchConfig(args['config'])
   );
 
   return {

@@ -748,6 +748,6 @@ export async function handleListToolsRequest(): Promise<{ tools: Record<string, 
 
   // Return the list of tools with debug tools conditionally included
   return {
-    tools: [...baseTools, ...temporalTools, ...(process.env.DEBUG === 'true' ? debugTools : [])],
+    tools: [...baseTools, ...temporalTools, ...(process.env['DEBUG'] === 'true' ? debugTools : [])],
   };
 }

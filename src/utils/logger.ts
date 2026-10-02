@@ -17,17 +17,17 @@ const LOG_LEVELS = {
 
 function getLogLevel(): number {
   // During tests, default to silent unless explicitly set
-  if (process.env.NODE_ENV === 'test' && !process.env.LOG_LEVEL) {
+  if (process.env['NODE_ENV'] === 'test' && !process.env['LOG_LEVEL']) {
     return LOG_LEVELS.silent;
   }
 
   // DEBUG env var enables debug logging
-  if (process.env.DEBUG) {
+  if (process.env['DEBUG']) {
     return LOG_LEVELS.debug;
   }
 
   // Check LOG_LEVEL env var
-  const level = process.env.LOG_LEVEL?.toLowerCase();
+  const level = process.env['LOG_LEVEL']?.toLowerCase();
   if (level && level in LOG_LEVELS) {
     return LOG_LEVELS[level as keyof typeof LOG_LEVELS];
   }

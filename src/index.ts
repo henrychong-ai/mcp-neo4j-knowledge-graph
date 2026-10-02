@@ -23,10 +23,10 @@ export { Relation } from './types/relation.js';
 const storageProvider = initializeStorageProvider();
 
 // See README "Embedding Pipeline Topology" for what these env flags do.
-const writeEmbeddingsLocally = process.env.WRITE_EMBEDDINGS_LOCALLY !== 'false';
-const embeddingBackfillCron = process.env.EMBEDDING_BACKFILL_CRON ?? '0 19 * * *';
-const staleClaimMs = process.env.EMBEDDING_STALE_CLAIM_MS
-  ? Number.parseInt(process.env.EMBEDDING_STALE_CLAIM_MS, 10)
+const writeEmbeddingsLocally = process.env['WRITE_EMBEDDINGS_LOCALLY'] !== 'false';
+const embeddingBackfillCron = process.env['EMBEDDING_BACKFILL_CRON'] ?? '0 19 * * *';
+const staleClaimMs = process.env['EMBEDDING_STALE_CLAIM_MS']
+  ? Number.parseInt(process.env['EMBEDDING_STALE_CLAIM_MS'], 10)
   : 5 * 60 * 1000;
 
 // Initialize Prometheus metrics (will be initialized in production environment only)
@@ -44,7 +44,7 @@ if (!EmbeddingServiceFactory.hasEmbeddingProvider()) {
   );
 } else {
   try {
-    logger.debug(`Storage provider type: ${process.env.MEMORY_STORAGE_TYPE || 'default'}`);
+    logger.debug(`Storage provider type: ${process.env['MEMORY_STORAGE_TYPE'] || 'default'}`);
 
     // Initialize the embedding service (OpenAI-compatible: OpenAI / Cloudflare Workers AI / any)
     const embeddingService = EmbeddingServiceFactory.createFromEnvironment();
@@ -66,18 +66,18 @@ if (!EmbeddingServiceFactory.hasEmbeddingProvider()) {
 
     // Configure rate limiting options - stricter limits to prevent OpenAI API abuse
     const rateLimiterOptions = {
-      tokensPerInterval: process.env.EMBEDDING_RATE_LIMIT_TOKENS
-        ? Number.parseInt(process.env.EMBEDDING_RATE_LIMIT_TOKENS, 10)
+      tokensPerInterval: process.env['EMBEDDING_RATE_LIMIT_TOKENS']
+        ? Number.parseInt(process.env['EMBEDDING_RATE_LIMIT_TOKENS'], 10)
         : 20, // Default: 20 requests per minute
-      interval: process.env.EMBEDDING_RATE_LIMIT_INTERVAL
-        ? Number.parseInt(process.env.EMBEDDING_RATE_LIMIT_INTERVAL, 10)
+      interval: process.env['EMBEDDING_RATE_LIMIT_INTERVAL']
+        ? Number.parseInt(process.env['EMBEDDING_RATE_LIMIT_INTERVAL'], 10)
         : 60 * 1000, // Default: 1 minute
     };
 
     logger.info('Initializing EmbeddingJobManager', {
       rateLimiterOptions,
       model: embeddingService.getModelInfo().name,
-      storageType: process.env.MEMORY_STORAGE_TYPE || 'neo4j',
+      storageType: process.env['MEMORY_STORAGE_TYPE'] || 'neo4j',
     });
 
     const adaptedStorageProvider = createAdaptedStorageProvider(storageProvider);
@@ -233,7 +233,7 @@ export async function main(): Promise<void> {
 }
 
 // Only run main and background jobs if not in a test environment
-if (!process.env.VITEST && !process.env.NODE_ENV?.includes('test')) {
+if (!process.env['VITEST'] && !process.env['NODE_ENV']?.includes('test')) {
   // Initialize Prometheus metrics (production only - prevents interval leaks in tests)
   prometheusMetrics = PrometheusMetrics.getInstance();
   prometheusMetrics.startServer(9091);

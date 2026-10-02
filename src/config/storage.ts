@@ -40,9 +40,9 @@ export function createStorageConfig(storageType: string | undefined): StorageCon
   const type = determineStorageType(storageType);
 
   logger.info('Configuring Neo4j storage provider', {
-    uri: process.env.NEO4J_URI || 'bolt://localhost:7687',
-    database: process.env.NEO4J_DATABASE || 'neo4j',
-    vectorIndex: process.env.NEO4J_VECTOR_INDEX || 'entity_embeddings',
+    uri: process.env['NEO4J_URI'] || 'bolt://localhost:7687',
+    database: process.env['NEO4J_DATABASE'] || 'neo4j',
+    vectorIndex: process.env['NEO4J_VECTOR_INDEX'] || 'entity_embeddings',
   });
 
   // Base configuration with Neo4j properties
@@ -50,16 +50,16 @@ export function createStorageConfig(storageType: string | undefined): StorageCon
     type,
     options: {
       // Neo4j connection options from environment variables
-      neo4jUri: process.env.NEO4J_URI || 'bolt://localhost:7687',
-      neo4jUsername: process.env.NEO4J_USERNAME || 'neo4j',
-      neo4jPassword: process.env.NEO4J_PASSWORD || 'memento_password',
-      neo4jDatabase: process.env.NEO4J_DATABASE || 'neo4j',
-      neo4jVectorIndexName: process.env.NEO4J_VECTOR_INDEX || 'entity_embeddings',
-      neo4jVectorDimensions: process.env.NEO4J_VECTOR_DIMENSIONS
-        ? Number.parseInt(process.env.NEO4J_VECTOR_DIMENSIONS, 10)
+      neo4jUri: process.env['NEO4J_URI'] || 'bolt://localhost:7687',
+      neo4jUsername: process.env['NEO4J_USERNAME'] || 'neo4j',
+      neo4jPassword: process.env['NEO4J_PASSWORD'] || 'memento_password',
+      neo4jDatabase: process.env['NEO4J_DATABASE'] || 'neo4j',
+      neo4jVectorIndexName: process.env['NEO4J_VECTOR_INDEX'] || 'entity_embeddings',
+      neo4jVectorDimensions: process.env['NEO4J_VECTOR_DIMENSIONS']
+        ? Number.parseInt(process.env['NEO4J_VECTOR_DIMENSIONS'], 10)
         : 1536,
       neo4jSimilarityFunction:
-        (process.env.NEO4J_SIMILARITY_FUNCTION as 'cosine' | 'euclidean') || 'cosine',
+        (process.env['NEO4J_SIMILARITY_FUNCTION'] as 'cosine' | 'euclidean') || 'cosine',
     },
   };
 
@@ -72,7 +72,7 @@ export function createStorageConfig(storageType: string | undefined): StorageCon
  */
 export function initializeStorageProvider(): ReturnType<StorageProviderFactory['createProvider']> {
   const factory = new StorageProviderFactory();
-  const config = createStorageConfig(process.env.MEMORY_STORAGE_TYPE);
+  const config = createStorageConfig(process.env['MEMORY_STORAGE_TYPE']);
 
   return factory.createProvider(config);
 }

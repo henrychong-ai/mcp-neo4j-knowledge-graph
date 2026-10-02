@@ -25,8 +25,8 @@ export async function handleAddObservationsBatch(
   knowledgeGraphManager: any
 ): Promise<{ content: { type: string; text: string }[] }> {
   const result = await knowledgeGraphManager.addObservationsBatch(
-    args.observations,
-    normaliseBatchConfig(args.config)
+    args['observations'],
+    normaliseBatchConfig(args['config'])
   );
 
   // Additive, fail-open: flag any entity this write pushed near the open_nodes cap.

@@ -69,27 +69,27 @@ export async function handleCallToolRequest(
     }
 
     case 'delete_observations': {
-      await knowledgeGraphManager.deleteObservations(args.deletions);
+      await knowledgeGraphManager.deleteObservations(args['deletions']);
       return { content: [{ type: 'text', text: 'Observations deleted successfully' }] };
     }
 
     case 'delete_relations': {
-      await knowledgeGraphManager.deleteRelations(args.relations);
+      await knowledgeGraphManager.deleteRelations(args['relations']);
       return { content: [{ type: 'text', text: 'Relations deleted successfully' }] };
     }
 
     case 'get_relation': {
       const relation = await knowledgeGraphManager.getRelation(
-        args.from,
-        args.to,
-        args.relationType
+        args['from'],
+        args['to'],
+        args['relationType']
       );
       if (!relation) {
         return {
           content: [
             {
               type: 'text',
-              text: `Relation not found: ${args.from} -> ${args.relationType} -> ${args.to}`,
+              text: `Relation not found: ${args['from']} -> ${args['relationType']} -> ${args['to']}`,
             },
           ],
         };
@@ -98,7 +98,7 @@ export async function handleCallToolRequest(
     }
 
     case 'update_relation': {
-      await knowledgeGraphManager.updateRelation(args.relation);
+      await knowledgeGraphManager.updateRelation(args['relation']);
       return { content: [{ type: 'text', text: 'Relation updated successfully' }] };
     }
 
@@ -108,9 +108,9 @@ export async function handleCallToolRequest(
           {
             type: 'text',
             text: JSON.stringify(
-              await knowledgeGraphManager.searchNodes(args.query, {
-                domain: args.domain,
-                includeNullDomain: normaliseBooleanInput(args.include_null_domain),
+              await knowledgeGraphManager.searchNodes(args['query'], {
+                domain: args['domain'],
+                includeNullDomain: normaliseBooleanInput(args['include_null_domain']),
               }),
               null,
               2
@@ -125,7 +125,7 @@ export async function handleCallToolRequest(
         content: [
           {
             type: 'text',
-            text: JSON.stringify(await knowledgeGraphManager.openNodes(args.names), null, 2),
+            text: JSON.stringify(await knowledgeGraphManager.openNodes(args['names']), null, 2),
           },
         ],
       };
@@ -134,9 +134,9 @@ export async function handleCallToolRequest(
     case 'flag_oversized_entities': {
       try {
         const result = await knowledgeGraphManager.flagOversizedEntities({
-          scanLimit: typeof args.limit === 'number' ? args.limit : undefined,
-          warnRatio: typeof args.warn_ratio === 'number' ? args.warn_ratio : undefined,
-          includeOk: normaliseBooleanInput(args.include_ok) === true,
+          scanLimit: typeof args['limit'] === 'number' ? args['limit'] : undefined,
+          warnRatio: typeof args['warn_ratio'] === 'number' ? args['warn_ratio'] : undefined,
+          includeOk: normaliseBooleanInput(args['include_ok']) === true,
         });
         return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
       } catch (error: unknown) {
@@ -149,7 +149,7 @@ export async function handleCallToolRequest(
 
     case 'get_entity_history': {
       try {
-        const history = await knowledgeGraphManager.getEntityHistory(args.entityName);
+        const history = await knowledgeGraphManager.getEntityHistory(args['entityName']);
         return { content: [{ type: 'text', text: JSON.stringify(history, null, 2) }] };
       } catch (error: unknown) {
         const errorMessage = error instanceof Error ? error.message : String(error);
@@ -162,9 +162,9 @@ export async function handleCallToolRequest(
     case 'get_relation_history': {
       try {
         const history = await knowledgeGraphManager.getRelationHistory(
-          args.from,
-          args.to,
-          args.relationType
+          args['from'],
+          args['to'],
+          args['relationType']
         );
         return { content: [{ type: 'text', text: JSON.stringify(history, null, 2) }] };
       } catch (error: unknown) {
@@ -177,7 +177,7 @@ export async function handleCallToolRequest(
 
     case 'get_graph_at_time': {
       try {
-        const graph = await knowledgeGraphManager.getGraphAtTime(args.timestamp);
+        const graph = await knowledgeGraphManager.getGraphAtTime(args['timestamp']);
         return { content: [{ type: 'text', text: JSON.stringify(graph, null, 2) }] };
       } catch (error: unknown) {
         const errorMessage = error instanceof Error ? error.message : String(error);
@@ -195,12 +195,12 @@ export async function handleCallToolRequest(
           decayFactor?: number;
         } = {};
 
-        if (args.reference_time) {
-          options.referenceTime = Number(args.reference_time);
+        if (args['reference_time']) {
+          options.referenceTime = Number(args['reference_time']);
         }
 
-        if (args.decay_factor) {
-          options.decayFactor = Number(args.decay_factor);
+        if (args['decay_factor']) {
+          options.decayFactor = Number(args['decay_factor']);
         }
 
         // Pass options to getDecayedGraph if any are provided
@@ -220,14 +220,14 @@ export async function handleCallToolRequest(
 
     case 'force_generate_embedding': {
       // Validate arguments
-      if (!args.entity_name) {
+      if (!args['entity_name']) {
         throw new Error('Missing required parameter: entity_name');
       }
 
       try {
         // First determine if the input looks like a UUID
         const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-        const isUUID = uuidPattern.test(String(args.entity_name));
+        const isUUID = uuidPattern.test(String(args['entity_name']));
 
         // Try to get all entities first to locate the correct one
         const allEntities = await knowledgeGraphManager.openNodes([]);
@@ -237,19 +237,23 @@ export async function handleCallToolRequest(
         if (allEntities?.entities && allEntities.entities.length > 0) {
           // Try different methods to find the entity
           // 1. Direct match by name
-          entity = allEntities.entities.find((e: { name: string }) => e.name === args.entity_name);
+          entity = allEntities.entities.find(
+            (e: { name: string }) => e.name === args['entity_name']
+          );
 
           // 2. If not found and input is UUID, try matching by ID
           if (!entity && isUUID) {
             entity = allEntities.entities.find(
-              (e: Record<string, unknown>) => 'id' in e && e.id === args.entity_name
+              (e: Record<string, unknown>) => 'id' in e && e['id'] === args['entity_name']
             );
           }
         }
 
         // If still not found, try explicit lookup by name
         if (!entity) {
-          const openedEntities = await knowledgeGraphManager.openNodes([String(args.entity_name)]);
+          const openedEntities = await knowledgeGraphManager.openNodes([
+            String(args['entity_name']),
+          ]);
 
           if (openedEntities?.entities && openedEntities.entities.length > 0) {
             entity = openedEntities.entities[0];
@@ -264,7 +268,7 @@ export async function handleCallToolRequest(
           typeof knowledgeGraphManager.storageProvider.getEntityById === 'function'
         ) {
           try {
-            entity = await knowledgeGraphManager.storageProvider.getEntityById(args.entity_name);
+            entity = await knowledgeGraphManager.storageProvider.getEntityById(args['entity_name']);
           } catch {
             // Ignore lookup errors, we'll throw entity not found below
           }
@@ -272,7 +276,7 @@ export async function handleCallToolRequest(
 
         // Final check
         if (!entity) {
-          throw new Error(`Entity not found: ${args.entity_name}`);
+          throw new Error(`Entity not found: ${args['entity_name']}`);
         }
 
         // Check if embedding service and job manager are available
@@ -301,7 +305,7 @@ export async function handleCallToolRequest(
         // Store the embedding with both name and ID for redundancy
         await knowledgeGraphManager.storageProvider.storeEntityVector(entity.name, embedding);
 
-        const entityId = (entity as Record<string, unknown>).id;
+        const entityId = (entity as Record<string, unknown>)['id'];
         if (entityId && typeof entityId === 'string') {
           try {
             await knowledgeGraphManager.storageProvider.storeEntityVector(entityId, embedding);
@@ -318,7 +322,7 @@ export async function handleCallToolRequest(
                 {
                   success: true,
                   entity: entity.name,
-                  entity_id: (entity as Record<string, unknown>).id,
+                  entity_id: (entity as Record<string, unknown>)['id'],
                   vector_length: vector.length,
                   model: embeddingService.getModelInfo().name,
                 },
@@ -339,7 +343,7 @@ export async function handleCallToolRequest(
     case 'semantic_search': {
       try {
         // Extract hybrid search configuration if provided
-        const hybridConfigRaw = args.hybrid_config as
+        const hybridConfigRaw = args['hybrid_config'] as
           | {
               vector_weight?: number;
               graph_weight?: number;
@@ -366,22 +370,22 @@ export async function handleCallToolRequest(
         // Extract search options from args. limit and min_similarity pass through
         // undefined-preserving — the manager resolves defaults (reranker-aware for
         // limit), and an explicit min_similarity of 0 must not collapse to a default.
-        const hybridSearch = normaliseBooleanInput(args.hybrid_search);
+        const hybridSearch = normaliseBooleanInput(args['hybrid_search']);
         const searchOptions = {
-          limit: args.limit as number | undefined,
-          minSimilarity: args.min_similarity as number | undefined,
-          entityTypes: args.entity_types || [],
+          limit: args['limit'] as number | undefined,
+          minSimilarity: args['min_similarity'] as number | undefined,
+          entityTypes: args['entity_types'] || [],
           hybridSearch: hybridSearch === undefined ? true : hybridSearch,
-          semanticWeight: args.semantic_weight || 0.6,
+          semanticWeight: args['semantic_weight'] || 0.6,
           semanticSearch: true,
           hybridConfig,
-          enableHybridRetrieval: normaliseBooleanInput(args.enable_hybrid_retrieval) !== false,
-          domain: args.domain,
-          includeNullDomain: normaliseBooleanInput(args.include_null_domain),
+          enableHybridRetrieval: normaliseBooleanInput(args['enable_hybrid_retrieval']) !== false,
+          domain: args['domain'],
+          includeNullDomain: normaliseBooleanInput(args['include_null_domain']),
         };
 
         // Call the search method with semantic search options
-        const results = await knowledgeGraphManager.search(String(args.query), searchOptions);
+        const results = await knowledgeGraphManager.search(String(args['query']), searchOptions);
 
         return { content: [{ type: 'text', text: JSON.stringify(results, null, 2) }] };
       } catch (error: unknown) {
@@ -395,16 +399,17 @@ export async function handleCallToolRequest(
     case 'get_entity_embedding': {
       try {
         // Check if entity exists
-        const entity = await knowledgeGraphManager.openNodes([String(args.entity_name)]);
+        const entity = await knowledgeGraphManager.openNodes([String(args['entity_name'])]);
         if (!entity.entities || entity.entities.length === 0) {
-          return { content: [{ type: 'text', text: `Entity not found: ${args.entity_name}` }] };
+          return { content: [{ type: 'text', text: `Entity not found: ${args['entity_name']}` }] };
         }
 
         // Access the embedding using appropriate interface
         if (
           knowledgeGraphManager.storageProvider &&
-          typeof (knowledgeGraphManager.storageProvider as Record<string, unknown>)
-            .getEntityEmbedding === 'function'
+          typeof (knowledgeGraphManager.storageProvider as Record<string, unknown>)[
+            'getEntityEmbedding'
+          ] === 'function'
         ) {
           interface EntityEmbedding {
             vector: number[];
@@ -416,12 +421,12 @@ export async function handleCallToolRequest(
             knowledgeGraphManager.storageProvider as {
               getEntityEmbedding: (entityName: string) => Promise<EntityEmbedding | null>;
             }
-          ).getEntityEmbedding(String(args.entity_name));
+          ).getEntityEmbedding(String(args['entity_name']));
 
           if (!embedding) {
             return {
               content: [
-                { type: 'text', text: `No embedding found for entity: ${args.entity_name}` },
+                { type: 'text', text: `No embedding found for entity: ${args['entity_name']}` },
               ],
             };
           }
@@ -432,7 +437,7 @@ export async function handleCallToolRequest(
                 type: 'text',
                 text: JSON.stringify(
                   {
-                    entityName: args.entity_name,
+                    entityName: args['entity_name'],
                     embedding: embedding.vector,
                     model: embedding.model || 'unknown',
                     dimensions: embedding.vector ? embedding.vector.length : 0,
@@ -466,14 +471,14 @@ export async function handleCallToolRequest(
       // Diagnostic tool to check embedding configuration
       try {
         // Check for OpenAI API key
-        const hasOpenAIKey = !!process.env.OPENAI_API_KEY;
-        const embeddingModel = process.env.OPENAI_EMBEDDING_MODEL || 'text-embedding-3-small';
+        const hasOpenAIKey = !!process.env['OPENAI_API_KEY'];
+        const embeddingModel = process.env['OPENAI_EMBEDDING_MODEL'] || 'text-embedding-3-small';
 
         // Check if embedding job manager is initialized
         const hasEmbeddingJobManager = !!knowledgeGraphManager.embeddingJobManager;
 
         // Get storage provider info
-        const storageType = process.env.MEMORY_STORAGE_TYPE || 'neo4j';
+        const storageType = process.env['MEMORY_STORAGE_TYPE'] || 'neo4j';
         const storageProvider = knowledgeGraphManager.storageProvider;
 
         // Get Neo4j specific configuration
@@ -487,12 +492,12 @@ export async function handleCallToolRequest(
           connectionStatus: string;
           vectorStoreStatus?: string;
         } = {
-          uri: process.env.NEO4J_URI || 'default',
-          username: process.env.NEO4J_USERNAME ? 'configured' : 'not configured',
-          database: process.env.NEO4J_DATABASE || 'neo4j',
-          vectorIndex: process.env.NEO4J_VECTOR_INDEX || 'entity_embeddings',
-          vectorDimensions: process.env.NEO4J_VECTOR_DIMENSIONS || '1536',
-          similarityFunction: process.env.NEO4J_SIMILARITY_FUNCTION || 'cosine',
+          uri: process.env['NEO4J_URI'] || 'default',
+          username: process.env['NEO4J_USERNAME'] ? 'configured' : 'not configured',
+          database: process.env['NEO4J_DATABASE'] || 'neo4j',
+          vectorIndex: process.env['NEO4J_VECTOR_INDEX'] || 'entity_embeddings',
+          vectorDimensions: process.env['NEO4J_VECTOR_DIMENSIONS'] || '1536',
+          similarityFunction: process.env['NEO4J_SIMILARITY_FUNCTION'] || 'cosine',
           connectionStatus: 'unknown',
         };
 
@@ -578,9 +583,9 @@ export async function handleCallToolRequest(
           entities_with_embeddings: entitiesWithEmbeddings,
           pending_embedding_jobs: pendingJobs,
           environment_variables: {
-            DEBUG: process.env.DEBUG === 'true',
-            NODE_ENV: process.env.NODE_ENV,
-            MEMORY_STORAGE_TYPE: process.env.MEMORY_STORAGE_TYPE || 'neo4j',
+            DEBUG: process.env['DEBUG'] === 'true',
+            NODE_ENV: process.env['NODE_ENV'],
+            MEMORY_STORAGE_TYPE: process.env['MEMORY_STORAGE_TYPE'] || 'neo4j',
           },
         };
 
@@ -616,8 +621,9 @@ export async function handleCallToolRequest(
 
     case 'diagnose_vector_search': {
       return knowledgeGraphManager.storageProvider &&
-        typeof (knowledgeGraphManager.storageProvider as Record<string, unknown>)
-          .diagnoseVectorSearch === 'function'
+        typeof (knowledgeGraphManager.storageProvider as Record<string, unknown>)[
+          'diagnoseVectorSearch'
+        ] === 'function'
         ? {
             content: [
               {

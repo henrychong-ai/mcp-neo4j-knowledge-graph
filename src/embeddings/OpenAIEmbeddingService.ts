@@ -90,11 +90,11 @@ export class OpenAIEmbeddingService extends EmbeddingService {
     }
 
     // Only require API key in non-test environments and when it's not provided in env
-    if (!config.apiKey && !process.env.OPENAI_API_KEY) {
+    if (!config.apiKey && !process.env['OPENAI_API_KEY']) {
       throw new Error('API key is required for OpenAI embedding service');
     }
 
-    this.apiKey = config.apiKey || process.env.OPENAI_API_KEY || '';
+    this.apiKey = config.apiKey || process.env['OPENAI_API_KEY'] || '';
     this.model = config.model || 'text-embedding-3-small';
     this.dimensions = config.dimensions || 1536; // text-embedding-3-small has 1536 dimensions
     this.version = config.version || '3.0.0';
@@ -159,7 +159,7 @@ export class OpenAIEmbeddingService extends EmbeddingService {
       });
 
       // Log token usage if in debug mode
-      if (process.env.DEBUG === 'true') {
+      if (process.env['DEBUG'] === 'true') {
         const tokens = response.data.usage?.prompt_tokens || 'unknown';
         logger.debug('OpenAI embedding token usage', { tokens });
       }

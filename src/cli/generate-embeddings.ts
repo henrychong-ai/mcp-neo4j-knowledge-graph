@@ -95,7 +95,7 @@ async function generateEmbeddings(options: GenerateEmbeddingsOptions = {}): Prom
   console.log('\n🚀 Starting embedding generation...\n');
 
   // Validate OpenAI API key
-  if (!process.env.OPENAI_API_KEY) {
+  if (!process.env['OPENAI_API_KEY']) {
     console.error('❌ Error: OPENAI_API_KEY environment variable is not set');
     console.error('   Please set your OpenAI API key:');
     console.error('   export OPENAI_API_KEY=sk-your-key-here\n');
@@ -106,10 +106,10 @@ async function generateEmbeddings(options: GenerateEmbeddingsOptions = {}): Prom
   console.log('📊 Connecting to Neo4j...');
   const storageProvider = new Neo4jStorageProvider({
     config: {
-      uri: process.env.NEO4J_URI || 'bolt://localhost:7687',
-      username: process.env.NEO4J_USERNAME || 'neo4j',
-      password: process.env.NEO4J_PASSWORD || '',
-      database: process.env.NEO4J_DATABASE || 'neo4j',
+      uri: process.env['NEO4J_URI'] || 'bolt://localhost:7687',
+      username: process.env['NEO4J_USERNAME'] || 'neo4j',
+      password: process.env['NEO4J_PASSWORD'] || '',
+      database: process.env['NEO4J_DATABASE'] || 'neo4j',
     },
   });
 
@@ -186,8 +186,8 @@ async function generateEmbeddings(options: GenerateEmbeddingsOptions = {}): Prom
 
           // Write-path dimension guard (mirrors Neo4jStorageProvider.assertEmbeddingDimension):
           // this CLI writes raw Cypher, so it must enforce the same invariant itself.
-          const expectedDims = process.env.NEO4J_VECTOR_DIMENSIONS
-            ? Number.parseInt(process.env.NEO4J_VECTOR_DIMENSIONS, 10)
+          const expectedDims = process.env['NEO4J_VECTOR_DIMENSIONS']
+            ? Number.parseInt(process.env['NEO4J_VECTOR_DIMENSIONS'], 10)
             : undefined;
           if (
             typeof expectedDims === 'number' &&

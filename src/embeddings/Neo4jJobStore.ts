@@ -275,16 +275,16 @@ export class Neo4jJobStore implements JobStore {
  */
 function recordFromNode(props: Record<string, unknown>): EmbeddingJobRecord {
   return {
-    id: String(props.id),
-    entityName: String(props.entityName),
-    status: props.status as JobStatus,
-    priority: Number(props.priority ?? 1),
-    attempts: Number(props.attempts ?? 0),
-    maxAttempts: Number(props.maxAttempts ?? DEFAULT_MAX_ATTEMPTS),
-    createdAt: Number(props.createdAt ?? 0),
-    updatedAt: Number(props.updatedAt ?? 0),
-    claimedAt: props.claimedAt == null ? null : Number(props.claimedAt),
-    claimedBy: props.claimedBy == null ? null : String(props.claimedBy),
-    errorMessage: props.errorMessage == null ? null : String(props.errorMessage),
+    id: String(props['id']),
+    entityName: String(props['entityName']),
+    status: props['status'] as JobStatus,
+    priority: Number(props['priority'] ?? 1),
+    attempts: Number(props['attempts'] ?? 0),
+    maxAttempts: Number(props['maxAttempts'] ?? DEFAULT_MAX_ATTEMPTS),
+    createdAt: Number(props['createdAt'] ?? 0),
+    updatedAt: Number(props['updatedAt'] ?? 0),
+    claimedAt: props['claimedAt'] == null ? null : Number(props['claimedAt']),
+    claimedBy: props['claimedBy'] == null ? null : String(props['claimedBy']),
+    errorMessage: props['errorMessage'] == null ? null : String(props['errorMessage']),
   };
 }

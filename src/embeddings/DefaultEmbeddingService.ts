@@ -34,15 +34,15 @@ export class DefaultEmbeddingService extends EmbeddingService {
       this.modelVersion = modelVersion;
     } else {
       // For mock mode, default to OpenAI-compatible dimensions if not specified
-      const isMockMode = process.env.MOCK_EMBEDDINGS === 'true';
+      const isMockMode = process.env['MOCK_EMBEDDINGS'] === 'true';
       const defaultDimensions = isMockMode ? 1536 : 384;
 
       this.dimensions = config.dimensions || defaultDimensions;
       this.modelName = config.model || (isMockMode ? 'text-embedding-3-small-mock' : modelName);
-      this.modelVersion = config.version?.toString() || modelVersion;
+      this.modelVersion = config['version']?.toString() || modelVersion;
     }
 
-    if (process.env.MOCK_EMBEDDINGS === 'true') {
+    if (process.env['MOCK_EMBEDDINGS'] === 'true') {
       logger.info(`Using DefaultEmbeddingService in mock mode with dimensions: ${this.dimensions}`);
     }
   }

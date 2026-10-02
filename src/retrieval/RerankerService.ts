@@ -95,11 +95,11 @@ export class RerankerService {
    * RERANK_TOP_K (5), RERANK_MAX_PASSAGE_CHARS (2000), RERANK_TIMEOUT_MS (5000).
    */
   static fromEnv(): RerankerService {
-    const requested = process.env.RERANK_ENABLED === 'true';
-    const model = process.env.RERANK_MODEL || '@cf/baai/bge-reranker-base';
-    const apiKey = process.env.RERANK_API_KEY || process.env.EMBEDDING_API_KEY || '';
-    let endpoint = process.env.RERANK_ENDPOINT || '';
-    const accountId = process.env.RERANK_ACCOUNT_ID || process.env.CF_ACCOUNT_ID;
+    const requested = process.env['RERANK_ENABLED'] === 'true';
+    const model = process.env['RERANK_MODEL'] || '@cf/baai/bge-reranker-base';
+    const apiKey = process.env['RERANK_API_KEY'] || process.env['EMBEDDING_API_KEY'] || '';
+    let endpoint = process.env['RERANK_ENDPOINT'] || '';
+    const accountId = process.env['RERANK_ACCOUNT_ID'] || process.env['CF_ACCOUNT_ID'];
     if (!endpoint && accountId) {
       endpoint = `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/${model}`;
     }
