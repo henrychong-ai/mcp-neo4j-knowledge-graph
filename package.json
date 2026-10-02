@@ -71,7 +71,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.13",
-    "@types/node": "^25.9.6",
+    "@types/node": "^24.19.1",
     "@types/node-cron": "^3.0.11",
     "@vitest/coverage-v8": "^4.1.11",
     "husky": "^9.1.7",
@@ -83,7 +83,7 @@
     "vite": "^7.3.6",
     "vitest": "^4.1.11"
   },
-  "packageManager": "pnpm@10.30.0",
+  "packageManager": "pnpm@10.30.0+sha512.2b5753de015d480eeb88f5b5b61e0051f05b4301808a82ec8b840c9d2adf7748eb352c83f5c1593ca703ff1017295bc3fdd3119abb9686efc96b9fcb18200937",
   "engines": {
     "node": ">=24.0.0"
   },
