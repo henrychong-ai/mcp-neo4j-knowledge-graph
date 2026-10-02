@@ -314,30 +314,37 @@ Test files use Vitest with comprehensive mocking:
 
 ### GitHub Actions (`ci-cd.yml`)
 
-| Job                                  | Trigger           | Node |
-| ------------------------------------ | ----------------- | ---- |
-| **Lint-Format-Typecheck-Test-Build** | All pushes, PRs   | 24.x |
-| **Publish to npm**                   | Tags matching v\* | 24.x |
+| Job                                             | Runs on                                                    | Node |
+| ----------------------------------------------- | ---------------------------------------------------------- | ---- |
+| **Gitleaks & Lint-Format-Typecheck-Test-Build** | Every push (branches and `v*` tags), PRs to `main`, manual | 24.x |
+| **Tag is on main**                              | `v*` tags only                                             | n/a  |
+| **Publish to npm**                              | `v*` tags whose commit is on `main`, after both jobs above | 24.x |
 
 **Build Job Steps:**
 
-1. Checkout code
-2. Install pnpm (from packageManager field)
-3. Setup Node.js 24.x with pnpm cache
-4. Install dependencies (`--frozen-lockfile`)
-5. Public-content gate (`pnpm public:check`)
-6. Lint (`pnpm lint`)
-7. Format check (`pnpm format:check`)
-8. Type check (`pnpm typecheck`)
-9. Build project
-10. Initialize Neo4j schema (service container)
-11. Run tests
+1. Checkout code (full history)
+2. Secret scan (gitleaks)
+3. Install pnpm (from packageManager field)
+4. Setup Node.js 24.x with pnpm cache
+5. Install dependencies (`--frozen-lockfile`)
+6. Public-content gate (`pnpm public:check`)
+7. Lint (`pnpm lint`)
+8. Format check (`pnpm format:check`)
+9. Type check (`pnpm typecheck`)
+10. Build project
+11. Create a mock `.env` for the tests
+12. Initialize Neo4j schema (service container)
+13. Run tests
+
+**Tag-on-main Job:** a tag is not tied to a branch, so this job checks that the tagged commit is an ancestor of `origin/main` and reports `on_main`. When it is not, the run ends with a notice and nothing is published.
 
 **Publish Job:**
 
-- **Trigger**: Only on version tags (e.g., `v2.2.0`)
+- **Trigger**: a `v*` tag (e.g., `v2.2.0`) whose commit is on `main`. It needs the build job and the tag-on-main job, and runs only when `on_main` is `true`.
 - **Authentication**: OIDC Trusted Publishing + `--provenance` (no token secret; trusted publisher configured on npmjs.org for this repo + ci-cd.yml)
-- **Version Check**: Tag must match `package.json` version
+- **Install**: `pnpm install --frozen-lockfile --ignore-scripts`, with no dependency cache (the job holds `id-token: write`), then `pnpm build`
+- **Version Check**: Tag must match `package.json` version, or the job fails before publishing
+- **Dist-tag**: `npm publish --access public --provenance`; a version containing `-` is published with `--tag next`
 
 ## Version History & Recent Bugfixes
 
@@ -750,19 +757,24 @@ After any override change, regenerate the lockfile and confirm with `pnpm instal
 
 ## Publishing
 
-Package is published to npm as `@henrychong-ai/mcp-neo4j-knowledge-graph`:
+Package is published to npm as `@henrychong-ai/mcp-neo4j-knowledge-graph`. **CI publishes it. Never run `pnpm publish` or `npm publish` by hand.** The publish job in `ci-cd.yml` runs when a `v*` tag is pushed and the tagged commit is on `main`, and it authenticates to npm through OIDC Trusted Publishing, so there is no token to publish with locally.
 
 ```bash
-pnpm run build              # Build first
-pnpm version patch          # Bump version
-pnpm publish --access public
-git push && git push --tags
+# On main, with the release commit (version in package.json, CHANGELOG.md) made:
+git push origin main        # The tagged commit must be on main
+git tag v2.10.1             # Must equal the version in package.json
+git push origin v2.10.1     # Push this one tag by name
 ```
+
+- **Push the one tag by name, never `git push --tags`.** `--tags` pushes every local tag, and each `v*` tag among them starts its own publish run.
+- A tag that does not match `package.json` fails the publish job. A tag whose commit is not on `main` publishes nothing.
+- A version containing `-` (a pre-release) is published under the `next` dist-tag, not `latest`.
 
 **Pre-publish checklist:**
 
-1. All tests passing
+1. `pnpm check`, `pnpm build` and `pnpm test` pass
 2. BigInt conversions verified
 3. Schema constraints documented
 4. CHANGELOG.md updated
-5. Clear npx cache after publishing: `rm -rf ~/.npm/_npx/*/node_modules/@henrychong-ai`
+5. `npm pack --dry-run` lists the files you expect
+6. Clear npx cache after publishing: `rm -rf ~/.npm/_npx/*/node_modules/@henrychong-ai`
