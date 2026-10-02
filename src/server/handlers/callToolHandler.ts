@@ -15,7 +15,7 @@ import { assertValidToolInput } from './validateToolInput.js';
  */
 
 export async function handleCallToolRequest(
-  request: { params?: { name?: string; arguments?: Record<string, unknown> } },
+  request: { params?: { name?: string; arguments?: Record<string, unknown> | undefined } },
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   knowledgeGraphManager: any
 ): Promise<{ content: { type: string; text: string }[] }> {

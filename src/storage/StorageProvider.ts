@@ -15,7 +15,7 @@ export interface SearchOptions {
   /**
    * Maximum number of results to return
    */
-  limit?: number;
+  limit?: number | undefined;
 
   /**
    * Whether the search should be case-sensitive
@@ -25,18 +25,18 @@ export interface SearchOptions {
   /**
    * Filter results by entity types
    */
-  entityTypes?: string[];
+  entityTypes?: string[] | undefined;
 
   /**
    * Filter results by domain (user-defined string)
    */
-  domain?: string;
+  domain?: string | undefined;
 
   /**
    * When true, only return entities with null domain (uncategorized)
    * Mutually exclusive with domain parameter
    */
-  includeNullDomain?: boolean;
+  includeNullDomain?: boolean | undefined;
 }
 
 /**

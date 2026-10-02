@@ -45,7 +45,7 @@ export interface HybridSearchConfig {
    * Reference time for temporal scoring (milliseconds since epoch)
    * Default: Date.now()
    */
-  referenceTime?: number;
+  referenceTime?: number | undefined;
 
   /**
    * Half-life for temporal decay in days
@@ -99,7 +99,7 @@ export interface ScoreBreakdown {
   /**
    * Human-readable explanation of the score
    */
-  explanation?: string;
+  explanation?: string | undefined;
 }
 
 /**
@@ -158,7 +158,7 @@ export interface ScoringContext {
   /**
    * Query embedding vector (if available)
    */
-  queryVector?: number[];
+  queryVector?: number[] | undefined;
 
   /**
    * Configuration for scoring
@@ -168,12 +168,12 @@ export interface ScoringContext {
   /**
    * All entities in the result set (for graph analysis)
    */
-  allEntities?: Entity[];
+  allEntities?: Entity[] | undefined;
 
   /**
    * All relations in the graph (for graph analysis)
    */
-  allRelations?: Relation[];
+  allRelations?: Relation[] | undefined;
 }
 
 /**

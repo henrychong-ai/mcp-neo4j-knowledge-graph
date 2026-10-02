@@ -23,7 +23,7 @@ export type EntitySizeState = 'OK' | 'WARN' | 'CRITICAL';
 export interface SizeableEntity {
   name: string;
   entityType?: string;
-  domain?: string | null;
+  domain?: string | null | undefined;
   observations?: string[];
 }
 

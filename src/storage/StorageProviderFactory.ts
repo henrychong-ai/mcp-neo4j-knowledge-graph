@@ -57,8 +57,12 @@ export class StorageProviderFactory {
 
     switch (config.type.toLowerCase()) {
       case 'neo4j': {
-        // Configure Neo4j provider
-        const neo4jConfig: Partial<Neo4jConfig> = {
+        // Configure Neo4j provider.
+        // Every option is copied as given, so an option the caller left out is
+        // passed on as an explicit undefined, which Partial<Neo4jConfig> does
+        // not allow under exactOptionalPropertyTypes. The assertion keeps the
+        // object exactly as it has always been built.
+        const neo4jConfig = {
           uri: config.options.neo4jUri,
           username: config.options.neo4jUsername,
           password: config.options.neo4jPassword,
@@ -66,7 +70,7 @@ export class StorageProviderFactory {
           vectorIndexName: config.options.neo4jVectorIndexName,
           vectorDimensions: config.options.neo4jVectorDimensions,
           similarityFunction: config.options.neo4jSimilarityFunction,
-        };
+        } as Partial<Neo4jConfig>;
 
         provider = new Neo4jStorageProvider({
           config: neo4jConfig,

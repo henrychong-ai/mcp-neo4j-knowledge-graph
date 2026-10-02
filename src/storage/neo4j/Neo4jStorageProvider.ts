@@ -15,7 +15,7 @@ import type {
   EntityUpdate,
 } from '../../types/batch-operations.js';
 import type { EntityEmbedding, SemanticSearchOptions } from '../../types/entity-embedding.js';
-import type { Relation } from '../../types/relation.js';
+import type { Relation, RelationMetadata } from '../../types/relation.js';
 import { logger } from '../../utils/logger.js';
 import type { StorageProvider, SearchOptions, EntitySizeScanRow } from '../StorageProvider.js';
 
@@ -41,35 +41,37 @@ export interface Neo4jStorageProviderOptions {
   /**
    * Configuration for temporal confidence decay
    */
-  decayConfig?: {
-    /**
-     * Whether confidence decay is enabled
-     */
-    enabled: boolean;
+  decayConfig?:
+    | {
+        /**
+         * Whether confidence decay is enabled
+         */
+        enabled: boolean;
 
-    /**
-     * Number of days for confidence to decay by half (default: 30)
-     */
-    halfLifeDays?: number;
+        /**
+         * Number of days for confidence to decay by half (default: 30)
+         */
+        halfLifeDays?: number | undefined;
 
-    /**
-     * Minimum confidence threshold below which confidence won't decay (default: 0.1)
-     */
-    minConfidence?: number;
-  };
+        /**
+         * Minimum confidence threshold below which confidence won't decay (default: 0.1)
+         */
+        minConfidence?: number | undefined;
+      }
+    | undefined;
 }
 
 /**
  * Extended Entity interface with additional properties needed for Neo4j
  */
 interface ExtendedEntity extends Entity {
-  id?: string;
-  version?: number;
-  createdAt?: number;
-  updatedAt?: number;
-  validFrom?: number;
-  validTo?: number | null;
-  changedBy?: string | null;
+  id?: string | undefined;
+  version?: number | undefined;
+  createdAt?: number | undefined;
+  updatedAt?: number | undefined;
+  validFrom?: number | undefined;
+  validTo?: number | null | undefined;
+  changedBy?: string | null | undefined;
 }
 
 /**
@@ -89,7 +91,7 @@ interface ExtendedRelation {
   changedBy?: string | null;
   strength?: number | null | undefined;
   confidence?: number | null | undefined;
-  metadata?: Record<string, unknown> | null;
+  metadata?: RelationMetadata | Record<string, unknown> | null;
 }
 
 // These interfaces are used for documentation purposes to understand the Neo4j data model

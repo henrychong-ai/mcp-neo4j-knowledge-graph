@@ -70,7 +70,7 @@ export type Domain = string;
 export interface Entity {
   name: string;
   entityType: string;
-  domain?: Domain | null; // Optional domain for namespace scoping (null = uncategorized)
+  domain?: Domain | null | undefined; // Optional domain for namespace scoping (null = uncategorized)
   observations: string[];
   embedding?: EntityEmbedding;
 }
@@ -144,7 +144,7 @@ export interface FlagOversizedResult {
 
 interface KnowledgeGraphManagerOptions {
   storageProvider?: StorageProvider;
-  embeddingJobManager?: EmbeddingJobManager;
+  embeddingJobManager?: EmbeddingJobManager | undefined;
   vectorStoreOptions?: VectorStoreFactoryOptions;
   /** When false, skip queueing embedding jobs locally. See README "Embedding Pipeline Topology". */
   writeEmbeddingsLocally?: boolean;
@@ -154,11 +154,11 @@ interface KnowledgeGraphManagerOptions {
 
 // The KnowledgeGraphManager class contains all operations to interact with the knowledge graph
 export class KnowledgeGraphManager {
-  private storageProvider?: StorageProvider;
-  private embeddingJobManager?: EmbeddingJobManager;
+  private storageProvider?: StorageProvider | undefined;
+  private embeddingJobManager?: EmbeddingJobManager | undefined;
   private vectorStore?: VectorStore;
   private writeEmbeddingsLocally: boolean;
-  private reranker?: RerankerService;
+  private reranker?: RerankerService | undefined;
   /** Once-per-process latch so the keyword-only fallback warn does not spam logs. */
   private static keywordFallbackWarned = false;
 
@@ -433,7 +433,7 @@ export class KnowledgeGraphManager {
 
   async searchNodes(
     query: string,
-    options: { domain?: string; includeNullDomain?: boolean } = {}
+    options: { domain?: string | undefined; includeNullDomain?: boolean | undefined } = {}
   ): Promise<KnowledgeGraph> {
     if (!this.storageProvider) {
       throw new Error('Storage provider is required to search nodes');
@@ -682,7 +682,7 @@ export class KnowledgeGraphManager {
     options: {
       semanticSearch?: boolean;
       hybridSearch?: boolean;
-      limit?: number;
+      limit?: number | undefined;
       threshold?: number;
       minSimilarity?: number;
       entityTypes?: string[];
@@ -818,11 +818,16 @@ export class KnowledgeGraphManager {
    * degraded mode keeps as much of the semantic_search contract as possible.
    */
   private keywordFallbackOptions(options: {
-    limit?: number;
+    limit?: number | undefined;
     entityTypes?: string[];
     domain?: string;
     includeNullDomain?: boolean;
-  }): { limit?: number; entityTypes?: string[]; domain?: string; includeNullDomain?: boolean } {
+  }): {
+    limit?: number | undefined;
+    entityTypes?: string[] | undefined;
+    domain?: string | undefined;
+    includeNullDomain?: boolean | undefined;
+  } {
     return {
       limit: options.limit,
       entityTypes: options.entityTypes,
@@ -947,8 +952,8 @@ export class KnowledgeGraphManager {
       entityTypes?: string[];
       facets?: string[];
       offset?: number;
-      domain?: string;
-      includeNullDomain?: boolean;
+      domain?: string | undefined;
+      includeNullDomain?: boolean | undefined;
     } = {}
   ): Promise<KnowledgeGraph> {
     // Find similar entities using vector similarity

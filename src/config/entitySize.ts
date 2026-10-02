@@ -30,10 +30,10 @@ export interface EntitySizeConfig {
 /** Per-call overrides accepted by tools/CLI (all optional). */
 export interface EntitySizeConfigOverrides {
   maxTokens?: number;
-  warnRatio?: number;
+  warnRatio?: number | undefined;
   criticalRatio?: number;
   warnOnWrite?: boolean;
-  scanLimit?: number;
+  scanLimit?: number | undefined;
 }
 
 const DEFAULTS: EntitySizeConfig = {

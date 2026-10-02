@@ -19,12 +19,12 @@ export interface OpenAIEmbeddingConfig {
   /**
    * Optional model name to use
    */
-  model?: string;
+  model?: string | undefined;
 
   /**
    * Optional dimensions override
    */
-  dimensions?: number;
+  dimensions?: number | undefined;
 
   /**
    * Optional version string
@@ -36,7 +36,7 @@ export interface OpenAIEmbeddingConfig {
    * OpenAI-compatible `/embeddings` endpoint (e.g. Cloudflare Workers AI:
    * `https://api.cloudflare.com/client/v4/accounts/<id>/ai/v1/embeddings`).
    */
-  apiEndpoint?: string;
+  apiEndpoint?: string | undefined;
 }
 
 // API key error message is defined but not used directly

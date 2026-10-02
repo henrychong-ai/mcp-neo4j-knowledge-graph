@@ -46,14 +46,14 @@ export interface Relation {
    * Optional strength of the relationship (0.0-1.0)
    * Higher values indicate stronger relationships
    */
-  strength?: number;
+  strength?: number | undefined;
 
   /**
    * Optional confidence score (0.0-1.0)
    * Represents how confident the system is about this relationship
    * Particularly useful for inferred relations
    */
-  confidence?: number;
+  confidence?: number | undefined;
 
   /**
    * Optional metadata providing additional context about the relation
