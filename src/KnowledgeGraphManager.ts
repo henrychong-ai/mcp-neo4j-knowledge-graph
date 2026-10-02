@@ -1164,7 +1164,7 @@ export class KnowledgeGraphManager {
     }
 
     // Call storage provider's batch method
-    const createEntitiesBatch = (this.storageProvider as any).createEntitiesBatch;
+    const createEntitiesBatch = (this.storageProvider as StorageProvider).createEntitiesBatch;
     if (typeof createEntitiesBatch !== 'function') {
       throw new TypeError('Storage provider does not support batch entity creation');
     }
@@ -1233,7 +1233,7 @@ export class KnowledgeGraphManager {
     }
 
     // Call storage provider's batch method
-    const createRelationsBatch = (this.storageProvider as any).createRelationsBatch;
+    const createRelationsBatch = (this.storageProvider as StorageProvider).createRelationsBatch;
     if (typeof createRelationsBatch !== 'function') {
       throw new TypeError('Storage provider does not support batch relation creation');
     }
@@ -1251,6 +1251,7 @@ export class KnowledgeGraphManager {
   async addObservationsBatch(
     batches: { entityName: string; observations: string[] }[],
     config?: import('./types/batch-operations.js').BatchConfig
+    // oxlint-disable-next-line typescript/no-explicit-any -- public API type; tighten in the next major
   ): Promise<import('./types/batch-operations.js').BatchResult<any>> {
     // Validate batches
     if (!Array.isArray(batches) || batches.length === 0) {
@@ -1279,7 +1280,7 @@ export class KnowledgeGraphManager {
     }
 
     // Call storage provider's batch method
-    const addObservationsBatch = (this.storageProvider as any).addObservationsBatch;
+    const addObservationsBatch = (this.storageProvider as StorageProvider).addObservationsBatch;
     if (typeof addObservationsBatch !== 'function') {
       throw new TypeError('Storage provider does not support batch observation addition');
     }
@@ -1350,7 +1351,7 @@ export class KnowledgeGraphManager {
     }
 
     // Call storage provider's batch method
-    const updateEntitiesBatch = (this.storageProvider as any).updateEntitiesBatch;
+    const updateEntitiesBatch = (this.storageProvider as StorageProvider).updateEntitiesBatch;
     if (typeof updateEntitiesBatch !== 'function') {
       throw new TypeError('Storage provider does not support batch entity updates');
     }

@@ -1,5 +1,5 @@
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import cron from 'node-cron';
+import { schedule as scheduleCron } from 'node-cron';
 
 import { initializeStorageProvider } from './config/storage.js';
 import { EmbeddingJobManager } from './embeddings/EmbeddingJobManager.js';
@@ -257,7 +257,7 @@ if (!process.env.VITEST && !process.env.NODE_ENV?.includes('test')) {
     // Schedule incremental embedding regeneration via configurable cron (default 19:00 UTC daily).
     // Server-side instances should tighten this (e.g. `EMBEDDING_BACKFILL_CRON='*/1 * * * *'`)
     // to backfill NULL entities written by client-side instances within ~1 minute.
-    cron.schedule(
+    scheduleCron(
       embeddingBackfillCron,
       async () => {
         logger.info('Starting incremental embedding regeneration', {

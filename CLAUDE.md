@@ -26,9 +26,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | Validation      | Zod                                |
 | Embeddings      | OpenAI-compatible (OpenAI / Cloudflare Workers AI / any); default text-embedding-3-small; optional bge reranker (v2.5.0+) |
 | Testing         | Vitest + @vitest/coverage-v8       |
-| Linting         | Oxlint (import, promise, node, vitest plugins) |
+| Linting         | Oxlint (typescript, unicorn, oxc, import, promise, node, vitest plugins) |
 | Formatting      | Biome (formatter-only, linter disabled)         |
 | Git Hooks       | Husky + lint-staged                |
+
+**Lint exception:** `.oxlintrc.json` turns `preserve-caught-error` off for `src/embeddings/OpenAIEmbeddingService.ts`. The caught value there can be an AxiosError whose request config holds the `Authorization: Bearer` header, so it must never be attached as `cause` to a rethrown error.
 
 ## Getting Started
 

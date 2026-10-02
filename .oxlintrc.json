@@ -1,33 +1,38 @@
 {
-  "$schema": "https://raw.githubusercontent.com/nicolo-ribaudo/oxlint-config-schema/refs/heads/main/schema.json",
-
-  "plugins": ["import", "promise", "node", "vitest"],
-
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "unicorn", "oxc", "import", "promise", "node", "vitest"],
   "categories": {
     "correctness": "error",
     "suspicious": "warn",
     "pedantic": "off",
-    "style": "warn",
+    "style": "off",
     "restriction": "off",
     "nursery": "off"
   },
-
   "rules": {
-    "no-unused-vars": ["error", { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_" }],
+    "no-unused-vars": [
+      "error",
+      {
+        "argsIgnorePattern": "^_",
+        "varsIgnorePattern": "^_"
+      }
+    ],
     "no-useless-catch": "off",
-
+    "no-underscore-dangle": "off",
     "import/no-duplicates": "error",
     "import/no-cycle": "warn",
     "import/no-self-import": "error",
-
     "unicorn/filename-case": [
       "error",
       {
-        "cases": { "kebabCase": true, "pascalCase": true, "camelCase": true },
+        "cases": {
+          "kebabCase": true,
+          "pascalCase": true,
+          "camelCase": true
+        },
         "ignore": ["^OpenAI.*\\.ts$"]
       }
     ],
-    "unicorn/prevent-abbreviations": "off",
     "unicorn/no-null": "off",
     "unicorn/no-array-reduce": "off",
     "unicorn/no-array-for-each": "off",
@@ -48,8 +53,15 @@
     "unicorn/no-useless-switch-case": "off",
     "unicorn/no-immediate-mutation": "off",
     "unicorn/prefer-single-call": "off",
-
     "typescript/no-explicit-any": "warn",
     "typescript/no-non-null-assertion": "warn"
-  }
+  },
+  "overrides": [
+    {
+      "files": ["src/embeddings/OpenAIEmbeddingService.ts"],
+      "rules": {
+        "preserve-caught-error": "off"
+      }
+    }
+  ]
 }

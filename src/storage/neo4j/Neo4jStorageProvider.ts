@@ -536,8 +536,8 @@ export class Neo4jStorageProvider implements StorageProvider {
       to: toNode,
       relationType: rel.relationType as string,
       // Convert null to undefined for compatibility with Relation interface
-      strength: strength === null ? undefined : strength!,
-      confidence: confidence === null ? undefined : confidence!,
+      strength: strength === null ? undefined : strength,
+      confidence: confidence === null ? undefined : confidence,
       metadata,
     };
   }
@@ -630,7 +630,7 @@ export class Neo4jStorageProvider implements StorageProvider {
               id: extendedEntity.id || uuidv4(),
               name: entity.name,
               entityType: entity.entityType,
-              domain: (entity as any).domain || null,
+              domain: entity.domain || null,
               observations: JSON.stringify(entity.observations || []),
               version: extendedEntity.version || 1,
               createdAt: extendedEntity.createdAt || Date.now(),

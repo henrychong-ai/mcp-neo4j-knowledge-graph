@@ -1,7 +1,7 @@
 import http from 'node:http';
 import https from 'node:https';
 
-import axios, { type AxiosInstance } from 'axios';
+import { type AxiosInstance, create as createAxiosInstance } from 'axios';
 
 import { logger } from '../utils/logger.js';
 
@@ -58,7 +58,7 @@ export class RerankerService {
 
   constructor(cfg: RerankConfig) {
     this.cfg = cfg;
-    this.client = axios.create({
+    this.client = createAxiosInstance({
       httpAgent: new http.Agent({ keepAlive: false }),
       httpsAgent: new https.Agent({ keepAlive: false }),
     });

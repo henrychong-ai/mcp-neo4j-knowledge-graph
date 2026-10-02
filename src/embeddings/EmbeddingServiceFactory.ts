@@ -25,6 +25,7 @@ type EmbeddingServiceProvider = (config?: EmbeddingServiceConfig) => EmbeddingSe
 /**
  * Factory for creating embedding services
  */
+// oxlint-disable-next-line typescript/no-extraneous-class -- exported static factory; restructuring would change the public API
 export class EmbeddingServiceFactory {
   /**
    * Registry of embedding service providers

@@ -1,7 +1,7 @@
 import http from 'node:http';
 import https from 'node:https';
 
-import axios, { type AxiosInstance } from 'axios';
+import { type AxiosInstance, create as createAxiosInstance } from 'axios';
 
 import { logger } from '../utils/logger.js';
 
@@ -99,7 +99,7 @@ export class OpenAIEmbeddingService extends EmbeddingService {
     this.dimensions = config.dimensions || 1536; // text-embedding-3-small has 1536 dimensions
     this.version = config.version || '3.0.0';
     this.apiEndpoint = config.apiEndpoint || 'https://api.openai.com/v1/embeddings';
-    this.axiosInstance = axios.create({
+    this.axiosInstance = createAxiosInstance({
       httpAgent: new http.Agent({ keepAlive: false }),
       httpsAgent: new https.Agent({ keepAlive: false }),
     });
