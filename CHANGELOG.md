@@ -5,6 +5,50 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.10.1] - 2026-10-02
+
+Bug-fix and maintenance release. Re-creating an existing entity no longer loses its observations or its domain, boolean tool inputs sent as strings mean what they say, and the build moves to TypeScript 6. No new tool, option or environment variable.
+
+### Fixed
+
+- **Re-creating an entity wiped its observations.** `create_entities` and `create_entities_batch` for a name that already exists wrote `[]` over the stored observations whenever the call supplied none (the key omitted, or an empty list), and stamped an embedding of empty text on the new version. The validation gate accepts an entity without `observations`, so any client could reach this. The new version now inherits the stored observations, and its embedding is left NULL for the backfill. A non-empty list still replaces the stored observations (it does not merge); use `add_observations` to append.
+- **Re-creating an entity reset its domain to null.** The same two tools cleared the stored domain whenever the call left `domain` out. An omitted `domain` now keeps the stored one. An explicit `null` or `''` still clears it and a string still sets it. A new name is unaffected: no observations is stored as `[]`, no domain as null. `entityType` is a required input and is still always written.
+- **A boolean input sent as a string was read as its opposite.** `include_null_domain: "false"` was truthy, `hybrid_search: "true"` failed a `=== true` check, `enable_hybrid_retrieval: "false"` passed a `!== false` check, and `include_ok: "true"` failed a `=== true` check. The strings `"true"` and `"false"`, in any letter case, are now converted to the boolean before the handler reads them. This closes the known issue listed under 2.10.0.
+- **A partial Neo4j configuration lost its defaults.** `StorageProviderFactory.createProvider` passes an option its caller left out as an explicit `undefined`, and `Neo4jStorageProvider`, `Neo4jConnectionManager` and `Neo4jSchemaManager` each merged their configuration with a spread, which copied that `undefined` over the default. A caller with partial options got no username, database, index name or dimensions, and with no URI the driver threw. All three now merge through one helper, `resolveNeo4jConfig`: a key that is absent or `undefined` keeps its default, and every other value is taken as before. The server's own start-up path always supplies all seven options and is unaffected; the configuration it resolves is byte-identical.
+
+### Changed
+
+- **Boolean tool inputs are checked, and some input that was accepted is now rejected.** The ten boolean inputs are `include_null_domain` (`search_nodes`, `semantic_search`), `hybrid_search`, `enable_hybrid_retrieval` and `hybrid_config.enable_score_debug` (`semantic_search`), `include_ok` (`flag_oversized_entities`), and `config.enableParallel` (`create_entities_batch`, `create_relations_batch`, `add_observations_batch`, `update_entities_batch`). Each accepts `true`, `false`, and the strings `"true"` and `"false"` in any letter case; an absent key or `null` keeps the default, as before. **Anything else is now rejected by the validation gate** with `Invalid arguments for tool <name>`: a number (`1`, `0`), any other string (`"yes"`, `"1"`, `""`), an array or an object. Through 2.10.0 those values were accepted and read by truthiness on some inputs and by strict comparison on others, so the same value could mean true for one input and false for another. Real booleans behave exactly as before.
+- **A re-create call changes only what it supplies.** This follows from the two fixes above. A caller that re-created an entity with no observations in order to empty it must now use `delete_observations`, and one that left `domain` out in order to clear it must now pass `domain: null`.
+- **TypeScript 6.0** (`typescript@~6.0`; npm's `latest` tag is TypeScript 7, which is not the project compiler). `tsconfig.json` now writes out the options TypeScript 6 no longer infers (`lib`, `types`) and turns on three flags: `verbatimModuleSyntax`, `noPropertyAccessFromIndexSignature` and `exactOptionalPropertyTypes`. Neither the compiler move nor the flags change runtime behaviour: TypeScript 6 emitted JavaScript byte-identical to the 5.9 build, and the flags change the emitted code only in 267 property reads written `obj['key']` in place of `obj.key`.
+- **Published type declarations are wider. Nothing is narrowed.**
+  - 43 optional properties that the code already passed an explicit `undefined` to are now declared `x?: T | undefined` (26 lines in 9 `.d.ts` files), among them `Entity.domain`, the search options of `KnowledgeGraphManager` and `SearchOptions` in `StorageProvider` (`limit`, `entityTypes`, `domain`, `includeNullDomain`), `Relation.strength` and `Relation.confidence`, `OpenAIEmbeddingConfig` (`model`, `dimensions`, `apiEndpoint`), `EntitySizeConfigOverrides` (`warnRatio`, `scanLimit`), `SizeableEntity.domain`, the optional fields of the retrieval types, and `decayConfig` with its two optional fields on `Neo4jStorageProviderOptions`.
+  - The configuration parameter of `Neo4jStorageProvider`, `Neo4jConnectionManager` and `Neo4jSchemaManager` is typed `Neo4jConfigInput` (each key optional and `| undefined`) in place of `Partial<Neo4jConfig>`. `Neo4jConfigInput` and `resolveNeo4jConfig` are new exports of `storage/neo4j/Neo4jConfig`.
+  - Two declaration files import with `import type`.
+- **The package has 202 files, three more than 2.10.0:** one new module, `server/handlers/toolHandlers/batchConfig`, with its declaration and source map. `declarationMap` is off, so no `.d.ts.map` is shipped: each one would point at a file under `src/`, which the package does not include. `files` in `package.json` no longer lists `SETUP_AUTOMATION.md`, which does not exist.
+- **Dependencies, inside their current majors:** `@modelcontextprotocol/sdk` ^1.30.0 -> ^1.31.0, `lru-cache` ^11.5.2 -> ^11.5.3, `zod` ^4.6.2 -> ^4.6.5, `@biomejs/biome` ^2.5.13 -> ^2.5.15 (and the `biome.json` schema), `oxlint` ^1.82.0 -> ^1.86.0, `tsx` ^4.23.13 -> ^4.23.15. Transitive packages moved inside their existing ranges and overrides. `@types/node` stays on the 24 line to match the Node 24 runtime. No release less than a day old was taken.
+- **`lint-staged` 16.4.0 -> 17.6.0** (development only). It needs Node 22.22.1 and Git 2.32.0 or newer; the `lint-staged` key in `package.json` is unchanged. 25 transitive packages it no longer uses left the lockfile.
+- **Tests are linted.** The `.eslintignore` file, which Oxlint honours, excluded every test; it is removed, and `.oxlintrc.json` carries the build ignores and a test-file override. The first run reported 1166 diagnostics, all in tests. No assertion was weakened and six were made stricter.
+- `.nvmrc` names the Node major (`24`) rather than one patch release.
+- Documentation: `CLAUDE.md` records the TypeScript 6 pin and the `tsconfig.json` rules, and its publishing section now matches the workflow (CI publishes from a `v*` tag whose commit is on `main`; push the one tag by name). Two documents no longer name a server.
+
+### Security
+
+- **Cleared 3 moderate advisories**, all in transitive dependencies of the MCP SDK. `pnpm audit` reports no known vulnerabilities.
+  - `fast-uri` raised to 3.1.8 (GHSA-hrr3-gc8f-f4qj); override floor `>=3.1.6 <4` -> `>=3.1.8 <4`. Runtime-reachable through `ajv`.
+  - `ip-address` raised to 10.7.2 (GHSA-j6r3-76f7-8jcv, GHSA-h3mg-xc3c-68pw); override floor `>=10.3.1 <11` -> `>=10.7.1 <11`. Reached only through the MCP SDK's HTTP stack, which this server does not load (stdio transport only).
+
+### Added
+
+- **Public-content gate** (`pnpm public:check`, `scripts/check-public-sanitization.mjs`). This repository is public; the gate reads every git-tracked file and fails on content that belongs only on a maintainer's machine: a personal home path, an `op://` reference that names a real vault, a named account host, a `*.ts.net` host name, a private server name, a server deployment path, an email address outside the published contact, or a known private identifier. Exact identifiers are held as SHA-256 hashes and everything else is matched by shape, so the gate holds no private value; a finding names the file, line and rule and never repeats the matched text. It runs in `pnpm check`, as the last step of the pre-commit hook (on the staged content) and as its own CI step. It is a development tool and is not part of the published package.
+- 242 tests (1535 in all): 28 for the re-create fixes, 173 for the boolean inputs, 12 for the Neo4j configuration defaults and 29 for the public-content gate.
+
+### Notes
+
+- Verified before release: oxlint clean with the tests included, biome format clean, `tsc --noEmit` clean, public-content gate clean, build OK, **1535 tests passing / 23 skipped**, coverage above thresholds (statements 86.57%, branches 78.89%, functions 92.91%, lines 86.65%), `pnpm audit` clean, `pnpm install --frozen-lockfile` clean.
+- The pre-commit hook was exercised end to end on `lint-staged` 16.4.0 and 17.6.0 with the same results: a staged file that needs formatting is formatted and committed, a staged file with a lint error is refused, a commit of only ignored files succeeds.
+- Still deferred: TypeScript 7 (it passes as a type-check-only lane), vitest 5 (and `@vitest/coverage-v8` 5), vite 8.
+
 ## [2.10.0] - 2026-10-02
 
 Tool input is now validated before a tool runs.

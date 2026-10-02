@@ -73,7 +73,7 @@ Inline disables, each with its reason: `vitest/no-disabled-tests` on five placeh
 
 **`tsconfig.json` follows the team standard for a Node package emitted with `tsc`.** `strict` plus `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, `noPropertyAccessFromIndexSignature`, `noImplicitReturns`, `noImplicitOverride`, `noFallthroughCasesInSwitch` and `useUnknownInCatchVariables`; `verbatimModuleSyntax` with `isolatedModules`; `module` and `moduleResolution` `NodeNext`; `target` and `lib` `ES2024` (no DOM types); `types: ["node"]` (TypeScript 6 loads no `@types` package by default); `rootDir` `src`, `outDir` `dist`; `declaration` and `sourceMap`. There is no `paths` alias, because `tsc` does not rewrite an alias in the emitted imports. Tests stay excluded from `tsc`.
 
-**`declarationMap` stays off, against the template.** A `.d.ts.map` points at the `.ts` file under `src/`, and the package publishes only `dist/` (`files` in `package.json`), so the maps would resolve to nothing for a consumer. Turning the flag on adds one map per source file to the package (66 files at v2.10.0: 268 packed files against 202). Check `npm pack --dry-run` after any change to the emit options.
+**`declarationMap` stays off, against the template.** A `.d.ts.map` points at the `.ts` file under `src/`, and the package publishes only `dist/` (`files` in `package.json`), so the maps would resolve to nothing for a consumer. Turning the flag on adds one map per source file to the package (66 files as of v2.10.1: 268 packed files against 202). Check `npm pack --dry-run` after any change to the emit options.
 
 Three flags were turned on with the TypeScript 6 move. What each asks of new code:
 
@@ -347,6 +347,10 @@ Test files use Vitest with comprehensive mocking:
 - **Dist-tag**: `npm publish --access public --provenance`; a version containing `-` is published with `--tag next`
 
 ## Version History & Recent Bugfixes
+
+### v2.10.1 (2026-10-02) - Re-create Data-Loss Fixes, Boolean Inputs, TypeScript 6
+
+Re-creating an existing entity keeps its stored observations and domain when the call does not supply them (see "Entity Temporal Versioning"). Boolean tool inputs accept `true`/`false` and the strings `"true"`/`"false"`; any other value is now rejected by the gate. A partial Neo4j config keeps its defaults (`resolveNeo4jConfig`). TypeScript 6.0 with `verbatimModuleSyntax`, `noPropertyAccessFromIndexSignature` and `exactOptionalPropertyTypes`; published declarations widen with `| undefined`. Also: 3 moderate advisories cleared, the public-content gate, tests linted, lint-staged 17. Full detail in CHANGELOG.md.
 
 ### v2.10.0 (2026-10-02) - Tool Input Validation Gate
 
