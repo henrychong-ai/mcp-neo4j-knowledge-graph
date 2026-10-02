@@ -1,4 +1,5 @@
-import neo4j, { type Driver, type Session, type QueryResult } from 'neo4j-driver';
+import type { Driver, QueryResult, Session } from 'neo4j-driver';
+import neo4j from 'neo4j-driver';
 
 import { getVersioningConfig } from '../../config/versioning.js';
 

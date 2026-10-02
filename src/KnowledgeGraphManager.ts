@@ -8,7 +8,7 @@ import {
   estimateFromCharCount,
   RESTRUCTURE_HINT,
 } from './maintenance/EntitySizeService.js';
-import { RerankerService } from './retrieval/RerankerService.js';
+import type { RerankerService } from './retrieval/RerankerService.js';
 import type { EntitySizeScanRow, StorageProvider } from './storage/StorageProvider.js';
 import {
   VectorStoreFactory,
