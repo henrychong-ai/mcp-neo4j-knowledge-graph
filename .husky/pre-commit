@@ -3,6 +3,8 @@
 # Husky pre-commit hook
 #   1) gitleaks   — block secrets / .env files in staged changes (CI enforces too)
 #   2) lint-staged — lint/format only the staged files
+#   3) public-content gate — block private paths, hosts and identifiers in what
+#      is staged (this repository is public; CI runs the same gate)
 
 # -- Secret scan (gitleaks) --------------------------------------------------
 if command -v gitleaks >/dev/null 2>&1; then
@@ -22,3 +24,8 @@ fi
 
 # -- Lint/format staged files ------------------------------------------------
 npx lint-staged
+
+# -- Public-content gate -----------------------------------------------------
+# Runs last, on the staged content of every tracked file, so it sees what
+# lint-staged re-staged and what the commit will actually contain.
+node scripts/check-public-sanitization.mjs --staged

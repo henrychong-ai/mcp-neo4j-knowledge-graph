@@ -14,6 +14,30 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - MCP server for Claude Desktop and Claude Code integration
 - Full test coverage with Vitest
 
+## Public Repository
+
+This repository is public. Maintainer-only operational notes, when present, are in the untracked `CLAUDE.local.md`.
+
+**Public-content gate:** `pnpm run public:check` (`scripts/check-public-sanitization.mjs`) reads every git-tracked file, and every tracked file name, and fails on:
+
+| Rule | Fails on | Passes |
+| ---- | -------- | ------ |
+| Personal home path | a home directory under `/Users` with a real name | a placeholder name (`you`, `username`, `<name>`) |
+| Secret reference | an `op://` reference that names a real vault | the bare scheme in prose; a placeholder vault (`your-…`, `example…`, `vault`) |
+| Account host | a named 1Password account host | the shared sign-in hosts; `your-…` and `example…` names |
+| Tailnet host | any `*.ts.net` name | a `your-…`, `example…` or `tailnet…` label |
+| Private server name | the `vps-<n>` form | nothing |
+| Server deployment path | the two server directories under `/opt` that hold deployment backups and scripts | any other `/opt` path |
+| Email address | any address | reserved example domains, GitHub no-reply addresses, the contact published in `package.json` |
+| Known private identifier | a 32-character hexadecimal token whose SHA-256 is on the list in the script | every other token |
+
+- **Where it runs:** `pnpm run check`; the last step of `.husky/pre-commit` (with `--staged`, which reads the staged content the commit will contain rather than the files on disk); its own CI step. On a public repository CI reports a leak only after the push, so the pre-commit step is the one that prevents it. Never commit with `--no-verify`.
+- **Never write a private value into the script, its tests or any doc.** An exact identifier goes in as its SHA-256 only (hash the lowercase value with no trailing newline). Everything else is matched by shape.
+- **The script and its tests are scanned too.** Describe a forbidden shape in words; in tests, build it from fragments at runtime.
+- **A finding is fixed, not allow-listed.** Replace the value with a placeholder, or move the note to `CLAUDE.local.md`. Widening an allow list is the owner's decision.
+- **A finding names the file, line and rule, never the matched text.** CI logs of a public repository are public.
+- **Out of reach:** untracked and git-ignored files, commit messages, git history, and text that is not UTF-8.
+
 ## Tech Stack
 
 | Layer           | Technology                         |
@@ -28,7 +52,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | Testing         | Vitest + @vitest/coverage-v8       |
 | Linting         | Oxlint (typescript, unicorn, oxc, import, promise, node, vitest plugins) |
 | Formatting      | Biome (formatter-only, linter disabled)         |
-| Git Hooks       | Husky + lint-staged                |
+| Git Hooks       | Husky: gitleaks, lint-staged, public-content gate |
 
 **Lint exception:** `.oxlintrc.json` turns `preserve-caught-error` off for `src/embeddings/OpenAIEmbeddingService.ts`. The caught value there can be an AxiosError whose request config holds the `Authorization: Bearer` header, so it must never be attached as `cause` to a rethrown error.
 
@@ -91,6 +115,8 @@ pnpm run lint              # Oxlint check
 pnpm run lint:fix          # Oxlint auto-fix
 pnpm run format            # Biome formatting
 pnpm run format:check      # Biome format check (CI)
+pnpm run public:check      # Public-content gate (see "Public Repository")
+pnpm run check             # lint + format:check + typecheck + public:check
 pnpm run fix               # lint:fix + format
 ```
 
@@ -297,12 +323,13 @@ Test files use Vitest with comprehensive mocking:
 2. Install pnpm (from packageManager field)
 3. Setup Node.js 24.x with pnpm cache
 4. Install dependencies (`--frozen-lockfile`)
-5. Lint (`pnpm lint`)
-6. Format check (`pnpm format:check`)
-7. Type check (`pnpm typecheck`)
-8. Build project
-9. Initialize Neo4j schema (service container)
-10. Run tests
+5. Public-content gate (`pnpm public:check`)
+6. Lint (`pnpm lint`)
+7. Format check (`pnpm format:check`)
+8. Type check (`pnpm typecheck`)
+9. Build project
+10. Initialize Neo4j schema (service container)
+11. Run tests
 
 **Publish Job:**
 

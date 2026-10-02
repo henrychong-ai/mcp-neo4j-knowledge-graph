@@ -64,6 +64,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Public-content gate
+        run: pnpm public:check
+
       - name: Lint
         run: pnpm lint
 
@@ -78,11 +81,13 @@ jobs:
 
       - name: Create mock .env file for tests
         run: |
-          echo "# Mock environment for CI testing" >> .env
-          echo "OPENAI_API_KEY=sk-mock-api-key-for-tests" >> .env
-          echo "OPENAI_EMBEDDING_MODEL=text-embedding-3-small" >> .env
-          echo "MOCK_EMBEDDINGS=true" >> .env
-          echo "ENV_FILE_CREATED=true" >> .env
+          {
+            echo "# Mock environment for CI testing"
+            echo "OPENAI_API_KEY=sk-mock-api-key-for-tests"
+            echo "OPENAI_EMBEDDING_MODEL=text-embedding-3-small"
+            echo "MOCK_EMBEDDINGS=true"
+            echo "ENV_FILE_CREATED=true"
+          } >> .env
 
       - name: Initialize Neo4j Schema
         run: pnpm run neo4j:init
