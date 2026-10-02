@@ -1,6 +1,7 @@
 import { logger } from '../../utils/logger.js';
 
 import * as toolHandlers from './toolHandlers/index.js';
+import { assertValidToolInput } from './validateToolInput.js';
 
 /**
  * Handles the CallTool request.
@@ -40,6 +41,10 @@ export async function handleCallToolRequest(
   if (!args) {
     throw new Error(`No arguments provided for tool: ${name}`);
   }
+
+  // Gate only: throws for an unknown tool or invalid arguments. The handlers
+  // below still receive the original `args`, untouched.
+  assertValidToolInput(name, args);
 
   switch (name) {
     case 'create_entities': {
@@ -406,10 +411,9 @@ export async function handleCallToolRequest(
           }
 
           const embedding = await (
-            knowledgeGraphManager.storageProvider as Record<
-              string,
-              (entityName: string) => Promise<EntityEmbedding | null>
-            >
+            knowledgeGraphManager.storageProvider as {
+              getEntityEmbedding: (entityName: string) => Promise<EntityEmbedding | null>;
+            }
           ).getEntityEmbedding(String(args.entity_name));
 
           if (!embedding) {
@@ -523,10 +527,9 @@ export async function handleCallToolRequest(
         if (hasEmbeddingJobManager && knowledgeGraphManager.embeddingJobManager.embeddingService) {
           try {
             embeddingServiceInfo = (
-              knowledgeGraphManager.embeddingJobManager as Record<
-                string,
-                Record<string, () => unknown>
-              >
+              knowledgeGraphManager.embeddingJobManager as {
+                embeddingService: { getModelInfo: () => unknown };
+              }
             ).embeddingService.getModelInfo();
           } catch (error: unknown) {
             const errorMessage = error instanceof Error ? error.message : String(error);
@@ -539,7 +542,7 @@ export async function handleCallToolRequest(
         if (storageProvider?.embeddingService) {
           try {
             embeddingProviderInfo = (
-              storageProvider as Record<string, Record<string, () => unknown>>
+              storageProvider as { embeddingService: { getProviderInfo: () => unknown } }
             ).embeddingService.getProviderInfo();
           } catch (error: unknown) {
             const errorMessage = error instanceof Error ? error.message : String(error);
@@ -552,7 +555,7 @@ export async function handleCallToolRequest(
         if (hasEmbeddingJobManager && knowledgeGraphManager.embeddingJobManager.getPendingJobs) {
           try {
             pendingJobs = (
-              knowledgeGraphManager.embeddingJobManager as Record<string, () => unknown[]>
+              knowledgeGraphManager.embeddingJobManager as { getPendingJobs: () => unknown[] }
             ).getPendingJobs().length;
           } catch (error: unknown) {
             const errorMessage = error instanceof Error ? error.message : String(error);
@@ -619,7 +622,9 @@ export async function handleCallToolRequest(
                 type: 'text',
                 text: JSON.stringify(
                   await (
-                    knowledgeGraphManager.storageProvider as Record<string, () => Promise<unknown>>
+                    knowledgeGraphManager.storageProvider as {
+                      diagnoseVectorSearch: () => Promise<unknown>;
+                    }
                   ).diagnoseVectorSearch()
                 ),
               },

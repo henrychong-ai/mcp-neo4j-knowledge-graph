@@ -597,6 +597,15 @@ services:
 
 ## Critical Implementation Patterns
 
+### Tool Input Validation Gate
+
+- **Every tool call is checked before dispatch.** `handleCallToolRequest` calls `assertValidToolInput` (`src/server/handlers/validateToolInput.ts`), which looks the tool up in the `toolInputSchemas` table in `src/schemas/index.ts`. A tool with no entry is rejected as `Unknown tool`.
+- **Gate, not transform.** Handlers receive the original arguments object: no defaults, no coercion, no stripped keys. Schemas use `z.looseObject` at every level.
+- **Rule: never turn a call that succeeds and does something meaningful today into a failure.** A schema is as lenient as the code that reads the value (`whenTruthy`, `anyValue`, `unless` in `src/schemas/index.ts`). Reject only what already throws deeper in the stack, silently does nothing, or stores a wrong-typed value.
+- **Change a tool = change both.** Adding a tool, or changing its arguments, means updating the advertised `inputSchema` in `listToolsHandler.ts` AND its schema in `src/schemas/index.ts` together.
+- **Parity tests enforce it.** `src/server/handlers/__vitest__/toolInputValidation.test.ts` is generated from the advertised tool list: one schema per tool, advertised required keys rejected when missing or wrong-typed, advertised optional keys never required. A required key the code tolerates when absent needs an entry, with the reason, in that file's `TOLERATED_WHEN_ABSENT` list.
+- **Failure shape.** A plain `Error` (JSON-RPC `-32603`): `Invalid arguments for tool <name>: <path>: <problem>`. Never put argument values in the message.
+
 ### Embedding Write Guards (v2.6.0)
 
 - **Dimension guard**: `Neo4jStorageProvider.assertEmbeddingDimension` rejects any vector whose length != `config.vectorDimensions` — on `updateEntityEmbedding` (throws, job fails loudly) and `createEntities` (entity persists with NULL embedding). Wrong-dimension vectors are NEVER written.

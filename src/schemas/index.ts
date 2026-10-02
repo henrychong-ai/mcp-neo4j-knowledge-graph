@@ -1,33 +1,150 @@
 /**
- * Zod schemas for MCP tool input validation
- * Uses Zod 4 for runtime validation with TypeScript type inference
+ * Zod schemas for MCP tool input validation (Zod 4).
+ *
+ * These schemas are a GATE, not a transform. `handleCallToolRequest` checks the
+ * arguments against the schema for the tool and, on success, hands the handler
+ * the ORIGINAL arguments object — never the parsed copy. Nothing here may
+ * therefore rely on a default, a coercion, or key stripping taking effect.
+ *
+ * The rule: the gate must never turn a call that succeeds and does something
+ * meaningful today into a failure. It rejects only what already fails deeper in
+ * the stack, silently does nothing, or stores a value of the wrong type. So a
+ * schema is as lenient as the code that reads the value:
+ *
+ * - A key the advertised `inputSchema` lists as `required` is required here,
+ *   unless the code already deals with its absence (defaults it, skips the item,
+ *   or reports it in the tool result). Those exceptions are listed in the parity
+ *   test in `toolInputValidation.test.ts`.
+ * - A value read behind a truthiness guard (`x || fallback`, `if (x)`) accepts
+ *   every falsy value, because the code treats them all as absent (`whenTruthy`).
+ * - A value the code acts on whatever its type accepts any value (`anyValue`):
+ *   keys read purely by truthiness, keys the handler type-guards or normalises
+ *   itself, and keys that cannot change what is stored or returned.
+ * - A value the code coerces (`String(x)`, `Number(x)`) accepts the coercible
+ *   type too.
+ * - Unknown keys pass at every object level (`z.looseObject`).
+ * - No length, range, or pattern rules beyond one: a negative
+ *   `config.maxBatchSize` is rejected, because the batch chunking loop never
+ *   terminates on it. Empty strings and empty arrays pass, and the handler or
+ *   manager keeps its own handling of them. The lowercase-kebab-case
+ *   `entityType` convention is documentation only: no write path enforces it,
+ *   so neither does this file.
+ *
+ * `toolInputSchemas` maps every tool name to its schema. A tool without an entry
+ * is rejected as unknown, so a new tool cannot skip validation silently.
  */
 
 import { z } from 'zod';
+
+// =============================================================================
+// FIELD BUILDING BLOCKS
+// =============================================================================
+
+/** Optional string; the code reading it treats `null` like an absent value. */
+const optionalString = z.string().nullish();
+
+const stringArray = z.array(z.string());
+
+/**
+ * Any value is accepted: the code acts on this key whatever its type (it is read
+ * purely by truthiness, type-guarded or normalised by the handler, or never
+ * able to change what is stored or returned).
+ */
+const anyValue = z.unknown().optional();
+
+/**
+ * Check `schema` only when the code would actually use the value. `handled`
+ * says when the code deals with the value itself (treats it as absent, or
+ * reports it in the tool result); those values pass. Issues keep their path.
+ */
+function unless(handled: (value: unknown) => boolean, schema: z.ZodType) {
+  return z
+    .unknown()
+    .superRefine((value, ctx) => {
+      if (handled(value)) {
+        return;
+      }
+      const result = schema.safeParse(value);
+      if (!result.success) {
+        for (const issue of result.error.issues) {
+          ctx.addIssue({ code: 'custom', path: [...issue.path], message: issue.message });
+        }
+      }
+    })
+    .optional();
+}
+
+const isFalsy = (value: unknown): boolean => !value;
+const isNotArray = (value: unknown): boolean => !Array.isArray(value);
+const isNotPlainObject = (value: unknown): boolean =>
+  value === null || typeof value !== 'object' || Array.isArray(value);
+
+/**
+ * For a value read behind a truthiness guard: every falsy value is treated as
+ * absent by the code, so only a truthy value has to match `schema`.
+ */
+function whenTruthy(schema: z.ZodType) {
+  return unless(isFalsy, schema);
+}
+
+/**
+ * Advertised as a string, but the handler coerces it with `String(...)` (or
+ * interpolates it into a pattern), so a number is accepted as well.
+ */
+const stringOrNumber = z.union([z.string(), z.number()], {
+  error: 'Invalid input: expected string',
+});
+
+/**
+ * A relation `strength` / `confidence`. Stored as given and converted with
+ * `Number(...)` on every read, so a numeric string round-trips as a number.
+ */
+const EXPECTED_NUMBER = 'Invalid input: expected number';
+const numberLike = z.union(
+  [
+    z.number(),
+    z.string().refine(text => text.trim() !== '' && Number.isFinite(Number(text)), {
+      error: EXPECTED_NUMBER,
+    }),
+  ],
+  { error: EXPECTED_NUMBER }
+);
+
+/** Free-form object (advertised `type: 'object'`), e.g. relation metadata. */
+const plainObject = z.looseObject({});
 
 // =============================================================================
 // ENTITY SCHEMAS
 // =============================================================================
 
 /**
- * Schema for creating a new entity
+ * One entity in `create_entities`.
+ *
+ * `observations` is advertised as required, but the storage provider stores an
+ * entity without it with `[]`, so only a truthy value has to be an array.
+ * `id`, `version`, and `validTo` are advertised but never read: the storage
+ * provider always generates the id, starts at version 1, and writes a live
+ * (`validTo` null) version. The remaining optional keys are read as
+ * `value || fallback`.
  */
-export const EntityInputSchema = z.object({
-  name: z.string().min(1, 'Entity name is required'),
-  entityType: z
-    .string()
-    .min(1, 'Entity type is required')
-    .regex(/^[a-z][a-z0-9]*(-[a-z0-9]+)*$/, {
-      message: 'Entity type must be lowercase-kebab-case (e.g., person, medical-condition)',
-    }),
-  domain: z.string().nullish(),
-  observations: z.array(z.string()).default([]),
+export const EntityInputSchema = z.looseObject({
+  name: z.string(),
+  entityType: z.string(),
+  domain: whenTruthy(z.string()),
+  observations: whenTruthy(stringArray),
+  id: anyValue,
+  version: anyValue,
+  createdAt: whenTruthy(z.number()),
+  updatedAt: whenTruthy(z.number()),
+  validFrom: whenTruthy(z.number()),
+  validTo: anyValue,
+  changedBy: whenTruthy(z.string()),
 });
 
 export type EntityInput = z.infer<typeof EntityInputSchema>;
 
 /**
- * Schema for entity with temporal metadata (from database)
+ * Schema for entity with temporal metadata (from database). Not a tool input.
  */
 export const TemporalEntitySchema = EntityInputSchema.extend({
   id: z.string().uuid().optional(),
@@ -41,12 +158,21 @@ export const TemporalEntitySchema = EntityInputSchema.extend({
 
 export type TemporalEntity = z.infer<typeof TemporalEntitySchema>;
 
+/**
+ * Schema for `create_entities` tool input
+ */
+export const CreateEntitiesInputSchema = z.looseObject({
+  entities: z.array(EntityInputSchema),
+});
+
+export type CreateEntitiesInput = z.infer<typeof CreateEntitiesInputSchema>;
+
 // =============================================================================
 // RELATION SCHEMAS
 // =============================================================================
 
 /**
- * Schema for relation metadata
+ * Schema for relation metadata (from database). Not a tool input.
  */
 export const RelationMetadataSchema = z.object({
   inferredFrom: z.array(z.string()).optional(),
@@ -58,21 +184,31 @@ export const RelationMetadataSchema = z.object({
 export type RelationMetadata = z.infer<typeof RelationMetadataSchema>;
 
 /**
- * Schema for creating a relation between entities
+ * One relation in `create_relations`.
+ *
+ * Every optional key is read as `value || fallback`. `id`, `version`, and
+ * `validTo` are advertised but never read by the storage provider.
  */
-export const RelationInputSchema = z.object({
-  from: z.string().min(1, 'Source entity name is required'),
-  to: z.string().min(1, 'Target entity name is required'),
-  relationType: z.string().min(1, 'Relation type is required'),
-  strength: z.number().min(0).max(1).optional(),
-  confidence: z.number().min(0).max(1).optional(),
-  metadata: z.record(z.string(), z.unknown()).optional(),
+export const RelationInputSchema = z.looseObject({
+  from: z.string(),
+  to: z.string(),
+  relationType: z.string(),
+  strength: whenTruthy(numberLike),
+  confidence: whenTruthy(numberLike),
+  metadata: whenTruthy(plainObject),
+  id: anyValue,
+  version: anyValue,
+  createdAt: whenTruthy(z.number()),
+  updatedAt: whenTruthy(z.number()),
+  validFrom: whenTruthy(z.number()),
+  validTo: anyValue,
+  changedBy: whenTruthy(z.string()),
 });
 
 export type RelationInput = z.infer<typeof RelationInputSchema>;
 
 /**
- * Schema for relation with full metadata
+ * Schema for relation with full metadata (from database). Not a tool input.
  */
 export const RelationSchema = RelationInputSchema.extend({
   metadata: RelationMetadataSchema.optional(),
@@ -80,27 +216,139 @@ export const RelationSchema = RelationInputSchema.extend({
 
 export type Relation = z.infer<typeof RelationSchema>;
 
+/**
+ * Schema for `create_relations` tool input
+ */
+export const CreateRelationsInputSchema = z.looseObject({
+  relations: z.array(RelationInputSchema),
+});
+
+export type CreateRelationsInput = z.infer<typeof CreateRelationsInputSchema>;
+
+/** The `from` / `to` / `relationType` triple that identifies a relation. */
+const RelationKeySchema = z.looseObject({
+  from: z.string(),
+  to: z.string(),
+  relationType: z.string(),
+});
+
+/**
+ * Schema for `get_relation` tool input
+ */
+export const GetRelationInputSchema = RelationKeySchema;
+
+export type GetRelationInput = z.infer<typeof GetRelationInputSchema>;
+
+/**
+ * Schema for `update_relation` tool input.
+ *
+ * Only the identifying triple, `strength`, `confidence`, `metadata`, and
+ * `changedBy` are read; the other advertised temporal fields are regenerated.
+ * `strength` and `confidence` are written unless undefined, so `null` clears
+ * the stored value.
+ */
+export const UpdateRelationInputSchema = z.looseObject({
+  relation: z.looseObject({
+    from: z.string(),
+    to: z.string(),
+    relationType: z.string(),
+    strength: numberLike.nullish(),
+    confidence: numberLike.nullish(),
+    metadata: whenTruthy(plainObject),
+    id: anyValue,
+    version: anyValue,
+    createdAt: anyValue,
+    updatedAt: anyValue,
+    validFrom: anyValue,
+    validTo: anyValue,
+    changedBy: whenTruthy(z.string()),
+  }),
+});
+
+export type UpdateRelationInput = z.infer<typeof UpdateRelationInputSchema>;
+
 // =============================================================================
 // OBSERVATION SCHEMAS
 // =============================================================================
 
 /**
- * Schema for adding observations to an entity
+ * Schema for `add_observations` tool input.
+ *
+ * The handler validates this input itself and reports problems in the tool
+ * result (`{ "error": ... }`): `observations` not being an array, an item
+ * without `entityName`, and an item whose `contents` is not an array. Those
+ * inputs pass the gate so that result shape is kept; the gate only rejects what
+ * the handler would hand on to storage (a non-string name, non-string contents).
+ *
+ * `strength`, `confidence`, and `metadata` (top level and per observation) are
+ * forwarded to the manager, which drops them before storage.
  */
-export const AddObservationsInputSchema = z.object({
-  entityName: z.string().min(1, 'Entity name is required'),
-  observations: z.array(z.string().min(1)).min(1, 'At least one observation is required'),
+export const AddObservationsInputSchema = z.looseObject({
+  observations: unless(
+    isNotArray,
+    z.array(
+      unless(
+        isNotPlainObject,
+        z.looseObject({
+          entityName: whenTruthy(z.string()),
+          contents: unless(isNotArray, stringArray),
+          strength: anyValue,
+          confidence: anyValue,
+          metadata: anyValue,
+        })
+      )
+    )
+  ),
+  strength: anyValue,
+  confidence: anyValue,
+  metadata: anyValue,
 });
 
 export type AddObservationsInput = z.infer<typeof AddObservationsInputSchema>;
 
 /**
- * Schema for batch observation additions
+ * Batch configuration shared by the four batch tools.
+ *
+ * The batch methods read it as `config?.maxBatchSize || 100`, so anything that
+ * is not an object, and any falsy `maxBatchSize`, falls back to 100. A truthy
+ * `maxBatchSize` drives `for (i = 0; i < n; i += maxBatchSize)`: a positive
+ * number or a positive-integer string chunks every item, while a negative
+ * number loops forever, so that is rejected. `enableParallel` has no effect in
+ * any batch method.
  */
-export const AddObservationsBatchInputSchema = z.object({
-  observations: z
-    .array(AddObservationsInputSchema)
-    .min(1, 'At least one observation entry is required'),
+const EXPECTED_POSITIVE_NUMBER = 'Invalid input: expected a positive number';
+const BatchConfigInputSchema = unless(
+  isNotPlainObject,
+  z.looseObject({
+    maxBatchSize: whenTruthy(
+      z.union(
+        [
+          z.number().positive({ error: EXPECTED_POSITIVE_NUMBER }),
+          z.string().regex(/^[1-9]\d*$/, { error: EXPECTED_POSITIVE_NUMBER }),
+        ],
+        { error: EXPECTED_POSITIVE_NUMBER }
+      )
+    ),
+    enableParallel: anyValue,
+  })
+);
+
+/**
+ * Schema for `add_observations_batch` tool input. The manager throws for a
+ * missing name or a non-array `observations`, so both are required here. The
+ * per-entity `metadata`, `confidence`, and `strength` are never read.
+ */
+export const AddObservationsBatchInputSchema = z.looseObject({
+  observations: z.array(
+    z.looseObject({
+      entityName: z.string(),
+      observations: stringArray,
+      metadata: anyValue,
+      confidence: anyValue,
+      strength: anyValue,
+    })
+  ),
+  config: BatchConfigInputSchema,
 });
 
 export type AddObservationsBatchInput = z.infer<typeof AddObservationsBatchInputSchema>;
@@ -110,33 +358,46 @@ export type AddObservationsBatchInput = z.infer<typeof AddObservationsBatchInput
 // =============================================================================
 
 /**
- * Schema for search_nodes tool input
+ * Schema for `search_nodes` tool input. `query` is interpolated into a regex
+ * pattern, so a number works as well as a string. `domain` is used only when
+ * truthy, and `include_null_domain` is read purely by truthiness.
  */
-export const SearchNodesInputSchema = z.object({
-  query: z.string().min(1, 'Search query is required'),
-  limit: z.number().int().positive().max(100).default(10),
-  domain: z.string().optional(),
+export const SearchNodesInputSchema = z.looseObject({
+  query: stringOrNumber,
+  domain: whenTruthy(z.string()),
+  include_null_domain: anyValue,
 });
 
 export type SearchNodesInput = z.infer<typeof SearchNodesInputSchema>;
 
 /**
- * Schema for semantic_search tool input.
+ * Schema for `semantic_search` tool input.
  *
- * v2.7.1: aligned with the reranker-aware default semantics — `limit` and
- * `minSimilarity` carry NO schema defaults so an absent value stays undefined
- * through the handler and the manager resolves it reranker-aware (limit:
- * 10 plain / RERANK_TOP_K reranked; minSimilarity: 0). A schema `.default()`
- * here would silently resurrect pre-2.7.0 behaviour if this schema is ever
- * wired into the handler path. `limit` accepts 0 (explicit empty result) and
- * non-negative values; the manager floors/clamps at runtime.
+ * No defaults and no ranges: an absent `limit` or `min_similarity` stays
+ * undefined through the handler and the manager resolves it reranker-aware
+ * (limit: 10 plain / RERANK_TOP_K reranked; min_similarity: 0).
+ *
+ * - `limit`: the manager floors and clamps a finite number and treats anything
+ *   else as "no limit given".
+ * - `min_similarity`: read as `value ?? 0` and compared with scores in Cypher,
+ *   so it must be a number when present.
+ * - `entity_types`, `domain`: used only when truthy.
+ * - `hybrid_search`, `include_null_domain`: read by truthiness or strict
+ *   comparison, never by type.
+ * - `semantic_weight`: only reaches the search cache key.
+ *
+ * The handler also reads the unadvertised `hybrid_config` and
+ * `enable_hybrid_retrieval`; they pass through unvalidated as unknown keys.
  */
-export const SemanticSearchInputSchema = z.object({
-  query: z.string().min(1, 'Search query is required'),
-  // No max: the live tool contract honours any explicit limit exactly.
-  limit: z.number().min(0).optional(),
-  minSimilarity: z.number().min(0).max(1).optional(),
-  domain: z.string().optional(),
+export const SemanticSearchInputSchema = z.looseObject({
+  query: stringOrNumber,
+  limit: anyValue,
+  min_similarity: z.number().nullish(),
+  entity_types: whenTruthy(stringArray),
+  hybrid_search: anyValue,
+  semantic_weight: anyValue,
+  domain: whenTruthy(z.string()),
+  include_null_domain: anyValue,
 });
 
 export type SemanticSearchInput = z.infer<typeof SemanticSearchInputSchema>;
@@ -146,45 +407,70 @@ export type SemanticSearchInput = z.infer<typeof SemanticSearchInputSchema>;
 // =============================================================================
 
 /**
- * Schema for batch entity creation
+ * Schema for `create_entities_batch` tool input. The batch tool advertises only
+ * these four entity keys; anything else passes through as an unknown key.
+ * Unlike `create_entities`, `observations` is required: the manager throws for
+ * an entity whose `observations` is not an array.
  */
-export const CreateEntitiesBatchInputSchema = z.object({
-  entities: z.array(EntityInputSchema).min(1, 'At least one entity is required'),
+export const CreateEntitiesBatchInputSchema = z.looseObject({
+  entities: z.array(
+    z.looseObject({
+      name: z.string(),
+      entityType: z.string(),
+      domain: whenTruthy(z.string()),
+      observations: stringArray,
+    })
+  ),
+  config: BatchConfigInputSchema,
 });
 
 export type CreateEntitiesBatchInput = z.infer<typeof CreateEntitiesBatchInputSchema>;
 
 /**
- * Schema for batch relation creation
+ * Schema for `create_relations_batch` tool input. The batch tool advertises only
+ * these six relation keys; anything else passes through as an unknown key.
+ * `strength` and `confidence` are read as `value ?? null`.
  */
-export const CreateRelationsBatchInputSchema = z.object({
-  relations: z.array(RelationInputSchema).min(1, 'At least one relation is required'),
+export const CreateRelationsBatchInputSchema = z.looseObject({
+  relations: z.array(
+    z.looseObject({
+      from: z.string(),
+      to: z.string(),
+      relationType: z.string(),
+      strength: numberLike.nullish(),
+      confidence: numberLike.nullish(),
+      metadata: whenTruthy(plainObject),
+    })
+  ),
+  config: BatchConfigInputSchema,
 });
 
 export type CreateRelationsBatchInput = z.infer<typeof CreateRelationsBatchInputSchema>;
 
 /**
- * Schema for entity update
+ * One update in `update_entities_batch`.
+ *
+ * `entityType` and `removeObservations` are used only when truthy. `domain` is
+ * written unless undefined, so `null` clears it. `addObservations` must be an
+ * array when present: the storage provider reads its length whenever it is not
+ * undefined.
  */
-export const UpdateEntityInputSchema = z.object({
-  name: z.string().min(1, 'Entity name is required'),
-  entityType: z
-    .string()
-    .regex(/^[a-z][a-z0-9]*(-[a-z0-9]+)*$/, {
-      message: 'Entity type must be lowercase-kebab-case',
-    })
-    .optional(),
-  domain: z.string().nullish(),
-  observations: z.array(z.string()).optional(),
+export const UpdateEntityInputSchema = z.looseObject({
+  name: z.string(),
+  entityType: whenTruthy(z.string()),
+  domain: optionalString,
+  addObservations: stringArray.optional(),
+  removeObservations: whenTruthy(stringArray),
 });
 
 export type UpdateEntityInput = z.infer<typeof UpdateEntityInputSchema>;
 
 /**
- * Schema for batch entity updates
+ * Schema for `update_entities_batch` tool input
  */
-export const UpdateEntitiesBatchInputSchema = z.object({
-  entities: z.array(UpdateEntityInputSchema).min(1, 'At least one entity update is required'),
+export const UpdateEntitiesBatchInputSchema = z.looseObject({
+  updates: z.array(UpdateEntityInputSchema),
+  config: BatchConfigInputSchema,
 });
 
 export type UpdateEntitiesBatchInput = z.infer<typeof UpdateEntitiesBatchInputSchema>;
@@ -194,37 +480,35 @@ export type UpdateEntitiesBatchInput = z.infer<typeof UpdateEntitiesBatchInputSc
 // =============================================================================
 
 /**
- * Schema for deleting entities
+ * Schema for `delete_entities` tool input
  */
-export const DeleteEntitiesInputSchema = z.object({
-  entityNames: z.array(z.string().min(1)).min(1, 'At least one entity name is required'),
+export const DeleteEntitiesInputSchema = z.looseObject({
+  entityNames: stringArray,
 });
 
 export type DeleteEntitiesInput = z.infer<typeof DeleteEntitiesInputSchema>;
 
 /**
- * Schema for deleting relations
+ * Schema for `delete_relations` tool input
  */
-export const DeleteRelationsInputSchema = z.object({
-  relations: z
-    .array(
-      z.object({
-        from: z.string().min(1),
-        to: z.string().min(1),
-        relationType: z.string().min(1),
-      })
-    )
-    .min(1, 'At least one relation is required'),
+export const DeleteRelationsInputSchema = z.looseObject({
+  relations: z.array(RelationKeySchema),
 });
 
 export type DeleteRelationsInput = z.infer<typeof DeleteRelationsInputSchema>;
 
 /**
- * Schema for deleting observations
+ * Schema for `delete_observations` tool input. `observations` is advertised as
+ * required, but the storage provider skips a deletion without it (and goes on
+ * with the others), so only a truthy value has to be an array.
  */
-export const DeleteObservationsInputSchema = z.object({
-  entityName: z.string().min(1, 'Entity name is required'),
-  observations: z.array(z.string().min(1)).min(1, 'At least one observation is required'),
+export const DeleteObservationsInputSchema = z.looseObject({
+  deletions: z.array(
+    z.looseObject({
+      entityName: z.string(),
+      observations: whenTruthy(stringArray),
+    })
+  ),
 });
 
 export type DeleteObservationsInput = z.infer<typeof DeleteObservationsInputSchema>;
@@ -234,77 +518,81 @@ export type DeleteObservationsInput = z.infer<typeof DeleteObservationsInputSche
 // =============================================================================
 
 /**
- * Schema for read_graph tool input
+ * Schema for the tools that take no real arguments (`read_graph`,
+ * `debug_embedding_config`, `diagnose_vector_search`). `random_string` is an
+ * advertised dummy parameter that no handler reads.
  */
-export const ReadGraphInputSchema = z.object({
-  domain: z.string().optional(),
+const NoArgumentsInputSchema = z.looseObject({
+  random_string: anyValue,
 });
+
+/**
+ * Schema for `read_graph` tool input
+ */
+export const ReadGraphInputSchema = NoArgumentsInputSchema;
 
 export type ReadGraphInput = z.infer<typeof ReadGraphInputSchema>;
 
 /**
- * Schema for open_nodes tool input
+ * Schema for `open_nodes` tool input
  */
-export const OpenNodesInputSchema = z.object({
-  names: z.array(z.string().min(1)).min(1, 'At least one entity name is required'),
+export const OpenNodesInputSchema = z.looseObject({
+  names: stringArray,
 });
 
 export type OpenNodesInput = z.infer<typeof OpenNodesInputSchema>;
 
 /**
- * Schema for get_relation tool input
+ * Schema for `flag_oversized_entities` tool input. The handler type-guards each
+ * argument itself (a non-number `limit` or `warn_ratio` falls back to the
+ * default, and `include_ok` counts only when it is exactly `true`).
  */
-export const GetRelationInputSchema = z.object({
-  from: z.string().min(1, 'Source entity name is required'),
-  to: z.string().min(1, 'Target entity name is required'),
-  relationType: z.string().optional(),
+export const FlagOversizedEntitiesInputSchema = z.looseObject({
+  limit: anyValue,
+  warn_ratio: anyValue,
+  include_ok: anyValue,
 });
 
-export type GetRelationInput = z.infer<typeof GetRelationInputSchema>;
+export type FlagOversizedEntitiesInput = z.infer<typeof FlagOversizedEntitiesInputSchema>;
 
 // =============================================================================
 // TEMPORAL SCHEMAS
 // =============================================================================
 
 /**
- * Schema for get_entity_history tool input
+ * Schema for `get_entity_history` tool input
  */
-export const GetEntityHistoryInputSchema = z.object({
-  entityName: z.string().min(1, 'Entity name is required'),
-  limit: z.number().int().positive().max(100).default(10),
+export const GetEntityHistoryInputSchema = z.looseObject({
+  entityName: z.string(),
 });
 
 export type GetEntityHistoryInput = z.infer<typeof GetEntityHistoryInputSchema>;
 
 /**
- * Schema for get_relation_history tool input
+ * Schema for `get_relation_history` tool input
  */
-export const GetRelationHistoryInputSchema = z.object({
-  from: z.string().min(1, 'Source entity name is required'),
-  to: z.string().min(1, 'Target entity name is required'),
-  relationType: z.string().min(1, 'Relation type is required'),
-  limit: z.number().int().positive().max(100).default(10),
-});
+export const GetRelationHistoryInputSchema = RelationKeySchema;
 
 export type GetRelationHistoryInput = z.infer<typeof GetRelationHistoryInputSchema>;
 
 /**
- * Schema for get_graph_at_time tool input
+ * Schema for `get_graph_at_time` tool input. The timestamp is compared with
+ * stored integers in Cypher, so it must be a number.
  */
-export const GetGraphAtTimeInputSchema = z.object({
-  timestamp: z.number().int().positive('Timestamp must be a positive integer'),
-  domain: z.string().optional(),
+export const GetGraphAtTimeInputSchema = z.looseObject({
+  timestamp: z.number(),
 });
 
 export type GetGraphAtTimeInput = z.infer<typeof GetGraphAtTimeInputSchema>;
 
 /**
- * Schema for get_decayed_graph tool input
+ * Schema for `get_decayed_graph` tool input. The handler coerces both values
+ * with `Number(...)` and the manager then ignores them, so nothing a client
+ * sends here can make the call fail.
  */
-export const GetDecayedGraphInputSchema = z.object({
-  referenceTime: z.number().int().positive().optional(),
-  decayFactor: z.number().min(0).max(1).default(0.5),
-  domain: z.string().optional(),
+export const GetDecayedGraphInputSchema = z.looseObject({
+  reference_time: anyValue,
+  decay_factor: anyValue,
 });
 
 export type GetDecayedGraphInput = z.infer<typeof GetDecayedGraphInputSchema>;
@@ -314,13 +602,77 @@ export type GetDecayedGraphInput = z.infer<typeof GetDecayedGraphInputSchema>;
 // =============================================================================
 
 /**
- * Schema for get_entity_embedding tool input
+ * Schema for the tools addressed by `entity_name` (`get_entity_embedding`,
+ * `force_generate_embedding`). Both handlers coerce it with `String(...)`.
  */
-export const GetEntityEmbeddingInputSchema = z.object({
-  entityName: z.string().min(1, 'Entity name is required'),
+const EntityNameInputSchema = z.looseObject({
+  entity_name: stringOrNumber,
 });
 
+/**
+ * Schema for `get_entity_embedding` tool input
+ */
+export const GetEntityEmbeddingInputSchema = EntityNameInputSchema;
+
 export type GetEntityEmbeddingInput = z.infer<typeof GetEntityEmbeddingInputSchema>;
+
+/**
+ * Schema for `force_generate_embedding` tool input (DEBUG only)
+ */
+export const ForceGenerateEmbeddingInputSchema = EntityNameInputSchema;
+
+export type ForceGenerateEmbeddingInput = z.infer<typeof ForceGenerateEmbeddingInputSchema>;
+
+/**
+ * Schema for `debug_embedding_config` tool input (DEBUG only)
+ */
+export const DebugEmbeddingConfigInputSchema = NoArgumentsInputSchema;
+
+export type DebugEmbeddingConfigInput = z.infer<typeof DebugEmbeddingConfigInputSchema>;
+
+/**
+ * Schema for `diagnose_vector_search` tool input (DEBUG only)
+ */
+export const DiagnoseVectorSearchInputSchema = NoArgumentsInputSchema;
+
+export type DiagnoseVectorSearchInput = z.infer<typeof DiagnoseVectorSearchInputSchema>;
+
+// =============================================================================
+// TOOL NAME -> SCHEMA TABLE
+// =============================================================================
+
+/**
+ * The input schema for every tool `handleCallToolRequest` dispatches, keyed by
+ * tool name. A Map, so a tool name such as `toString` cannot resolve to an
+ * inherited object property.
+ */
+export const toolInputSchemas: ReadonlyMap<string, z.ZodType> = new Map<string, z.ZodType>([
+  ['create_entities', CreateEntitiesInputSchema],
+  ['create_relations', CreateRelationsInputSchema],
+  ['add_observations', AddObservationsInputSchema],
+  ['delete_entities', DeleteEntitiesInputSchema],
+  ['delete_observations', DeleteObservationsInputSchema],
+  ['delete_relations', DeleteRelationsInputSchema],
+  ['get_relation', GetRelationInputSchema],
+  ['update_relation', UpdateRelationInputSchema],
+  ['read_graph', ReadGraphInputSchema],
+  ['search_nodes', SearchNodesInputSchema],
+  ['open_nodes', OpenNodesInputSchema],
+  ['flag_oversized_entities', FlagOversizedEntitiesInputSchema],
+  ['semantic_search', SemanticSearchInputSchema],
+  ['get_entity_embedding', GetEntityEmbeddingInputSchema],
+  ['create_entities_batch', CreateEntitiesBatchInputSchema],
+  ['create_relations_batch', CreateRelationsBatchInputSchema],
+  ['add_observations_batch', AddObservationsBatchInputSchema],
+  ['update_entities_batch', UpdateEntitiesBatchInputSchema],
+  ['get_entity_history', GetEntityHistoryInputSchema],
+  ['get_relation_history', GetRelationHistoryInputSchema],
+  ['get_graph_at_time', GetGraphAtTimeInputSchema],
+  ['get_decayed_graph', GetDecayedGraphInputSchema],
+  ['force_generate_embedding', ForceGenerateEmbeddingInputSchema],
+  ['debug_embedding_config', DebugEmbeddingConfigInputSchema],
+  ['diagnose_vector_search', DiagnoseVectorSearchInputSchema],
+]);
 
 // =============================================================================
 // HELPER FUNCTIONS
