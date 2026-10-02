@@ -31,7 +31,8 @@
     "rootDir": "src",
     "outDir": "dist",
     "declaration": true,
-    "declarationMap": true,
+    // Off on purpose: a .d.ts.map points at src/, and src/ is not published.
+    "declarationMap": false,
     "sourceMap": true
   },
   "include": ["src/**/*.ts"],
