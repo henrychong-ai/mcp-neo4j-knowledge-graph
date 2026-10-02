@@ -3,7 +3,7 @@ import neo4j from 'neo4j-driver';
 
 import { getVersioningConfig } from '../../config/versioning.js';
 
-import { DEFAULT_NEO4J_CONFIG, type Neo4jConfig } from './Neo4jConfig.js';
+import { type Neo4jConfig, type Neo4jConfigInput, resolveNeo4jConfig } from './Neo4jConfig.js';
 
 /**
  * Options for configuring a Neo4j connection
@@ -27,18 +27,10 @@ export class Neo4jConnectionManager {
    * Creates a new Neo4j connection manager
    * @param config Connection configuration
    */
-  constructor(config?: Partial<Neo4jConfig> | Neo4jConnectionOptions) {
-    // Handle deprecated options
-    this.config =
-      config && 'uri' in config
-        ? {
-            ...DEFAULT_NEO4J_CONFIG,
-            ...config,
-          }
-        : {
-            ...DEFAULT_NEO4J_CONFIG,
-            ...config,
-          };
+  constructor(config?: Neo4jConfigInput | Neo4jConnectionOptions) {
+    // The deprecated options are a subset of the configuration keys, so both
+    // forms merge the same way. An absent or undefined key keeps its default.
+    this.config = resolveNeo4jConfig(config);
 
     this.driver = neo4j.driver(
       this.config.uri,

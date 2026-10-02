@@ -1,4 +1,4 @@
-import type { Neo4jConfig } from './neo4j/Neo4jConfig.js';
+import type { Neo4jConfigInput } from './neo4j/Neo4jConfig.js';
 import { Neo4jStorageProvider } from './neo4j/Neo4jStorageProvider.js';
 import type { StorageProvider } from './StorageProvider.js';
 import type { VectorStoreFactoryOptions } from './VectorStoreFactory.js';
@@ -58,11 +58,9 @@ export class StorageProviderFactory {
     switch (config.type.toLowerCase()) {
       case 'neo4j': {
         // Configure Neo4j provider.
-        // Every option is copied as given, so an option the caller left out is
-        // passed on as an explicit undefined, which Partial<Neo4jConfig> does
-        // not allow under exactOptionalPropertyTypes. The assertion keeps the
-        // object exactly as it has always been built.
-        const neo4jConfig = {
+        // Every option is copied as given. An option the caller left out is
+        // passed on as undefined, and the provider keeps its default for it.
+        const neo4jConfig: Neo4jConfigInput = {
           uri: config.options.neo4jUri,
           username: config.options.neo4jUsername,
           password: config.options.neo4jPassword,
@@ -70,7 +68,7 @@ export class StorageProviderFactory {
           vectorIndexName: config.options.neo4jVectorIndexName,
           vectorDimensions: config.options.neo4jVectorDimensions,
           similarityFunction: config.options.neo4jSimilarityFunction,
-        } as Partial<Neo4jConfig>;
+        };
 
         provider = new Neo4jStorageProvider({
           config: neo4jConfig,

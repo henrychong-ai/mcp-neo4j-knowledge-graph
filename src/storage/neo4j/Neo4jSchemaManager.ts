@@ -1,6 +1,6 @@
 import { logger } from '../../utils/logger.js';
 
-import { DEFAULT_NEO4J_CONFIG, type Neo4jConfig } from './Neo4jConfig.js';
+import { type Neo4jConfig, type Neo4jConfigInput, resolveNeo4jConfig } from './Neo4jConfig.js';
 import type { Neo4jConnectionManager } from './Neo4jConnectionManager.js';
 
 /**
@@ -17,16 +17,10 @@ export class Neo4jSchemaManager {
    * @param config Neo4j configuration (optional)
    * @param debug Whether to enable debug logging (defaults to true)
    */
-  constructor(
-    connectionManager: Neo4jConnectionManager,
-    config?: Partial<Neo4jConfig>,
-    debug = true
-  ) {
+  constructor(connectionManager: Neo4jConnectionManager, config?: Neo4jConfigInput, debug = true) {
     this.connectionManager = connectionManager;
-    this.config = {
-      ...DEFAULT_NEO4J_CONFIG,
-      ...config,
-    };
+    // An absent or undefined key keeps its default.
+    this.config = resolveNeo4jConfig(config);
     this.debug = debug;
   }
 

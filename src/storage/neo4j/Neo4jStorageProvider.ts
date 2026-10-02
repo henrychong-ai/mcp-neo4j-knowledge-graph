@@ -19,7 +19,7 @@ import type { Relation, RelationMetadata } from '../../types/relation.js';
 import { logger } from '../../utils/logger.js';
 import type { StorageProvider, SearchOptions, EntitySizeScanRow } from '../StorageProvider.js';
 
-import { DEFAULT_NEO4J_CONFIG, type Neo4jConfig } from './Neo4jConfig.js';
+import { type Neo4jConfig, type Neo4jConfigInput, resolveNeo4jConfig } from './Neo4jConfig.js';
 import { Neo4jConnectionManager } from './Neo4jConnectionManager.js';
 import { Neo4jSchemaManager } from './Neo4jSchemaManager.js';
 import { Neo4jVectorStore } from './Neo4jVectorStore.js';
@@ -29,9 +29,10 @@ import { Neo4jVectorStore } from './Neo4jVectorStore.js';
  */
 export interface Neo4jStorageProviderOptions {
   /**
-   * Neo4j connection configuration
+   * Neo4j connection configuration. A key that is left out, or passed as
+   * `undefined`, keeps its default.
    */
-  config?: Partial<Neo4jConfig>;
+  config?: Neo4jConfigInput;
 
   /**
    * Pre-configured connection manager (optional)
@@ -258,11 +259,8 @@ export class Neo4jStorageProvider implements StorageProvider {
    * @param options Configuration options
    */
   constructor(options?: Neo4jStorageProviderOptions) {
-    // Set up configuration
-    this.config = {
-      ...DEFAULT_NEO4J_CONFIG,
-      ...options?.config,
-    };
+    // Set up configuration: an absent or undefined key keeps its default
+    this.config = resolveNeo4jConfig(options?.config);
 
     // Resolve versioning safety limits once — every transaction and every
     // versioning pre-flight check reads them from here.
