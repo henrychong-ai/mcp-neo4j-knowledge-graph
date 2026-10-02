@@ -176,7 +176,12 @@ const plainObject = z.looseObject({});
  * `id`, `version`, and `validTo` are advertised but never read: the storage
  * provider always generates the id, starts at version 1, and writes a live
  * (`validTo` null) version. The remaining optional keys are read as
- * `value || fallback`.
+ * `value || fallback`, so any falsy value passes.
+ *
+ * `domain` is passed on exactly as sent, because storage distinguishes an
+ * omitted domain from an explicit one when the entity already exists: omitted
+ * keeps the stored domain, `null` or `''` clears it, a string sets it. For a new
+ * entity all three falsy forms are stored as null.
  */
 export const EntityInputSchema = z.looseObject({
   name: z.string(),

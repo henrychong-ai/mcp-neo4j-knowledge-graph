@@ -1569,18 +1569,23 @@ export class Neo4jStorageProvider implements StorageProvider {
               // version inherits the live observations, and the embedding
               // computed above (from empty text) is not written either — it
               // stays NULL for the embedding backfill to regenerate.
+              //
+              // The same goes for the domain: an OMITTED domain keeps the live
+              // one. Only an explicit value changes it — null or '' clears it,
+              // a string sets it.
               const suppliedObservations: string[] | undefined =
                 Array.isArray(entity.observations) && entity.observations.length > 0
                   ? entity.observations
                   : undefined;
+              const domainSupplied = entity.domain !== undefined;
               upserts.push({
                 name: entity.name,
                 apply: () => ({
                   ...(suppliedObservations
                     ? { observations: suppliedObservations, embedding }
                     : {}),
+                  ...(domainSupplied ? { domain: entity.domain || null } : {}),
                   entityType: entity.entityType,
-                  domain: entity.domain || null,
                   changedBy: entity.changedBy || null,
                 }),
               });
@@ -3438,6 +3443,13 @@ export class Neo4jStorageProvider implements StorageProvider {
 
       for (const chunk of chunks) {
         // Generate embeddings if service available (parallel processing controlled by Promise.all)
+        // Rows whose input carried a `domain` key with a value other than
+        // undefined. The rows below normalise an omitted domain to null for the
+        // fresh CREATE, which would otherwise hide the difference between
+        // "omitted" (keep the live domain on a re-create) and an explicit null
+        // (clear it). Keyed by row object, so duplicate names cannot collide.
+        const domainSuppliedRows = new Set<object>();
+
         const entitiesWithEmbeddings = await Promise.all(
           chunk.map(async entity => {
             let embedding = null;
@@ -3457,7 +3469,7 @@ export class Neo4jStorageProvider implements StorageProvider {
             }
 
             const now = Date.now();
-            return {
+            const row = {
               id: uuidv4(),
               name: entity.name,
               entityType: entity.entityType,
@@ -3471,6 +3483,10 @@ export class Neo4jStorageProvider implements StorageProvider {
               changedBy: entity.changedBy || null,
               embedding: embedding,
             };
+            if (entity.domain !== undefined) {
+              domainSuppliedRows.add(row);
+            }
+            return row;
           })
         );
 
@@ -3532,17 +3548,20 @@ export class Neo4jStorageProvider implements StorageProvider {
                   // Same rule as createEntities: observations are replaced only
                   // when the caller supplies some. With none, the new version
                   // inherits the live observations and its embedding stays NULL
-                  // (the one computed above is of empty text).
+                  // (the one computed above is of empty text). An omitted domain
+                  // keeps the live one; `entity.domain` is already normalised,
+                  // so whether it was supplied comes from the raw input.
                   const suppliedObservations = JSON.parse(entity.observations) as string[];
                   const replaceObservations = suppliedObservations.length > 0;
+                  const domainSupplied = domainSuppliedRows.has(entity);
                   return {
                     name: entity.name,
                     apply: () => ({
                       ...(replaceObservations
                         ? { observations: suppliedObservations, embedding: entity.embedding }
                         : {}),
+                      ...(domainSupplied ? { domain: entity.domain } : {}),
                       entityType: entity.entityType,
-                      domain: entity.domain,
                       changedBy: entity.changedBy,
                     }),
                   };

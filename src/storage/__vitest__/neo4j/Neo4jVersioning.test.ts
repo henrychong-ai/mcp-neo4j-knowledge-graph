@@ -794,5 +794,115 @@ describe('Neo4j temporal versioning (v2.9.0)', () => {
         expect(graph.liveNode('Alpha')?.embedding).toEqual(vector);
       });
     });
+
+    describe('domain', () => {
+      const deltaObservations = ['delta fact'];
+
+      beforeEach(() => {
+        graph.addNode({
+          name: 'Delta',
+          entityType: 'person',
+          domain: 'medical',
+          observations: JSON.stringify(deltaObservations),
+        });
+        graph.addRel('Delta', 'Beta', 'relates-to', 'rel-delta');
+      });
+
+      /** Both re-create paths, called with one entity for the existing name. */
+      const paths: [string, (entity: Record<string, unknown>) => Promise<unknown>][] = [
+        ['createEntities', entity => provider.createEntities([entity])],
+        ['createEntitiesBatch', entity => provider.createEntitiesBatch([entity])],
+      ];
+
+      const expectDeltaVersionedOnce = (): void => {
+        expect(graph.liveNodes('Delta')).toHaveLength(1);
+        expect(graph.nodes.filter(node => node.name === 'Delta')).toHaveLength(2);
+        expect(graph.liveNode('Delta')?.version).toBe(2);
+        expect(graph.liveRelsFor('Delta')).toHaveLength(1);
+      };
+
+      describe.each(paths)('%s', (_label, recreate) => {
+        it('keeps the stored domain when domain is omitted', async () => {
+          await recreate({ name: 'Delta', entityType: 'person', observations: ['new fact'] });
+
+          expect(graph.liveNode('Delta')?.domain).toBe('medical');
+          expect(liveObservations('Delta')).toEqual(['new fact']);
+          expectDeltaVersionedOnce();
+        });
+
+        it('keeps the stored domain when domain is explicitly undefined', async () => {
+          await recreate({
+            name: 'Delta',
+            entityType: 'person',
+            domain: undefined,
+            observations: ['new fact'],
+          });
+
+          expect(graph.liveNode('Delta')?.domain).toBe('medical');
+          expectDeltaVersionedOnce();
+        });
+
+        it.each([
+          ['null', null],
+          ['an empty string', ''],
+        ])('clears the stored domain when domain is %s', async (_case, domain) => {
+          await recreate({
+            name: 'Delta',
+            entityType: 'person',
+            domain,
+            observations: ['new fact'],
+          });
+
+          expect(graph.liveNode('Delta')?.domain).toBeNull();
+          expectDeltaVersionedOnce();
+        });
+
+        it('sets the domain when domain is a non-empty string', async () => {
+          await recreate({
+            name: 'Delta',
+            entityType: 'person',
+            domain: 'work',
+            observations: ['new fact'],
+          });
+
+          expect(graph.liveNode('Delta')?.domain).toBe('work');
+          expectDeltaVersionedOnce();
+        });
+
+        it('keeps both the domain and the observations when both are omitted', async () => {
+          await recreate({ name: 'Delta', entityType: 'organization' });
+
+          expect(graph.liveNode('Delta')?.domain).toBe('medical');
+          expect(liveObservations('Delta')).toEqual(deltaObservations);
+          // entityType is a required input, so the caller's value is written.
+          expect(graph.liveNode('Delta')?.entityType).toBe('organization');
+          expectDeltaVersionedOnce();
+        });
+
+        it('still stores a brand-new entity without a domain as null', async () => {
+          await recreate({ name: 'Fresh', entityType: 'person', observations: ['hello'] });
+
+          expect(graph.liveNode('Fresh')?.domain).toBeNull();
+          expect(graph.liveNode('Fresh')?.version).toBe(1);
+        });
+      });
+
+      it('applies the rule per entity within one batch', async () => {
+        graph.addNode({ name: 'Epsilon', domain: 'work' });
+        graph.addNode({ name: 'Zeta', domain: 'work' });
+
+        await provider.createEntitiesBatch([
+          { name: 'Delta', entityType: 'person', observations: ['d'] },
+          { name: 'Epsilon', entityType: 'test', domain: null, observations: ['e'] },
+          { name: 'Zeta', entityType: 'test', domain: 'personal', observations: ['z'] },
+          { name: 'Fresh', entityType: 'test', observations: ['f'] },
+        ]);
+
+        expect(graph.liveNode('Delta')?.domain).toBe('medical');
+        expect(graph.liveNode('Epsilon')?.domain).toBeNull();
+        expect(graph.liveNode('Zeta')?.domain).toBe('personal');
+        expect(graph.liveNode('Fresh')?.domain).toBeNull();
+      });
+    });
   });
 });

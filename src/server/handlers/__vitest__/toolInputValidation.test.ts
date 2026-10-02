@@ -757,6 +757,33 @@ describe('calls that work today keep working', () => {
     expect(Object.keys(entities[0])).not.toContain('observations');
   });
 
+  it.each([
+    ['create_entities', 'createEntities'],
+    ['create_entities_batch', 'createEntitiesBatch'],
+  ] as const)(
+    '%s: an omitted, null or empty domain reaches the handler exactly as sent',
+    async (tool, method) => {
+      // Storage tells "omitted" (keep the stored domain on a re-create) from an
+      // explicit null or '' (clear it), so the gate must not add or drop the key.
+      const manager = createMockManager();
+      const entities = [
+        { name: 'Omitted', entityType: 'person', observations: ['x'] },
+        { name: 'Null', entityType: 'person', observations: ['x'], domain: null },
+        { name: 'Empty', entityType: 'person', observations: ['x'], domain: '' },
+        { name: 'Set', entityType: 'person', observations: ['x'], domain: 'work' },
+      ];
+
+      await callTool(tool, { entities }, manager);
+
+      const received = manager[method].mock.calls[0][0];
+      expect(received).toBe(entities);
+      expect('domain' in received[0]).toBe(false);
+      expect(received[1].domain).toBeNull();
+      expect(received[2].domain).toBe('');
+      expect(received[3].domain).toBe('work');
+    }
+  );
+
   it('create_entities_batch still requires observations (the manager throws without it)', async () => {
     const manager = createMockManager();
 
