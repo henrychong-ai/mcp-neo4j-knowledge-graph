@@ -1180,11 +1180,7 @@ export class Neo4jStorageProvider implements StorageProvider {
     const updates: PendingUpdate[] = [];
 
     for (const [name, nameInputs] of inputsByName) {
-      const rows = liveByName.get(name);
-      if (!rows || rows.length === 0) {
-        outcome.notFound.push(name);
-        continue;
-      }
+      const rows = liveByName.get(name) ?? [];
 
       // Newest live version wins as the property source; all of them get closed.
       const sorted = [...rows].sort(
@@ -1192,7 +1188,12 @@ export class Neo4jStorageProvider implements StorageProvider {
           Number(this.convertNeo4jInt(b.validFrom) ?? 0) -
           Number(this.convertNeo4jInt(a.validFrom) ?? 0)
       );
-      const current = this.toCurrentEntityVersion(name, sorted[0]);
+      const newest = sorted[0];
+      if (newest === undefined) {
+        outcome.notFound.push(name);
+        continue;
+      }
+      const current = this.toCurrentEntityVersion(name, newest);
 
       // Apply each caller mutation in order, feeding the previous result back so
       // repeated inputs for one name compose into a single new version.
@@ -1613,8 +1614,9 @@ export class Neo4jStorageProvider implements StorageProvider {
             const result = await txc.run(createQuery, params);
 
             // Get created entity from result
-            if (result.records.length > 0) {
-              const node = result.records[0].get('e').properties;
+            const createdRecord = result.records[0];
+            if (createdRecord !== undefined) {
+              const node = createdRecord.get('e').properties;
               const createdEntity = this.nodeToEntity(node);
               createdEntities.push(createdEntity);
               logger.info(`Created entity with embedding: ${entity.name}`);
@@ -1739,8 +1741,8 @@ export class Neo4jStorageProvider implements StorageProvider {
             const result = await txc.run(createQuery, params);
 
             // Get created relation from result
-            if (result.records.length > 0) {
-              const record = result.records[0];
+            const record = result.records[0];
+            if (record !== undefined) {
               const rel = record.get('r').properties;
               const fromNode = record.get('from').properties;
               const toNode = record.get('to').properties;
@@ -2084,12 +2086,13 @@ export class Neo4jStorageProvider implements StorageProvider {
       const result = await this.connectionManager.executeQuery(query, { name: entityName });
 
       // Return null if no entity found
-      if (result.records.length === 0) {
+      const record = result.records[0];
+      if (record === undefined) {
         return null;
       }
 
       // Convert node to entity
-      const node = result.records[0].get('e').properties;
+      const node = record.get('e').properties;
       return this.nodeToEntity(node);
     } catch (error) {
       logger.error(`Error retrieving entity ${entityName} from Neo4j`, error);
@@ -2221,12 +2224,12 @@ export class Neo4jStorageProvider implements StorageProvider {
       });
 
       // Return null if no relation found
-      if (result.records.length === 0) {
+      const record = result.records[0];
+      if (record === undefined) {
         return null;
       }
 
       // Convert relationship to relation
-      const record = result.records[0];
       const rel = record.get('r').properties;
       const fromNode = record.get('from').properties;
       const toNode = record.get('to').properties;
@@ -2265,14 +2268,15 @@ export class Neo4jStorageProvider implements StorageProvider {
             relationType: relation.relationType,
           });
 
-          if (getResult.records.length === 0) {
+          const currentRecord = getResult.records[0];
+          if (currentRecord === undefined) {
             throw new Error(
               `Relation not found: ${relation.from} -> ${relation.to} (${relation.relationType})`
             );
           }
 
           // Get relation properties
-          const currentRel = getResult.records[0].get('r').properties;
+          const currentRel = currentRecord.get('r').properties;
 
           // Step 2: Update the relation with temporal versioning
           const now = Date.now();
@@ -2727,12 +2731,12 @@ export class Neo4jStorageProvider implements StorageProvider {
 
         const result = await session.run(query, { name: entityName });
 
-        if (result.records.length === 0 || !result.records[0].get('embedding')) {
+        const record = result.records[0];
+        if (record === undefined || !record.get('embedding')) {
           logger.debug(`No embedding found for entity: ${entityName}`);
           return null;
         }
 
-        const record = result.records[0];
         const generatedAtRaw = record.get('generatedAt');
 
         return {

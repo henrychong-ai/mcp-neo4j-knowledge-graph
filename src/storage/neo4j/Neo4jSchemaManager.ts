@@ -221,12 +221,13 @@ export class Neo4jSchemaManager {
         { indexName }
       );
 
-      if (result.records.length === 0) {
+      const record = result.records[0];
+      if (record === undefined) {
         this.log(`Vector index ${indexName} does not exist`);
         return false;
       }
 
-      const state = result.records[0].get('state');
+      const state = record.get('state');
       const isOnline = state === 'ONLINE';
 
       this.log(`Vector index ${indexName} exists with state: ${state}`);
@@ -245,12 +246,13 @@ export class Neo4jSchemaManager {
           { indexName }
         );
 
-        if (fallbackResult.records.length === 0) {
+        const fallbackRecord = fallbackResult.records[0];
+        if (fallbackRecord === undefined) {
           this.log(`Vector index ${indexName} does not exist (fallback check)`);
           return false;
         }
 
-        const state = fallbackResult.records[0].get('state');
+        const state = fallbackRecord.get('state');
         const isOnline = state === 'ONLINE';
 
         this.log(`Vector index ${indexName} exists with state: ${state} (fallback check)`);
@@ -283,13 +285,14 @@ export class Neo4jSchemaManager {
         {}
       );
 
-      if (result.records.length === 0) {
+      const record = result.records[0];
+      if (record === undefined) {
         this.log('No Neo4j Kernel component found in dbms.components()');
         return { version: 'unknown', edition: 'unknown' };
       }
 
-      const version = result.records[0].get('version') || 'unknown';
-      const edition = result.records[0].get('edition') || 'unknown';
+      const version = record.get('version') || 'unknown';
+      const edition = record.get('edition') || 'unknown';
       this.log(`Neo4j server: ${version} (${edition})`);
       return { version, edition };
     } catch (error) {
@@ -320,8 +323,8 @@ export class Neo4jSchemaManager {
     // Check Neo4j version and edition for vector index compatibility
     const { version, edition } = await this.getServerVersion();
     const versionParts = version.split('.');
-    const major = Number.parseInt(versionParts[0], 10);
-    const minor = Number.parseInt(versionParts[1], 10);
+    const major = Number.parseInt(versionParts[0] ?? '', 10);
+    const minor = Number.parseInt(versionParts[1] ?? '', 10);
 
     // Check Enterprise Edition requirement first
     if (edition.toLowerCase() === 'community') {

@@ -38,7 +38,7 @@ function parseArgs(): GenerateEmbeddingsOptions {
   for (let i = 0; i < args.length; i++) {
     switch (args[i]) {
       case '--limit': {
-        options.limit = Number.parseInt(args[++i], 10);
+        options.limit = Number.parseInt(args[++i] ?? '', 10);
         break;
       }
       case '--force': {
@@ -46,7 +46,7 @@ function parseArgs(): GenerateEmbeddingsOptions {
         break;
       }
       case '--batch-size': {
-        options.batchSize = Number.parseInt(args[++i], 10);
+        options.batchSize = Number.parseInt(args[++i] ?? '', 10);
         break;
       }
       case '--help': {

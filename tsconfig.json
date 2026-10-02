@@ -17,6 +17,7 @@
     "allowUnreachableCode": false,
     "allowUnusedLabels": false,
     "noImplicitOverride": true,
+    "noUncheckedIndexedAccess": true,
     "sourceMap": true,
     "declaration": true
   },

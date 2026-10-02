@@ -38,21 +38,30 @@ export function parseArgs(argv: string[]): {
 
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
+    // The value after a flag; undefined when the flag is the last argument.
+    const next = argv[i + 1];
 
-    if (arg === '--uri' && i + 1 < argv.length) {
-      config.uri = argv[++i];
-    } else if (arg === '--username' && i + 1 < argv.length) {
-      config.username = argv[++i];
-    } else if (arg === '--password' && i + 1 < argv.length) {
-      config.password = argv[++i];
-    } else if (arg === '--database' && i + 1 < argv.length) {
-      config.database = argv[++i];
-    } else if (arg === '--vector-index' && i + 1 < argv.length) {
-      config.vectorIndexName = argv[++i];
-    } else if (arg === '--dimensions' && i + 1 < argv.length) {
-      config.vectorDimensions = Number.parseInt(argv[++i], 10);
-    } else if (arg === '--similarity' && i + 1 < argv.length) {
-      const similarity = argv[++i];
+    if (arg === '--uri' && next !== undefined) {
+      config.uri = next;
+      i++;
+    } else if (arg === '--username' && next !== undefined) {
+      config.username = next;
+      i++;
+    } else if (arg === '--password' && next !== undefined) {
+      config.password = next;
+      i++;
+    } else if (arg === '--database' && next !== undefined) {
+      config.database = next;
+      i++;
+    } else if (arg === '--vector-index' && next !== undefined) {
+      config.vectorIndexName = next;
+      i++;
+    } else if (arg === '--dimensions' && next !== undefined) {
+      config.vectorDimensions = Number.parseInt(next, 10);
+      i++;
+    } else if (arg === '--similarity' && next !== undefined) {
+      const similarity = next;
+      i++;
       if (similarity === 'cosine' || similarity === 'euclidean') {
         config.similarityFunction = similarity;
       }
@@ -104,7 +113,11 @@ export async function testConnection(
 
     await session.close();
 
-    const value = result.records[0].get('value').toNumber();
+    const record = result.records[0];
+    if (record === undefined) {
+      throw new Error('Connection test query returned no rows');
+    }
+    const value = record.get('value').toNumber();
     console.log('✓ Neo4j connection successful');
     return value === 1;
   } catch (error) {

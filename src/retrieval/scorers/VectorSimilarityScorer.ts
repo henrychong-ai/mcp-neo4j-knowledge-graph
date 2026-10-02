@@ -68,9 +68,12 @@ export class VectorSimilarityScorer implements Scorer {
     let normB = 0;
 
     for (const [i, element] of a.entries()) {
-      dotProduct += element * b[i];
+      // Lengths match (checked above); a hole in `b` still propagates NaN.
+      const value = b[i];
+      const other = value === undefined ? Number.NaN : value;
+      dotProduct += element * other;
       normA += element * element;
-      normB += b[i] * b[i];
+      normB += other * other;
     }
 
     normA = Math.sqrt(normA);

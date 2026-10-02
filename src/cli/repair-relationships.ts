@@ -466,14 +466,14 @@ export function parseArgs(argv: string[]): RepairOptions {
         break;
       }
       case '--batch-size': {
-        const parsed = Number.parseInt(argv[++i], 10);
+        const parsed = Number.parseInt(argv[++i] ?? '', 10);
         if (Number.isFinite(parsed) && parsed > 0) {
           options.batchSize = parsed;
         }
         break;
       }
       case '--passes': {
-        const parsed = Number.parseInt(argv[++i], 10);
+        const parsed = Number.parseInt(argv[++i] ?? '', 10);
         if (Number.isFinite(parsed) && parsed > 0) {
           options.passes = parsed;
         }

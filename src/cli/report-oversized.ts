@@ -45,11 +45,11 @@ function parseArgs(): ReportOptions {
   for (let i = 0; i < args.length; i++) {
     switch (args[i]) {
       case '--limit': {
-        options.limit = Number.parseInt(args[++i], 10);
+        options.limit = Number.parseInt(args[++i] ?? '', 10);
         break;
       }
       case '--warn-ratio': {
-        options.warnRatio = Number.parseFloat(args[++i]);
+        options.warnRatio = Number.parseFloat(args[++i] ?? '');
         break;
       }
       case '--include-ok': {

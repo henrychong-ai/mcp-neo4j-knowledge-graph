@@ -418,7 +418,11 @@ export class Neo4jVectorStore implements VectorStore {
           RETURN count(e) as count
         `;
         const countResult = await session.run(countQuery);
-        const count = countResult.records[0].get('count').toNumber();
+        const countRecord = countResult.records[0];
+        if (countRecord === undefined) {
+          throw new Error('Embedding count query returned no rows');
+        }
+        const count = countRecord.get('count').toNumber();
 
         // Get a sample of entities with embeddings
         const sampleQuery = `
@@ -440,13 +444,14 @@ export class Neo4jVectorStore implements VectorStore {
           WHERE name = $indexName
         `;
         const indexResult = await session.run(indexQuery, { indexName: this.indexName });
+        const indexRecord = indexResult.records[0];
         const indexInfo =
-          indexResult.records.length > 0
-            ? {
-                name: indexResult.records[0].get('name'),
-                state: indexResult.records[0].get('state'),
-              }
-            : { name: null, state: null };
+          indexRecord === undefined
+            ? { name: null, state: null }
+            : {
+                name: indexRecord.get('name'),
+                state: indexRecord.get('state'),
+              };
 
         // Test embedding type
         const typeQuery = `
@@ -459,8 +464,9 @@ export class Neo4jVectorStore implements VectorStore {
         let embeddingType = 'unknown';
         try {
           const typeResult = await session.run(typeQuery);
-          if (typeResult.records.length > 0) {
-            embeddingType = typeResult.records[0].get('embeddingType');
+          const typeRecord = typeResult.records[0];
+          if (typeRecord !== undefined) {
+            embeddingType = typeRecord.get('embeddingType');
           }
         } catch (error) {
           embeddingType = 'error: ' + (error instanceof Error ? error.message : String(error));
@@ -483,16 +489,17 @@ export class Neo4jVectorStore implements VectorStore {
           `;
 
           const testResult = await session.run(directQuery, { embedding: testVector });
+          const testRecord = testResult.records[0];
           directVectorQueryResult = {
             success: testResult.records.length > 0,
             recordCount: testResult.records.length,
             sampleResult:
-              testResult.records.length > 0
-                ? {
-                    name: testResult.records[0].get('node.name'),
-                    score: testResult.records[0].get('score'),
-                  }
-                : null,
+              testRecord === undefined
+                ? null
+                : {
+                    name: testRecord.get('node.name'),
+                    score: testRecord.get('score'),
+                  },
           };
         } catch (error) {
           directVectorQueryResult = {

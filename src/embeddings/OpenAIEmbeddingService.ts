@@ -294,8 +294,8 @@ export class OpenAIEmbeddingService extends EmbeddingService {
     // Avoid division by zero
     if (magnitude > 0) {
       // Normalize each component
-      for (let i = 0; i < vector.length; i++) {
-        vector[i] /= magnitude;
+      for (const [i, element] of vector.entries()) {
+        vector[i] = element / magnitude;
       }
     } else {
       // If magnitude is 0, set first element to 1 for a valid unit vector
