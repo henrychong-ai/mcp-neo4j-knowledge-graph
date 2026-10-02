@@ -5,15 +5,10 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { Neo4jConnectionManager } from '../../neo4j/Neo4jConnectionManager.js';
 import { Neo4jConfig } from '../../neo4j/Neo4jConfig.js';
 
-import neo4j from 'neo4j-driver';
-
 // This test requires a running Neo4j database
 // Skip if not in integration test environment
 const isIntegrationTest = process.env.TEST_INTEGRATION === 'true';
 const describeOrSkip = isIntegrationTest ? describe : describe.skip;
-
-// Helper function to wait for a specific amount of time
-const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 // Helper function to create a test vector with the specified dimensions
 function createTestVector(dimensions: number, seed: number = 0.1): number[] {
@@ -92,8 +87,6 @@ describeOrSkip('Neo4j Vector Index Test', () => {
         for (const record of showResult.records) {
           const indexType = record.get('type');
           const indexName = record.get('name');
-          const labels = record.get('labelsOrTypes');
-          const props = record.get('properties');
 
           // Check if it's specifically a VECTOR index
           if (indexType === 'VECTOR') {

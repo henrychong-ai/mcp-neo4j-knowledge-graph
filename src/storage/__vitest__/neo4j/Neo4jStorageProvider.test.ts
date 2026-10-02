@@ -3,8 +3,6 @@
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { Neo4jStorageProvider } from '../../neo4j/Neo4jStorageProvider';
-import { Neo4jConnectionManager } from '../../neo4j/Neo4jConnectionManager';
-import { Neo4jSchemaManager } from '../../neo4j/Neo4jSchemaManager';
 import { Neo4jConfig } from '../../neo4j/Neo4jConfig';
 import { KnowledgeGraph, Entity } from '../../../KnowledgeGraphManager';
 import { Relation } from '../../../types/relation';
@@ -738,7 +736,7 @@ describe('Neo4jStorageProvider', () => {
 
   describe('getEntityEmbedding', () => {
     it('should retrieve entity embedding', async () => {
-      const embedding = await storageProvider.getEntityEmbedding('test-entity');
+      await storageProvider.getEntityEmbedding('test-entity');
 
       expect(storageProvider.getConnectionManager().executeQuery).toHaveBeenCalled();
       // May return null or embedding object depending on mock

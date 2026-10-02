@@ -56,11 +56,32 @@
     "typescript/no-explicit-any": "warn",
     "typescript/no-non-null-assertion": "warn"
   },
+  "ignorePatterns": ["dist", "build", "coverage", "node_modules", "*.config.js", "*.config.mjs"],
   "overrides": [
     {
       "files": ["src/embeddings/OpenAIEmbeddingService.ts"],
       "rules": {
         "preserve-caught-error": "off"
+      }
+    },
+    {
+      "files": [
+        "**/__vitest__/**",
+        "**/__test-utils__/**",
+        "**/*.test.ts",
+        "**/*.spec.ts",
+        "vitest.setup.ts"
+      ],
+      "rules": {
+        "vitest/require-mock-type-parameters": "off",
+        "typescript/no-explicit-any": "off",
+        "no-new": "off",
+        "vitest/no-standalone-expect": [
+          "error",
+          {
+            "additionalTestBlockFunctions": ["conditionalTest", "skipIfNoKeyOrMockEnabled"]
+          }
+        ]
       }
     }
   ]

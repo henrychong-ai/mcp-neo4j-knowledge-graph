@@ -58,7 +58,7 @@ describe('Automatic Embedding Generation', () => {
       storeEntityVector: vi.fn().mockResolvedValue(undefined),
 
       // Additional methods needed for tests
-      getEntityEmbedding: vi.fn().mockImplementation(async entityName => {
+      getEntityEmbedding: vi.fn().mockImplementation(async _entityName => {
         return {
           vector: Array(128)
             .fill(0)
@@ -67,7 +67,7 @@ describe('Automatic Embedding Generation', () => {
           lastUpdated: Date.now(),
         };
       }),
-      semanticSearch: vi.fn().mockImplementation(async (query, options) => {
+      semanticSearch: vi.fn().mockImplementation(async (_query, _options) => {
         // Return mock results with the test entity
         return {
           entities: [
@@ -127,18 +127,16 @@ describe('Automatic Embedding Generation', () => {
     expect(storageProvider.createEntities).toHaveBeenCalledWith([testEntity]);
 
     // Mock the _prepareEntityText method to ensure it returns the entity text
-    const prepareTextSpy = vi
-      .spyOn(embeddingJobManager as any, '_prepareEntityText')
-      .mockReturnValue('This is a test entity for embedding generation');
+    vi.spyOn(embeddingJobManager as any, '_prepareEntityText').mockReturnValue(
+      'This is a test entity for embedding generation'
+    );
 
     // Mock _getCachedEmbeddingOrGenerate to ensure it returns an embedding
-    const getCachedEmbeddingSpy = vi
-      .spyOn(embeddingJobManager as any, '_getCachedEmbeddingOrGenerate')
-      .mockResolvedValue(
-        Array(128)
-          .fill(0)
-          .map(() => Math.random())
-      );
+    vi.spyOn(embeddingJobManager as any, '_getCachedEmbeddingOrGenerate').mockResolvedValue(
+      Array(128)
+        .fill(0)
+        .map(() => Math.random())
+    );
 
     // Process embedding jobs - this should call storeEntityVector
     await embeddingJobManager.processJobs(10);

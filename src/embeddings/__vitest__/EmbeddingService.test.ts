@@ -1,6 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import type { EmbeddingService, EmbeddingModelInfo } from '../EmbeddingService';
-import type { EmbeddingServiceFactory as EmbeddingServiceFactoryType } from '../EmbeddingServiceFactory';
+import { describe, it, expect } from 'vitest';
 
 // Test suite for EmbeddingService interface
 describe('EmbeddingService Interface', () => {

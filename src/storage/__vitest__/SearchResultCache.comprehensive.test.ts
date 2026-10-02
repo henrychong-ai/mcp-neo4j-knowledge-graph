@@ -3,7 +3,7 @@
  * Covers: eviction, size estimation, performance tracking
  */
 
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 import { SearchResultCache } from '../SearchResultCache.js';
 

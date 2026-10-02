@@ -235,8 +235,8 @@ describe('Memory Server Request Handlers', () => {
     };
 
     // Define our handler function based on the code in index.ts
-    const callToolHandler = (request: { params: { name: string; arguments?: any } }) => {
-      const { name, arguments: args } = request.params;
+    const callToolHandler = (incoming: { params: { name: string; arguments?: any } }) => {
+      const { name, arguments: args } = incoming.params;
 
       if (!args) {
         throw new Error(`No arguments provided for tool: ${name}`);
@@ -259,8 +259,8 @@ describe('Memory Server Request Handlers', () => {
     };
 
     // Define a simpler version of the handler function with the same error logic
-    const callToolHandler = (request: { params: { name: string; arguments: any } }) => {
-      const { name, arguments: args } = request.params;
+    const callToolHandler = (incoming: { params: { name: string; arguments: any } }) => {
+      const { name, arguments: args } = incoming.params;
 
       if (!args) {
         throw new Error(`No arguments provided for tool: ${name}`);

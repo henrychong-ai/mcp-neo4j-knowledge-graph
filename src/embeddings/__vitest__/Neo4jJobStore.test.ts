@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 
 import { Neo4jJobStore } from '../Neo4jJobStore.js';
 import type { Neo4jConnectionManager } from '../../storage/neo4j/Neo4jConnectionManager.js';

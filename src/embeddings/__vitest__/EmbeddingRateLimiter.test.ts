@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, afterAll, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterAll, vi } from 'vitest';
 import fs from 'fs';
 import path from 'path';
 import { EmbeddingJobManager } from '../EmbeddingJobManager.js';
@@ -6,7 +6,7 @@ import { FakeJobStore } from './helpers/FakeJobStore.js';
 import type { Entity, KnowledgeGraph } from '../../KnowledgeGraphManager.js';
 import type { EmbeddingService } from '../EmbeddingService.js';
 import type { Relation } from '../../types/relation.js';
-import type { EntityEmbedding, SemanticSearchOptions } from '../../types/entity-embedding.js';
+import type { EntityEmbedding } from '../../types/entity-embedding.js';
 
 // Define a more accurate EmbeddingStorageProvider interface
 interface EmbeddingStorageProvider {
@@ -262,17 +262,15 @@ describe('EmbeddingJobManager Rate Limiting', () => {
 
       // Override the full job processing with a simplified version that just checks rate limiting
       async processJobs(batchSize: number) {
-        const pendingJobs = Array(batchSize)
-          .fill({})
-          .map((_, i) => ({
-            id: `job-${i}`,
-            entity_name: `Entity-${i}`,
-          }));
+        const pendingJobs = Array.from({ length: batchSize }, (_, i) => ({
+          id: `job-${i}`,
+          entity_name: `Entity-${i}`,
+        }));
 
         let processed = 0;
         let successful = 0;
 
-        for (const job of pendingJobs) {
+        for (const _job of pendingJobs) {
           // Check rate limiting before processing
           const rateLimitResult = (this as any)._checkRateLimiter();
           if (!rateLimitResult.success) {

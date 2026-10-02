@@ -3,35 +3,13 @@
  * Migrated from Jest to Vitest and converted to TypeScript
  */
 import { describe, it, expect, beforeAll, beforeEach, afterEach, afterAll, vi } from 'vitest';
-import path from 'path';
-
-// Define types for the module under test
-type StorageType = 'neo4j';
-interface StorageConfig {
-  type: StorageType;
-  options: {
-    neo4jUri?: string;
-    neo4jUsername?: string;
-    neo4jPassword?: string;
-    neo4jDatabase?: string;
-    neo4jVectorIndexName?: string;
-    neo4jVectorDimensions?: number;
-    neo4jSimilarityFunction?: 'cosine' | 'euclidean';
-  };
-}
 
 // Vitest auto-mocks - these must be before any imports
 vi.mock('../../storage/StorageProviderFactory');
 vi.mock('../../storage/VectorStoreFactory.js');
 
 // Now import the module under test after all mocks are set up
-import {
-  initializeStorageProvider,
-  createStorageConfig,
-  determineStorageType,
-} from '../storage.js';
 import { StorageProviderFactory } from '../../storage/StorageProviderFactory.js';
-import { VectorStoreFactory } from '../../storage/VectorStoreFactory.js';
 
 describe('storage configuration module', () => {
   let storageModule: typeof import('../storage');

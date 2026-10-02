@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 
 import type { Entity, KnowledgeGraph } from '../../KnowledgeGraphManager.js';
 import type { Relation } from '../../types/relation.js';

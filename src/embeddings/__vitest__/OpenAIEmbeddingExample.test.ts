@@ -22,7 +22,7 @@ describe('OpenAI Embedding Live Example', () => {
     if (hasApiKey && !useMockEmbeddings) {
       embeddingService = EmbeddingServiceFactory.createService({
         provider: 'openai',
-        apiKey: process.env.OPENAI_API_KEY!,
+        apiKey: process.env.OPENAI_API_KEY ?? '',
         model: 'text-embedding-3-small',
       });
       console.log('Using OpenAI embedding service with real API key');
@@ -64,7 +64,7 @@ describe('OpenAI Embedding Live Example', () => {
     expect(embeddings.length).toBe(3);
 
     // Check each embedding
-    embeddings.forEach((embedding, index) => {
+    embeddings.forEach(embedding => {
       expect(Array.isArray(embedding)).toBe(true);
       expect(embedding.length).toBe(1536);
 

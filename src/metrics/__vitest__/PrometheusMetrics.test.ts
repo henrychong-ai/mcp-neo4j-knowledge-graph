@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { PrometheusMetrics } from '../PrometheusMetrics.js';
 
 describe('PrometheusMetrics', () => {
@@ -140,19 +140,19 @@ describe('PrometheusMetrics', () => {
       delete process.env.ENABLE_PROMETHEUS_METRICS;
 
       const metrics = PrometheusMetrics.getInstance();
-      metrics.startServer();
 
       // Server should not be started
       // This is tested implicitly by not throwing and by checking no port is bound
+      expect(() => metrics.startServer()).not.toThrow();
     });
 
     it('should not start server when ENABLE_PROMETHEUS_METRICS is false', () => {
       process.env.ENABLE_PROMETHEUS_METRICS = 'false';
 
       const metrics = PrometheusMetrics.getInstance();
-      metrics.startServer();
 
       // Server should not be started
+      expect(() => metrics.startServer()).not.toThrow();
     });
   });
 

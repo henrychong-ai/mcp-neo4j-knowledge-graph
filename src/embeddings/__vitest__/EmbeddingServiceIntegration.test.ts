@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { EmbeddingService } from '../EmbeddingService.js';
 import { DefaultEmbeddingService } from '../DefaultEmbeddingService.js';
 import { OpenAIEmbeddingService } from '../OpenAIEmbeddingService.js';

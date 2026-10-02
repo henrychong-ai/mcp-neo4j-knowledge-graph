@@ -1,7 +1,7 @@
 import http from 'node:http';
 import https from 'node:https';
 
-import axios from 'axios';
+import { create as createAxiosInstance } from 'axios';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { type RerankConfig, RerankerService } from '../RerankerService.js';
@@ -67,7 +67,7 @@ describe('RerankerService', () => {
 
     beforeEach(() => {
       mockPost = vi.fn();
-      vi.mocked(axios.create).mockReturnValue({ post: mockPost } as never);
+      vi.mocked(createAxiosInstance).mockReturnValue({ post: mockPost } as never);
     });
 
     const makeService = (overrides: Partial<RerankConfig> = {}) =>
@@ -85,12 +85,12 @@ describe('RerankerService', () => {
 
     it('creates a dedicated axios instance with keep-alive disabled http/https agents', () => {
       makeService();
-      expect(axios.create).toHaveBeenCalledWith({
+      expect(createAxiosInstance).toHaveBeenCalledWith({
         httpAgent: expect.any(http.Agent),
         httpsAgent: expect.any(https.Agent),
       });
       // `options` is a runtime property of Agent not exposed on the @types/node surface
-      const createArgs = vi.mocked(axios.create).mock.calls.at(-1)?.[0] as unknown as {
+      const createArgs = vi.mocked(createAxiosInstance).mock.calls.at(-1)?.[0] as unknown as {
         httpAgent: { options: { keepAlive?: boolean } };
         httpsAgent: { options: { keepAlive?: boolean } };
       };
@@ -200,7 +200,9 @@ describe('RerankerService', () => {
 
     it('throws on a malformed response so the caller can fail open', async () => {
       mockPost.mockResolvedValue({ data: { result: {} } } as never);
-      await expect(makeService().rerank('query', ['a', 'b'])).rejects.toThrow();
+      await expect(makeService().rerank('query', ['a', 'b'])).rejects.toThrow(
+        'Reranker returned a malformed response'
+      );
     });
   });
 });

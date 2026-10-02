@@ -97,8 +97,8 @@ describe('repair-relationships CLI', () => {
       // `entity_name` is UNIQUE on (name, validTo): stamping two losers of one
       // name with the same `$now` violates it and rolls the whole step back.
       const close = buildRepairSteps(5000)
-        .find(step => step.id === 4)!
-        .applyQueries.at(-1)!;
+        .find(step => step.id === 4)
+        ?.applyQueries.at(-1);
       expect(close).toContain('UNWIND range(0, size(loserIds) - 1) AS i');
       expect(close).toContain('SET loser.validTo = $now - i');
       expect(close).not.toMatch(/SET loser\.validTo = \$now\s*\}/);
@@ -191,10 +191,10 @@ describe('repair-relationships CLI', () => {
       await runRepair(session, { apply: true, batchSize: 5000, json: false });
 
       const calls = (session.run as ReturnType<typeof vi.fn>).mock.calls;
-      for (const [query, params] of calls) {
-        if (WRITE_CLAUSE.test(query)) {
-          expect(typeof params.now).toBe('number');
-        }
+      const writes = calls.filter(([query]) => WRITE_CLAUSE.test(query));
+      expect(writes.length).toBeGreaterThan(0);
+      for (const [, params] of writes) {
+        expect(typeof params.now).toBe('number');
       }
     });
   });

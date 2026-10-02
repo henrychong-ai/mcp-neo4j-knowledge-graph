@@ -3,7 +3,6 @@
  * Migrated from Jest to Vitest and converted to TypeScript
  */
 import { describe, it, expect } from 'vitest';
-import { StorageProvider } from '../StorageProvider.js';
 
 describe('StorageProvider Interface', () => {
   it('should define the interface', () => {
@@ -45,7 +44,7 @@ describe('StorageProvider Interface', () => {
       loadGraph: async () => {
         return { entities: [], relations: [] };
       },
-      saveGraph: async graph => {
+      saveGraph: async _graph => {
         // Mock implementation
       },
       searchNodes: async () => {
@@ -80,7 +79,7 @@ describe('StorageProvider Interface', () => {
         return { entities: [], relations: [] };
       },
       saveGraph: async () => {},
-      searchNodes: async (query, options) => {
+      searchNodes: async (query, _options) => {
         // Mock implementation that returns entities matching the query
         return {
           entities: [{ name: query, entityType: 'test', observations: [] }],
@@ -200,7 +199,7 @@ describe('StorageProvider Interface', () => {
       addObservations: async () => {
         return [];
       },
-      deleteEntities: async entityNames => {
+      deleteEntities: async _entityNames => {
         // Mock implementation that deletes entities
       },
     };
@@ -232,7 +231,7 @@ describe('StorageProvider Interface', () => {
         return [];
       },
       deleteEntities: async () => {},
-      deleteObservations: async deletions => {
+      deleteObservations: async _deletions => {
         // Mock implementation that deletes observations
       },
     };
@@ -267,7 +266,7 @@ describe('StorageProvider Interface', () => {
       },
       deleteEntities: async () => {},
       deleteObservations: async () => {},
-      deleteRelations: async relationIds => {
+      deleteRelations: async _relationIds => {
         // Mock implementation that deletes relations
       },
     };
@@ -335,7 +334,7 @@ describe('StorageProvider Interface', () => {
       deleteEntities: async () => {},
       deleteObservations: async () => {},
       deleteRelations: async () => {},
-      getHistory: async options => {
+      getHistory: async _options => {
         // Mock implementation that returns history
         return {
           entities: [
@@ -383,7 +382,7 @@ describe('StorageProvider Interface', () => {
         // Mock implementation that returns stored vectors
         return vectors.map(v => ({ ...v, id: 'vector-id' }));
       },
-      searchVectors: async (embedding, options) => {
+      searchVectors: async (_embedding, _options) => {
         // Mock implementation that returns search results
         return [{ id: 'vector-id', entityName: 'Entity1', score: 0.95 }];
       },

@@ -2,7 +2,7 @@
  * Comprehensive tests for callToolHandler
  * Covers: all tool cases including temporal, embedding, and diagnostic operations
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { handleCallToolRequest } from '../callToolHandler.js';
 
 /**
@@ -456,7 +456,7 @@ describe('callToolHandler - Semantic Search Operations', () => {
       search: vi.fn().mockResolvedValue(mockResults),
     });
 
-    const result = await handleCallToolRequest(
+    await handleCallToolRequest(
       {
         params: {
           name: 'semantic_search',

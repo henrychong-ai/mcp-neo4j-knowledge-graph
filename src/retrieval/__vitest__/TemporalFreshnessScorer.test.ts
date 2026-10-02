@@ -87,7 +87,7 @@ describe('TemporalFreshnessScorer', () => {
     });
 
     it('should use exponential decay based on half-life', async () => {
-      const halfLife = 30; // 30 days
+      // Half-life is 30 days
       const context30Days = createContext(
         {
           updatedAt: now - 1000 * 60 * 60 * 24 * 30,

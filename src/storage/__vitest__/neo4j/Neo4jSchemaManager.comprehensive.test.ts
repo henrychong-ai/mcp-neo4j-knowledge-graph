@@ -2,7 +2,7 @@
  * Comprehensive tests for Neo4jSchemaManager
  * Covers: all branches including error handling, version checks, and fallbacks
  */
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { Neo4jSchemaManager } from '../../neo4j/Neo4jSchemaManager.js';
 import type { Neo4jConnectionManager } from '../../neo4j/Neo4jConnectionManager.js';
 
@@ -446,10 +446,8 @@ describe('Neo4jSchemaManager - Server Version', () => {
 
 describe('Neo4jSchemaManager - Initialize Schema', () => {
   it('should skip vector index for Community Edition', async () => {
-    let callCount = 0;
     const connectionManager = {
       executeQuery: vi.fn().mockImplementation((query: string) => {
-        callCount++;
         // Version query
         if (query.includes('dbms.components')) {
           return Promise.resolve({

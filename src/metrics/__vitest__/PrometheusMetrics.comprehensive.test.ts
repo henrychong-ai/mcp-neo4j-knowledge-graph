@@ -181,6 +181,7 @@ describe('PrometheusMetrics Server', () => {
             reject(new Error('Request timeout'));
           });
         })
+        // oxlint-disable-next-line vitest/require-to-throw-message -- the refused-connection error text differs by platform and address family (an AggregateError has an empty message)
       ).rejects.toThrow();
     });
   });

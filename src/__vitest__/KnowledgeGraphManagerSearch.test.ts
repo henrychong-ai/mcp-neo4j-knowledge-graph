@@ -3,7 +3,6 @@ import { fileURLToPath } from 'url';
 import path from 'path';
 import { KnowledgeGraphManager, SemanticSearchOptions } from '../KnowledgeGraphManager.js';
 import { StorageProvider } from '../storage/StorageProvider.js';
-import type { LRUCache } from 'lru-cache';
 
 // Setup test paths
 const __dirname = path.dirname(fileURLToPath(import.meta.url));

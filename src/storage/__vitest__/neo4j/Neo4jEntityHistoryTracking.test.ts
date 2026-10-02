@@ -3,17 +3,6 @@
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { Neo4jStorageProvider } from '../../neo4j/Neo4jStorageProvider.js';
-import { Entity } from '../../../KnowledgeGraphManager.js';
-
-// Define test interfaces
-interface EntityWithHistory extends Entity {
-  id?: string;
-  createdAt?: number;
-  updatedAt?: number;
-  validFrom?: number;
-  validTo?: number | null;
-  version?: number;
-}
 
 // Mock Neo4j dependencies
 vi.mock('neo4j-driver', () => {
@@ -114,14 +103,17 @@ describe('Neo4j Entity History Tracking Tests', () => {
     expect(true).toBe(true);
   });
 
+  // oxlint-disable-next-line vitest/no-disabled-tests -- placeholder until the Neo4j version of this test is written
   it.skip('should create a new version for each entity update with proper timestamps', async () => {
     // TODO: Implement Neo4j version of entity update history test
   });
 
+  // oxlint-disable-next-line vitest/no-disabled-tests -- placeholder until the Neo4j version of this test is written
   it.skip('should properly assign timestamps when creating entities', async () => {
     // TODO: Implement Neo4j version of entity creation timestamp test
   });
 
+  // oxlint-disable-next-line vitest/no-disabled-tests -- placeholder until the Neo4j version of this test is written
   it.skip('should maintain consistent timestamps and proper version chain in entity history', async () => {
     // TODO: Implement Neo4j version of version chain test
   });

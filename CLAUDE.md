@@ -32,6 +32,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Lint exception:** `.oxlintrc.json` turns `preserve-caught-error` off for `src/embeddings/OpenAIEmbeddingService.ts`. The caught value there can be an AxiosError whose request config holds the `Authorization: Bearer` header, so it must never be attached as `cause` to a rethrown error.
 
+**Tests are linted.** There is no `.eslintignore` (Oxlint honours that file, and it used to exclude every test). Build and coverage ignores live in `.oxlintrc.json` `ignorePatterns`. An `overrides` entry for test files (`**/__vitest__/**`, `**/__test-utils__/**`, `*.test.ts`, `*.spec.ts`, `vitest.setup.ts`) relaxes four rules; counts are from the first run with tests included (1166 diagnostics):
+
+| Rule | Hits | Setting for tests | Reason |
+| ---- | ---- | ----------------- | ------ |
+| `vitest/require-mock-type-parameters` | 869 | off | Opinionated. Tests are excluded from `tsc` (`tsconfig.json`), so a type parameter on each `vi.fn()` would never be checked. |
+| `typescript/no-explicit-any` | 172 | off | Same reason. `any` is how tests build partial mocks and reach private members. |
+| `no-new` | 7 | off | A constructor run for its effect (it warns, throws, or calls `ensureSchema`) is the thing under test. |
+| `vitest/no-standalone-expect` | 18 | on, with `additionalTestBlockFunctions` | Two OpenAI test files alias `it` / `it.skip` as `conditionalTest` and `skipIfNoKeyOrMockEnabled`; the rule has to be told those are test blocks. |
+
+Inline disables, each with its reason: `vitest/no-disabled-tests` on five placeholder `it.skip` tests in the two `Neo4jEntityHistory*` files, and `vitest/require-to-throw-message` on one refused-connection assertion in `PrometheusMetrics.comprehensive.test.ts`. Everything else the first run reported (100 diagnostics) was fixed in the tests. Do not weaken an assertion to satisfy a lint rule.
+
 ## Getting Started
 
 See **[README.md](README.md)** for complete setup instructions covering installation, Neo4j setup, MCP client configuration, and testing.

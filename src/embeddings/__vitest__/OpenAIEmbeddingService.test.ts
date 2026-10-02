@@ -42,7 +42,7 @@ describe('OpenAIEmbeddingService', () => {
     // Register the OpenAI provider for testing
     EmbeddingServiceFactory.registerProvider('openai', (config?: EmbeddingServiceConfig) => {
       return new OpenAIEmbeddingService({
-        apiKey: config?.apiKey || process.env.OPENAI_API_KEY!,
+        apiKey: config?.apiKey || process.env.OPENAI_API_KEY || '',
         model: config?.model,
         dimensions: config?.dimensions,
       });
@@ -60,7 +60,7 @@ describe('OpenAIEmbeddingService', () => {
     }
 
     const service = new OpenAIEmbeddingService({
-      apiKey: process.env.OPENAI_API_KEY!,
+      apiKey: process.env.OPENAI_API_KEY ?? '',
       model: 'text-embedding-3-small',
     });
 
@@ -76,7 +76,7 @@ describe('OpenAIEmbeddingService', () => {
 
     const service = EmbeddingServiceFactory.createService({
       provider: 'openai',
-      apiKey: process.env.OPENAI_API_KEY!,
+      apiKey: process.env.OPENAI_API_KEY ?? '',
     });
 
     expect(service).toBeInstanceOf(OpenAIEmbeddingService);
@@ -90,7 +90,7 @@ describe('OpenAIEmbeddingService', () => {
     }
 
     const service = new OpenAIEmbeddingService({
-      apiKey: process.env.OPENAI_API_KEY!,
+      apiKey: process.env.OPENAI_API_KEY ?? '',
       model: 'text-embedding-3-small',
     });
 
@@ -108,7 +108,7 @@ describe('OpenAIEmbeddingService', () => {
     }
 
     const service = new OpenAIEmbeddingService({
-      apiKey: process.env.OPENAI_API_KEY!,
+      apiKey: process.env.OPENAI_API_KEY ?? '',
       model: 'text-embedding-3-small',
     });
 
@@ -131,7 +131,7 @@ describe('OpenAIEmbeddingService', () => {
     }
 
     const service = new OpenAIEmbeddingService({
-      apiKey: process.env.OPENAI_API_KEY!,
+      apiKey: process.env.OPENAI_API_KEY ?? '',
       model: 'text-embedding-3-small',
     });
 

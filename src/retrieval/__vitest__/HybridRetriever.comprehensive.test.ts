@@ -36,7 +36,7 @@ describe('HybridRetriever Comprehensive', () => {
       const { logger } = await import('../../utils/logger.js');
 
       // Create retriever with weights that don't sum to 1.0
-      const unbalancedRetriever = new HybridRetriever({
+      new HybridRetriever({
         config: {
           vectorWeight: 0.3,
           graphWeight: 0.3,

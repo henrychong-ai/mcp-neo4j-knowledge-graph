@@ -4,7 +4,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { KnowledgeGraphManager, Relation } from '../KnowledgeGraphManager.js';
 import { StorageProvider } from '../storage/StorageProvider.js';
-import type { RelationMetadata } from '../types/relation.js';
 
 describe('KnowledgeGraphManager with Enhanced Relations', () => {
   it('should use StorageProvider getRelation for retrieving a relation', async () => {

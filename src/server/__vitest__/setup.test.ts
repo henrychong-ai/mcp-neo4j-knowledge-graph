@@ -2,7 +2,7 @@
  * Test file for the server setup module
  * Migrated from Jest to Vitest and converted to TypeScript
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { assert, describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Turn off automatic mocking
 vi.mock('@modelcontextprotocol/sdk/server/index.js', () => {
@@ -172,18 +172,17 @@ describe('setupServer', () => {
     const calls = mockServerInstance.setRequestHandler.mock.calls;
     const listToolsHandlerCall = calls.find(call => call[0] === typesModule.ListToolsRequestSchema);
     expect(listToolsHandlerCall).toBeDefined();
+    assert(listToolsHandlerCall);
 
-    if (listToolsHandlerCall) {
-      const handler = listToolsHandlerCall[1];
-      const request = { type: 'ListToolsRequest' };
+    const handler = listToolsHandlerCall[1];
+    const request = { type: 'ListToolsRequest' };
 
-      // Call the handler
-      const result = await handler(request);
+    // Call the handler
+    const result = await handler(request);
 
-      // Verify handler was called and returned expected result
-      expect(handleListToolsRequestMock).toHaveBeenCalled();
-      expect(result).toEqual(mockListToolsResult);
-    }
+    // Verify handler was called and returned expected result
+    expect(handleListToolsRequestMock).toHaveBeenCalled();
+    expect(result).toEqual(mockListToolsResult);
   });
 
   it('should call handleCallToolRequest with request and knowledgeGraphManager', async () => {
@@ -199,23 +198,22 @@ describe('setupServer', () => {
     const calls = mockServerInstance.setRequestHandler.mock.calls;
     const callToolHandlerCall = calls.find(call => call[0] === typesModule.CallToolRequestSchema);
     expect(callToolHandlerCall).toBeDefined();
+    assert(callToolHandlerCall);
 
-    if (callToolHandlerCall) {
-      const handler = callToolHandlerCall[1];
-      const request = {
-        type: 'CallToolRequest',
-        params: {
-          name: 'test-tool',
-          arguments: { arg1: 'value1' },
-        },
-      };
+    const handler = callToolHandlerCall[1];
+    const request = {
+      type: 'CallToolRequest',
+      params: {
+        name: 'test-tool',
+        arguments: { arg1: 'value1' },
+      },
+    };
 
-      // Call the handler
-      const result = await handler(request);
+    // Call the handler
+    const result = await handler(request);
 
-      // Verify handler was called with correct args and returned expected result
-      expect(handleCallToolRequestMock).toHaveBeenCalledWith(request, knowledgeGraphManager);
-      expect(result).toEqual(mockCallToolResult);
-    }
+    // Verify handler was called with correct args and returned expected result
+    expect(handleCallToolRequestMock).toHaveBeenCalledWith(request, knowledgeGraphManager);
+    expect(result).toEqual(mockCallToolResult);
   });
 });

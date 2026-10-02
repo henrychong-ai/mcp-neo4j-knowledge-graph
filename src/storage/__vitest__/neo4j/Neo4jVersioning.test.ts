@@ -607,7 +607,7 @@ describe('Neo4j temporal versioning (v2.9.0)', () => {
 
       await expect(
         guarded.addObservations([{ entityName: 'Hub', contents: ['boom'] }])
-      ).rejects.toThrow();
+      ).rejects.toThrow(/2 live relationships/);
 
       expect(graph.queries.some(query => query.includes('AS relCount'))).toBe(true);
       expect(graph.queries.some(query => query.includes('RETURN row.newId AS newId'))).toBe(false);

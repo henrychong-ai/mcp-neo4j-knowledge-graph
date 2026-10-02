@@ -1,7 +1,7 @@
 /**
  * @vitest-environment node
  */
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { Neo4jVectorStore } from '../../neo4j/Neo4jVectorStore.js';
 import { Neo4jConnectionManager } from '../../neo4j/Neo4jConnectionManager.js';
 import { Neo4jSchemaManager } from '../../neo4j/Neo4jSchemaManager.js';
@@ -20,7 +20,6 @@ vi.mock('neo4j-driver', () => {
       int: mockInt,
       types: {
         Integer: class {
-          constructor(low: number, high: number) {}
           toNumber() {
             return 5;
           }
@@ -266,11 +265,9 @@ describe('Neo4jVectorStore', () => {
         });
 
       // Mock the searchByPatternFallback to ensure it doesn't return results
-      const fallbackSpy = vi
-        .spyOn(vectorStore as any, 'searchByPatternFallback')
-        .mockImplementation(() => {
-          throw new Error('Neo4j vector store not initialized');
-        });
+      vi.spyOn(vectorStore as any, 'searchByPatternFallback').mockImplementation(() => {
+        throw new Error('Neo4j vector store not initialized');
+      });
 
       // Act & Assert
       await expect(vectorStore.search([0, 0, 0, 0])).rejects.toThrow(

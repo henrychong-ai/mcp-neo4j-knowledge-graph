@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, afterAll, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterAll, vi } from 'vitest';
 import fs from 'fs';
 import path from 'path';
 import { EmbeddingJobManager } from '../EmbeddingJobManager.js';
@@ -162,14 +162,14 @@ describe('EmbeddingJobManager Logging', () => {
       constructor(
         storage: EmbeddingStorageProvider,
         embedding: EmbeddingService,
-        private mockLogger: Logger
+        private testLogger: Logger
       ) {
-        super(storage, embedding, null, null, mockLogger, new FakeJobStore());
+        super(storage, embedding, null, null, testLogger, new FakeJobStore());
       }
 
       async processJobs(): Promise<{ processed: number; successful: number; failed: number }> {
         // Use our mockLogger directly instead of the private parent logger
-        this.mockLogger.info('Processing embedding job', {
+        this.testLogger.info('Processing embedding job', {
           jobId: 'job1',
           entityName: 'TestEntity1',
           attempt: 1,
@@ -177,7 +177,7 @@ describe('EmbeddingJobManager Logging', () => {
         });
 
         // Successfully processed
-        this.mockLogger.info('Successfully processed embedding job', {
+        this.testLogger.info('Successfully processed embedding job', {
           jobId: 'job1',
           entityName: 'TestEntity1',
           model: 'test-model',
@@ -271,7 +271,9 @@ describe('EmbeddingJobManager Logging', () => {
     vi.mocked(mockEmbeddingService.generateEmbedding).mockRejectedValueOnce(new Error('API error'));
 
     // Try to generate an embedding
-    await expect((manager as any)._getCachedEmbeddingOrGenerate('Test text')).rejects.toThrow();
+    await expect((manager as any)._getCachedEmbeddingOrGenerate('Test text')).rejects.toThrow(
+      'API error'
+    );
 
     // Verify error was logged
     expect(mockLogger.error).toHaveBeenCalledWith(
@@ -288,18 +290,18 @@ describe('EmbeddingJobManager Logging', () => {
       constructor(
         storage: EmbeddingStorageProvider,
         embedding: EmbeddingService,
-        private mockLogger: Logger
+        private testLogger: Logger
       ) {
-        super(storage, embedding, null, null, mockLogger, new FakeJobStore());
+        super(storage, embedding, null, null, testLogger, new FakeJobStore());
       }
 
       async processJobs(): Promise<{ processed: number; successful: number; failed: number }> {
         // Process jobs logic
-        this.mockLogger.info('Starting job processing batch');
+        this.testLogger.info('Starting job processing batch');
 
         // Log stats after processing
         const queueStatus = await this.getQueueStatus();
-        this.mockLogger.info('Queue status after processing', queueStatus);
+        this.testLogger.info('Queue status after processing', queueStatus);
 
         return { processed: 1, successful: 1, failed: 0 };
       }

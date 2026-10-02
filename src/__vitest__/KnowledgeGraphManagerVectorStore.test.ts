@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { KnowledgeGraphManager } from '../KnowledgeGraphManager.js';
-import { VectorStore } from '../types/vector-store.js';
 import { EntityEmbedding } from '../types/entity-embedding.js';
 
 // Create mocks before vi.mock calls

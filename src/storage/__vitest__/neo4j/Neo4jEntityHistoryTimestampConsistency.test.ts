@@ -3,20 +3,6 @@
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { Neo4jStorageProvider } from '../../neo4j/Neo4jStorageProvider.js';
-import { Entity } from '../../../KnowledgeGraphManager.js';
-
-// Define test interfaces
-interface EntityWithHistory extends Entity {
-  id?: string;
-  createdAt?: number;
-  updatedAt?: number;
-  validFrom?: number;
-  validTo?: number | null;
-  version?: number;
-}
-
-// Sleep function to introduce delays
-const sleep = (ms: number): Promise<void> => new Promise(resolve => setTimeout(resolve, ms));
 
 // Mock Neo4j dependencies
 vi.mock('neo4j-driver', () => {
@@ -117,10 +103,12 @@ describe('Neo4j Entity History Timestamp Consistency Tests', () => {
     expect(true).toBe(true);
   });
 
+  // oxlint-disable-next-line vitest/no-disabled-tests -- placeholder until the Neo4j version of this test is written
   it.skip('should maintain consistent createdAt timestamp across entity versions with delays', async () => {
     // TODO: Implement Neo4j version of timestamp consistency test with delays
   });
 
+  // oxlint-disable-next-line vitest/no-disabled-tests -- placeholder until the Neo4j version of this test is written
   it.skip('should maintain consistent createdAt timestamp in rapid succession', async () => {
     // TODO: Implement Neo4j version of timestamp consistency test with rapid operations
   });

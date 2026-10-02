@@ -2,7 +2,7 @@
  * Comprehensive tests for KnowledgeGraphManager
  * Covers: delete operations, search, temporal methods, batch operations, and file-based fallbacks
  */
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import {
   KnowledgeGraphManager,
   Entity,
@@ -371,7 +371,6 @@ describe('KnowledgeGraphManager - Search Method', () => {
   });
 
   it('should fall back to searchNodes when semanticSearch fails', async () => {
-    const mockEmbedding = new Array(1536).fill(0.1);
     const mockEmbeddingService = {
       generateEmbedding: vi.fn().mockRejectedValue(new Error('Embedding generation failed')),
     };
@@ -1233,7 +1232,7 @@ describe('KnowledgeGraphManager - Create Entities', () => {
 
     expect(mockVectorStore.addVector).toHaveBeenCalledWith(
       'entity1',
-      entityWithEmbedding.embedding!.vector,
+      entityWithEmbedding.embedding?.vector,
       { name: 'entity1', entityType: 'test' }
     );
   });

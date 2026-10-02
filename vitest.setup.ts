@@ -25,7 +25,7 @@ afterAll(async () => {
       metrics.stopServer();
       metrics.stopDefaultMetrics();
     }
-  } catch (error) {
+  } catch {
     // Ignore errors if PrometheusMetrics wasn't imported/initialized
     // This is expected in most test runs
   }
