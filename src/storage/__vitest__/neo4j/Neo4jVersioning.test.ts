@@ -641,4 +641,158 @@ describe('Neo4j temporal versioning (v2.9.0)', () => {
       expect(graph.beginTransactionArgs).toContainEqual({ timeout: 12_345 });
     });
   });
+
+  describe('re-creating an existing entity', () => {
+    const existingObservations = ['kept fact one', 'kept fact two'];
+    const liveObservations = (name: string): unknown =>
+      JSON.parse(graph.liveNode(name)?.observations as string);
+
+    beforeEach(() => {
+      graph.addNode({
+        name: 'Alpha',
+        entityType: 'person',
+        observations: JSON.stringify(existingObservations),
+      });
+      graph.addNode({ name: 'Beta' });
+      graph.addRel('Alpha', 'Beta', 'relates-to', 'rel-1');
+    });
+
+    /** The temporal-versioning invariants every re-create must still uphold. */
+    const expectVersionedOnce = (): void => {
+      expect(graph.liveNodes('Alpha')).toHaveLength(1);
+      expect(graph.nodes.filter(node => node.name === 'Alpha')).toHaveLength(2);
+      expect(graph.liveNode('Alpha')?.version).toBe(2);
+      expect(graph.allLiveRels()).toHaveLength(1);
+      expect(graph.allLiveRels()[0].fromNodeId).toBe(graph.liveNode('Alpha')?.id);
+    };
+
+    describe('createEntities', () => {
+      it('(a) keeps the existing observations when observations is omitted', async () => {
+        const created = await provider.createEntities([{ name: 'Alpha', entityType: 'person' }]);
+
+        expect(liveObservations('Alpha')).toEqual(existingObservations);
+        expect(created).toHaveLength(1);
+        expect(created[0].observations).toEqual(existingObservations);
+        expectVersionedOnce();
+      });
+
+      it('(b) keeps the existing observations when observations is an empty list', async () => {
+        const created = await provider.createEntities([
+          { name: 'Alpha', entityType: 'person', observations: [] },
+        ]);
+
+        expect(liveObservations('Alpha')).toEqual(existingObservations);
+        expect(created[0].observations).toEqual(existingObservations);
+        expectVersionedOnce();
+      });
+
+      it('(c) replaces the observations when new ones are supplied', async () => {
+        const created = await provider.createEntities([
+          { name: 'Alpha', entityType: 'person', observations: ['new fact'] },
+        ]);
+
+        expect(liveObservations('Alpha')).toEqual(['new fact']);
+        expect(created[0].observations).toEqual(['new fact']);
+        expectVersionedOnce();
+      });
+
+      it('still applies the other supplied fields when the observations are kept', async () => {
+        await provider.createEntities([
+          { name: 'Alpha', entityType: 'organization', domain: 'work' },
+        ]);
+
+        expect(graph.liveNode('Alpha')?.entityType).toBe('organization');
+        expect(graph.liveNode('Alpha')?.domain).toBe('work');
+        expect(liveObservations('Alpha')).toEqual(existingObservations);
+      });
+
+      it('does not stamp an embedding of empty text on kept observations', async () => {
+        const vector = Array.from({ length: 1536 }, () => 0.1);
+        const generateEmbedding = vi.fn().mockResolvedValue(vector);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (provider as any).embeddingService = { generateEmbedding };
+
+        await provider.createEntities([{ name: 'Alpha', entityType: 'person', observations: [] }]);
+        // NULL, so the embedding backfill re-embeds from the real observations.
+        expect(graph.liveNode('Alpha')?.embedding).toBeNull();
+
+        await provider.createEntities([
+          { name: 'Alpha', entityType: 'person', observations: ['new fact'] },
+        ]);
+        expect(generateEmbedding).toHaveBeenLastCalledWith('new fact');
+        expect(graph.liveNode('Alpha')?.embedding).toEqual(vector);
+      });
+
+      it('stores a brand-new entity without observations with an empty list', async () => {
+        await provider.createEntities([{ name: 'Fresh', entityType: 'person' }]);
+
+        expect(liveObservations('Fresh')).toEqual([]);
+        expect(graph.liveNode('Fresh')?.version).toBe(1);
+      });
+    });
+
+    describe('createEntitiesBatch', () => {
+      it('(a) keeps the existing observations when observations is omitted', async () => {
+        const result = await provider.createEntitiesBatch([
+          { name: 'Alpha', entityType: 'person' },
+        ]);
+
+        expect(result.failed).toEqual([]);
+        expect(liveObservations('Alpha')).toEqual(existingObservations);
+        expectVersionedOnce();
+      });
+
+      it('(b) keeps the existing observations when observations is an empty list', async () => {
+        const result = await provider.createEntitiesBatch([
+          { name: 'Alpha', entityType: 'person', observations: [] },
+        ]);
+
+        expect(result.failed).toEqual([]);
+        expect(liveObservations('Alpha')).toEqual(existingObservations);
+        expectVersionedOnce();
+      });
+
+      it('(c) replaces the observations when new ones are supplied', async () => {
+        const result = await provider.createEntitiesBatch([
+          { name: 'Alpha', entityType: 'person', observations: ['new fact'] },
+        ]);
+
+        expect(result.failed).toEqual([]);
+        expect(liveObservations('Alpha')).toEqual(['new fact']);
+        expectVersionedOnce();
+      });
+
+      it('handles kept, replaced, and brand-new entities in one batch', async () => {
+        graph.addNode({ name: 'Gamma', observations: JSON.stringify(['gamma fact']) });
+
+        await provider.createEntitiesBatch([
+          { name: 'Alpha', entityType: 'person', observations: [] },
+          { name: 'Gamma', entityType: 'test', observations: ['replaced'] },
+          { name: 'Fresh', entityType: 'test', observations: [] },
+        ]);
+
+        expect(liveObservations('Alpha')).toEqual(existingObservations);
+        expect(liveObservations('Gamma')).toEqual(['replaced']);
+        expect(liveObservations('Fresh')).toEqual([]);
+      });
+
+      it('does not stamp an embedding of empty text on kept observations', async () => {
+        const vector = Array.from({ length: 1536 }, () => 0.1);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (provider as any).embeddingService = {
+          generateEmbedding: vi.fn().mockResolvedValue(vector),
+        };
+
+        await provider.createEntitiesBatch([
+          { name: 'Alpha', entityType: 'person', observations: [] },
+        ]);
+        expect(graph.liveNode('Alpha')?.embedding).toBeNull();
+
+        await provider.createEntitiesBatch([
+          { name: 'Alpha', entityType: 'person', observations: ['new fact'] },
+        ]);
+        expect(graph.liveNode('Alpha')?.embedding).toEqual(vector);
+      });
+    });
+  });
 });

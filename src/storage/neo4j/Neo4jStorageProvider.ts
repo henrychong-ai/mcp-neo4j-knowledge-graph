@@ -1562,14 +1562,26 @@ export class Neo4jStorageProvider implements StorageProvider {
             if (existingNames.has(entity.name)) {
               // Upsert: supersede the live version through the shared helper so
               // the old version is closed and its relationships carried over.
+              //
+              // Observations are REPLACED only when the caller supplies some.
+              // Re-creating an existing entity with none (omitted or []) must
+              // not wipe what is stored: the fields are left out so the new
+              // version inherits the live observations, and the embedding
+              // computed above (from empty text) is not written either — it
+              // stays NULL for the embedding backfill to regenerate.
+              const suppliedObservations: string[] | undefined =
+                Array.isArray(entity.observations) && entity.observations.length > 0
+                  ? entity.observations
+                  : undefined;
               upserts.push({
                 name: entity.name,
                 apply: () => ({
-                  observations: Array.isArray(entity.observations) ? entity.observations : [],
+                  ...(suppliedObservations
+                    ? { observations: suppliedObservations, embedding }
+                    : {}),
                   entityType: entity.entityType,
                   domain: entity.domain || null,
                   changedBy: entity.changedBy || null,
-                  embedding,
                 }),
               });
               continue;
@@ -3516,16 +3528,25 @@ export class Neo4jStorageProvider implements StorageProvider {
             if (upserts.length > 0) {
               await this.versionEntities(
                 txc,
-                upserts.map(entity => ({
-                  name: entity.name,
-                  apply: () => ({
-                    observations: JSON.parse(entity.observations) as string[],
-                    entityType: entity.entityType,
-                    domain: entity.domain,
-                    changedBy: entity.changedBy,
-                    embedding: entity.embedding,
-                  }),
-                }))
+                upserts.map(entity => {
+                  // Same rule as createEntities: observations are replaced only
+                  // when the caller supplies some. With none, the new version
+                  // inherits the live observations and its embedding stays NULL
+                  // (the one computed above is of empty text).
+                  const suppliedObservations = JSON.parse(entity.observations) as string[];
+                  const replaceObservations = suppliedObservations.length > 0;
+                  return {
+                    name: entity.name,
+                    apply: () => ({
+                      ...(replaceObservations
+                        ? { observations: suppliedObservations, embedding: entity.embedding }
+                        : {}),
+                      entityType: entity.entityType,
+                      domain: entity.domain,
+                      changedBy: entity.changedBy,
+                    }),
+                  };
+                })
               );
             }
 

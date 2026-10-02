@@ -120,8 +120,9 @@ const plainObject = z.looseObject({});
 /**
  * One entity in `create_entities`.
  *
- * `observations` is advertised as required, but the storage provider stores an
- * entity without it with `[]`, so only a truthy value has to be an array.
+ * `observations` is advertised as required, but the storage provider accepts an
+ * entity without it (a new entity is stored with `[]`; an existing one keeps
+ * its observations), so only a truthy value has to be an array.
  * `id`, `version`, and `validTo` are advertised but never read: the storage
  * provider always generates the id, starts at version 1, and writes a live
  * (`validTo` null) version. The remaining optional keys are read as
