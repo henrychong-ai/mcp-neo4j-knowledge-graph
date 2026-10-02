@@ -15,7 +15,7 @@ Autosequence run, branch `develop`, 2026-06-26. The HIGH/concurring findings wer
 
 ## Verification caveats (deploy-time)
 
-4. **`scanEntitySizes` Cypher verified by inspection only.** The new Cypher (`valueType()`, `split`, `coalesce`, `reduce`, `LIMIT toInteger($limit)`) is unit-tested against a mocked provider, not executed against a live Neo4j in this run (integration tests not run). Validate against vps-2 (Neo4j 5.26) at deploy time — part of the deferred Step 10 deploy/verify, which is out of scope for this branch.
+4. **`scanEntitySizes` Cypher verified by inspection only.** The new Cypher (`valueType()`, `split`, `coalesce`, `reduce`, `LIMIT toInteger($limit)`) is unit-tested against a mocked provider, not executed against a live Neo4j in this run (integration tests not run). Validate against the production server (Neo4j 5.26) at deploy time — part of the deferred Step 10 deploy/verify, which is out of scope for this branch.
 
 ## Phase-2 extension points (design-only, intentionally not built)
 
