@@ -62,7 +62,7 @@ pnpm check
 
 ## Code Style
 
-- **TypeScript**: Strict mode, ES2024 target
+- **TypeScript**: 6.0 (`typescript@~6.0`), strict mode, ES2024 target. Use `import type` for type-only imports, bracket access for index-signature keys (`process.env['NAME']`), and `x?: T | undefined` where an optional property is given an explicit `undefined`
 - **Linting**: Oxlint (import, promise, node, vitest plugins)
 - **Formatting**: Biome (formatter-only, linter disabled)
 - **Tests**: Vitest with comprehensive mocking

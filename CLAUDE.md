@@ -19,7 +19,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | Layer           | Technology                         |
 | --------------- | ---------------------------------- |
 | Runtime         | Node.js >=24 LTS                   |
-| Language        | TypeScript (ES2024 target)         |
+| Language        | TypeScript 6.0 (`typescript@~6.0`), ES2024 target |
 | Package Manager | pnpm                               |
 | Database        | Neo4j 5.13+ (Community/Enterprise) |
 | Protocol        | MCP SDK                            |
@@ -42,6 +42,23 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | `vitest/no-standalone-expect` | 18 | on, with `additionalTestBlockFunctions` | Two OpenAI test files alias `it` / `it.skip` as `conditionalTest` and `skipIfNoKeyOrMockEnabled`; the rule has to be told those are test blocks. |
 
 Inline disables, each with its reason: `vitest/no-disabled-tests` on five placeholder `it.skip` tests in the two `Neo4jEntityHistory*` files, and `vitest/require-to-throw-message` on one refused-connection assertion in `PrometheusMetrics.comprehensive.test.ts`. Everything else the first run reported (100 diagnostics) was fixed in the tests. Do not weaken an assertion to satisfy a lint rule.
+
+### TypeScript and tsconfig
+
+**The compiler is pinned to the 6.0 line: `typescript@~6.0`.** npm's `latest` tag is TypeScript 7, so never add `typescript` without the range. `pnpm add -D typescript@~6.0` writes a caret (`^6.0.x`) into `package.json`; put the tilde back by hand and run `pnpm install`. TypeScript 7 passes as a type-check-only lane (`pnpm dlx --package=typescript@^7.0 tsc --noEmit -p tsconfig.json`) but is not the project compiler.
+
+**`tsconfig.json` follows the team standard for a Node package emitted with `tsc`.** `strict` plus `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, `noPropertyAccessFromIndexSignature`, `noImplicitReturns`, `noImplicitOverride`, `noFallthroughCasesInSwitch` and `useUnknownInCatchVariables`; `verbatimModuleSyntax` with `isolatedModules`; `module` and `moduleResolution` `NodeNext`; `target` and `lib` `ES2024` (no DOM types); `types: ["node"]` (TypeScript 6 loads no `@types` package by default); `rootDir` `src`, `outDir` `dist`; `declaration`, `declarationMap` and `sourceMap`. There is no `paths` alias, because `tsc` does not rewrite an alias in the emitted imports. Tests stay excluded from `tsc`.
+
+Three flags were turned on with the TypeScript 6 move. What each asks of new code:
+
+| Flag | Rule |
+| ---- | ---- |
+| `verbatimModuleSyntax` | A name used only as a type is imported with `import type` (or an inline `type`). A plain import is kept in the emitted JavaScript and loads that module at runtime. |
+| `noPropertyAccessFromIndexSignature` | Keys that come from an index signature are read with brackets: `process.env['NEO4J_URI']`, `args['query']`, `node['observations']`. Same property read as the dot form. |
+| `exactOptionalPropertyTypes` | `x?: T` no longer accepts an explicit `undefined`. Where the code passes one, declare the property `x?: T \| undefined`. |
+
+- **Do not satisfy `exactOptionalPropertyTypes` by leaving a key out in storage or versioning code.** A key that is present with the value `undefined` and a key that is absent are different inputs to Neo4j query parameters and to `versionEntities`, which inherits a field only when its key is absent. Widen the type instead; changing what is passed is a behaviour change and needs its own tests.
+- **One assertion stands in for a widening.** `StorageProviderFactory.createProvider` builds its Neo4j config `as Partial<Neo4jConfig>`. It copies every option as given, so an option the caller left out arrives as an explicit `undefined` and overwrites the default in `Neo4jStorageProvider`'s `{ ...DEFAULT_NEO4J_CONFIG, ...options.config }`. The server's own start-up path (`createStorageConfig`) always supplies all seven options and is unaffected; only a direct caller of the factory with partial options can hit it. Known and not changed: fixing it changes what the provider receives.
 
 ## Getting Started
 
