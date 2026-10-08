@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.10.2] - 2026-10-08
+
+Dependency maintenance release. No source, tool, option or environment-variable change.
+
+### Changed
+
+- **Dependencies, inside their current majors:** `@modelcontextprotocol/sdk` ^1.31.0 -> ^1.32.1, `oxlint` ^1.86.0 -> ^1.87.0 (development only), `vite` ^7.3.6 -> ^7.3.7 (development only; still an auto-installed peer of `vitest` declared directly so its override binds). `typescript` stays on `~6.0` (6.0.3) and `@types/node` on the 24 line (24.19.1 is the newest 24.x).
+- **Transitive packages moved inside their existing ranges and overrides:** `hono` 4.13.12 -> 4.13.13, `express-rate-limit` 8.7.0 -> 8.7.1, `follow-redirects` 1.16.0 -> 1.16.1, `ip-address` 10.7.2 -> 10.7.3, `nanoid` 3.3.19 -> 3.3.20, `postcss` 8.5.28 -> 8.5.29, `resolve` 1.22.12 -> 1.22.13, `rollup` 4.63.5 -> 4.64.2. No release less than a day old was taken: `rollup` 4.64.3 and `@hono/node-server` 2.1.4 were published within the last day and were left out.
+
+### Security
+
+- `pnpm audit` reports one high advisory with no patched release: `braces` <=3.0.3 (GHSA-vfj7-8cjw-p6xm), reached only through the development tool `shx` (`shx > shelljs > fast-glob > micromatch > braces`). Every published `braces` release is affected, so there is no override floor to raise; it is not in the published package. `pnpm audit --prod` is clean.
+
 ## [2.10.1] - 2026-10-02
 
 Bug-fix and maintenance release. Re-creating an existing entity no longer loses its observations or its domain, boolean tool inputs sent as strings mean what they say, and the build moves to TypeScript 6. No new tool, option or environment variable.
