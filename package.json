@@ -1,6 +1,6 @@
 {
   "name": "@henrychong-ai/mcp-neo4j-knowledge-graph",
-  "version": "2.10.1",
+  "version": "2.10.2",
   "description": "Neo4j-based knowledge graph MCP server with temporal versioning and semantic search",
   "license": "MIT",
   "author": "Henry Chong <henry@henrychong.ai>",
@@ -59,7 +59,7 @@
     "kg:oversized:json": "tsx src/cli/report-oversized.ts -- --json"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.31.0",
+    "@modelcontextprotocol/sdk": "^1.32.1",
     "axios": "^1.20.0",
     "dotenv": "^17.4.2",
     "lru-cache": "^11.5.3",
@@ -76,11 +76,11 @@
     "@vitest/coverage-v8": "^4.1.11",
     "husky": "^9.1.7",
     "lint-staged": "^17.6.0",
-    "oxlint": "^1.86.0",
+    "oxlint": "^1.87.0",
     "shx": "^0.4.0",
     "tsx": "^4.23.15",
     "typescript": "~6.0.3",
-    "vite": "^7.3.6",
+    "vite": "^7.3.7",
     "vitest": "^4.1.11"
   },
   "packageManager": "pnpm@10.30.0+sha512.2b5753de015d480eeb88f5b5b61e0051f05b4301808a82ec8b840c9d2adf7748eb352c83f5c1593ca703ff1017295bc3fdd3119abb9686efc96b9fcb18200937",
