@@ -71,7 +71,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.15",
-    "@types/node": "^24.19.1",
+    "@types/node": "^25.9.9",
     "@types/node-cron": "^3.0.11",
     "@vitest/coverage-v8": "^4.1.11",
     "husky": "^9.1.7",
