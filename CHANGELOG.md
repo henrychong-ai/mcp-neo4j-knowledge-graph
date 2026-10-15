@@ -5,14 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.10.2] - 2026-10-08
+## [2.10.2] - 2026-10-15
 
 Dependency maintenance release. No source, tool, option or environment-variable change.
 
 ### Changed
 
-- **Dependencies, inside their current majors:** `@modelcontextprotocol/sdk` ^1.31.0 -> ^1.32.1, `oxlint` ^1.86.0 -> ^1.87.0 (development only), `vite` ^7.3.6 -> ^7.3.7 (development only; still an auto-installed peer of `vitest` declared directly so its override binds). `typescript` stays on `~6.0` (6.0.3) and `@types/node` on the 24 line (24.19.1 is the newest 24.x).
-- **Transitive packages moved inside their existing ranges and overrides:** `hono` 4.13.12 -> 4.13.13, `express-rate-limit` 8.7.0 -> 8.7.1, `follow-redirects` 1.16.0 -> 1.16.1, `ip-address` 10.7.2 -> 10.7.3, `nanoid` 3.3.19 -> 3.3.20, `postcss` 8.5.28 -> 8.5.29, `resolve` 1.22.12 -> 1.22.13, `rollup` 4.63.5 -> 4.64.2. No release less than a day old was taken: `rollup` 4.64.3 and `@hono/node-server` 2.1.4 were published within the last day and were left out.
+- **Dependencies, inside their current majors:** `@modelcontextprotocol/sdk` ^1.31.0 -> ^1.32.1, `uuid` ^14.0.2 -> ^14.0.3, `zod` ^4.6.5 -> ^4.6.7; development only: `oxlint` ^1.86.0 -> ^1.88.0, `@types/node` ^24.19.1 -> ^24.19.2 (newest 24.x), `vite` ^7.3.6 -> ^7.3.7 (still an auto-installed peer of `vitest` declared directly so its override binds). `typescript` stays on `~6.0` (6.0.3).
+- **Transitive packages moved inside their existing ranges and overrides:** `@hono/node-server` 2.1.3 -> 2.1.5, `hono` 4.13.12 -> 4.13.13, `express` 5.2.1 -> 5.3.0 (with `content-disposition` 1.1.0 -> 2.0.1), `express-rate-limit` 8.7.0 -> 8.7.1, `follow-redirects` 1.16.0 -> 1.16.1, `ip-address` 10.7.2 -> 10.7.4, `nanoid` 3.3.19 -> 3.3.20, `postcss` 8.5.28 -> 8.5.30, `resolve` 1.22.12 -> 1.22.13, `rollup` 4.63.5 -> 4.64.6. The lockfile was resolved with `minimum-release-age=1440`, so no release less than a day old was taken (`rollup` 4.64.7 and `qs` 6.16.1 held back).
+- **Not taken (majors):** `typescript` 7, `@types/node` 25/26, `vitest`/`@vitest/coverage-v8` 5, `vite` 8, `dotenv` 18. `prom-client` is deprecated on npm in favour of `@prometheus-io/client`; that is a migration, left for a separate change.
 
 ### Security
 

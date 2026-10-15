@@ -348,9 +348,9 @@ Test files use Vitest with comprehensive mocking:
 
 ## Version History & Recent Bugfixes
 
-### v2.10.2 (2026-10-08) - Dependency Maintenance
+### v2.10.2 (2026-10-15) - Dependency Maintenance
 
-In-range bumps: MCP SDK 1.32.1, oxlint 1.87.0, vite 7.3.7, plus transitive patches (hono, rollup, postcss, nanoid, ip-address and others). No release under a day old taken. `pnpm audit` leaves one unpatchable dev-only `braces` advisory (via `shx`); `pnpm audit --prod` is clean. No source changes. Full detail in CHANGELOG.md.
+In-range bumps: MCP SDK 1.32.1, zod 4.6.7, uuid 14.0.3, oxlint 1.88.0, vite 7.3.7, `@types/node` 24.19.2, plus transitive patches (express 5.3.0, hono, rollup, postcss, nanoid, ip-address and others). No release under a day old taken. `pnpm audit` leaves one unpatchable dev-only `braces` advisory (via `shx`); `pnpm audit --prod` is clean. No source changes. Full detail in CHANGELOG.md.
 
 ### v2.10.1 (2026-10-02) - Re-create Data-Loss Fixes, Boolean Inputs, TypeScript 6
 
