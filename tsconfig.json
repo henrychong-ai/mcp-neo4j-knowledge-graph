@@ -40,6 +40,7 @@
     "node_modules",
     "dist",
     "src/**/__vitest__/**",
+    "src/**/__test-utils__/**",
     "src/**/*.test.ts",
     "src/**/*.spec.ts"
   ]

@@ -71,7 +71,7 @@ Inline disables, each with its reason: `vitest/no-disabled-tests` on five placeh
 
 **The compiler is pinned to the 6.0 line: `typescript@~6.0`.** npm's `latest` tag is TypeScript 7, so never add `typescript` without the range. `pnpm add -D typescript@~6.0` writes a caret (`^6.0.x`) into `package.json`; put the tilde back by hand and run `pnpm install`. TypeScript 7 passes as a type-check-only lane (`pnpm dlx --package=typescript@^7.0 tsc --noEmit -p tsconfig.json`) but is not the project compiler.
 
-**`tsconfig.json` follows the team standard for a Node package emitted with `tsc`.** `strict` plus `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, `noPropertyAccessFromIndexSignature`, `noImplicitReturns`, `noImplicitOverride`, `noFallthroughCasesInSwitch` and `useUnknownInCatchVariables`; `verbatimModuleSyntax` with `isolatedModules`; `module` and `moduleResolution` `NodeNext`; `target` and `lib` `ES2024` (no DOM types); `types: ["node"]` (TypeScript 6 loads no `@types` package by default); `rootDir` `src`, `outDir` `dist`; `declaration` and `sourceMap`. There is no `paths` alias, because `tsc` does not rewrite an alias in the emitted imports. Tests stay excluded from `tsc`.
+**`tsconfig.json` follows the team standard for a Node package emitted with `tsc`.** `strict` plus `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, `noPropertyAccessFromIndexSignature`, `noImplicitReturns`, `noImplicitOverride`, `noFallthroughCasesInSwitch` and `useUnknownInCatchVariables`; `verbatimModuleSyntax` with `isolatedModules`; `module` and `moduleResolution` `NodeNext`; `target` and `lib` `ES2024` (no DOM types); `types: ["node"]` (TypeScript 6 loads no `@types` package by default); `rootDir` `src`, `outDir` `dist`; `declaration` and `sourceMap`. There is no `paths` alias, because `tsc` does not rewrite an alias in the emitted imports. Tests and the test helpers under `src/**/__test-utils__/` stay excluded from `tsc`, so neither is emitted into `dist/`.
 
 **`declarationMap` stays off, against the template.** A `.d.ts.map` points at the `.ts` file under `src/`, and the package publishes only `dist/` (`files` in `package.json`), so the maps would resolve to nothing for a consumer. Turning the flag on adds one map per source file to the package (66 files as of v2.10.1: 268 packed files against 202). Check `npm pack --dry-run` after any change to the emit options.
 
@@ -347,6 +347,10 @@ Test files use Vitest with comprehensive mocking:
 - **Dist-tag**: `npm publish --access public --provenance`; a version containing `-` is published with `--tag next`
 
 ## Version History & Recent Bugfixes
+
+### v2.11.0 (2026-10-21) - Dependency Majors, prom-client Rename
+
+`prom-client` (deprecated on npm) replaced by its renamed successor `@prometheus-io/client` 0.16.1; the histogram field now names its label set (`Histogram<'cache_status' | 'operation'>`), because the new typings default to no labels. `dotenv` 18 (the "injected env" line moves from stdout to stderr; preloading and `.env.vault` removed, neither used here). `vitest`/`@vitest/coverage-v8` 5 (`vite` stays on 7, which Vitest 5 accepts). `src/**/__test-utils__/` is excluded from `tsc`: Vitest 5's mock types cannot be named in a declaration file, and the helpers had been published in `dist/` (8 files, importing the dev-only `vitest`). `@types/node` stays on 24 to match the runtime; Dependabot now ignores its majors. Full detail in CHANGELOG.md.
 
 ### v2.10.2 (2026-10-15) - Dependency Maintenance
 
