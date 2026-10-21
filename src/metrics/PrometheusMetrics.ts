@@ -1,6 +1,6 @@
 import http from 'node:http';
 
-import promClient from 'prom-client';
+import promClient from '@prometheus-io/client';
 
 import { logger } from '../utils/logger.js';
 
@@ -29,13 +29,13 @@ export class PrometheusMetrics {
   public readonly cacheSize: promClient.Gauge;
 
   // Query duration histogram with cache status label
-  public readonly queryDuration: promClient.Histogram;
+  public readonly queryDuration: promClient.Histogram<'cache_status' | 'operation'>;
 
   private constructor() {
     this.register = new promClient.Registry();
 
     // Add default metrics (process CPU, memory, etc.)
-    // Note: collectDefaultMetrics returns void in prom-client 15+
+    // Note: collectDefaultMetrics returns void (since prom-client 15)
     promClient.collectDefaultMetrics({ register: this.register });
     this.defaultMetricsInterval = null;
 
