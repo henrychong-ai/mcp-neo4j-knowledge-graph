@@ -15,7 +15,7 @@ Dependency release. No tool, option or environment-variable change. 2.10.2 was n
 - **`dotenv` ^17.4.2 -> ^18.0.8.** Used only by the three `src/cli/` commands through `dotenv.config()`. The "injected env" line now goes to stderr rather than stdout. Preloading (`node -r dotenv/config`) and `.env.vault` support were removed upstream; neither is used here.
 - **Development only:** `vitest` and `@vitest/coverage-v8` ^4.1.11 -> ^5.0.5, `oxlint` ^1.88.0 -> ^1.89.0. `vite` stays on 7 (7.3.7): Vitest 5 requires Vite 6.4 or later, not 8. All 1535 tests pass unchanged on Vitest 5.
 - **`src/**/__test-utils__/` is excluded from `tsc`.** Vitest 5's mock types cannot be named in an emitted declaration (TS2883), and the helpers were being published: `dist/__test-utils__/` held 8 files that import the dev-only `vitest`. The package now packs 193 files, against 201.
-- **Transitive packages inside their ranges:** `fast-uri` 3.1.8 -> 3.1.9, `jose` 6.2.12 -> 6.2.13, `postcss` 8.5.30 -> 8.5.31, `qs` 6.16.0 -> 6.16.1, `rollup` 4.64.6 -> 4.64.12. Resolved with `minimum-release-age=1440`, so no release less than a day old was taken.
+- **Transitive packages inside their ranges:** `fast-uri` 3.1.8 -> 3.1.9, `jose` 6.2.12 -> 6.2.13, `postcss` 8.5.30 -> 8.5.31, `qs` 6.16.0 -> 6.16.1, `rollup` 4.64.6 -> 4.64.12; refreshed 2026-10-22: `@opentelemetry/api` 1.9.1 -> 1.10.0 (a dependency of `@prometheus-io/client`). Resolved with `minimum-release-age=1440`, so no release less than a day old was taken.
 - **Not taken:** `typescript` 7 (the project compiler is pinned to `~6.0`), `@types/node` 25/26 (the types follow the Node 24 runtime; `.github/dependabot.yml` now ignores its major updates), `vite` 8.
 
 ### Security
