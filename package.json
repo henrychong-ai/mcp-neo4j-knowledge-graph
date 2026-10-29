@@ -1,6 +1,6 @@
 {
   "name": "@henrychong-ai/mcp-neo4j-knowledge-graph",
-  "version": "2.11.0",
+  "version": "2.11.1",
   "description": "Neo4j-based knowledge graph MCP server with temporal versioning and semantic search",
   "license": "MIT",
   "author": "Henry Chong <henry@henrychong.ai>",
@@ -59,10 +59,10 @@
     "kg:oversized:json": "tsx src/cli/report-oversized.ts -- --json"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.32.1",
+    "@modelcontextprotocol/sdk": "^1.32.2",
     "@prometheus-io/client": "^0.16.1",
-    "axios": "^1.20.0",
-    "dotenv": "^18.0.8",
+    "axios": "^1.21.0",
+    "dotenv": "^18.0.9",
     "lru-cache": "^11.5.3",
     "neo4j-driver": "^6.2.0",
     "node-cron": "^4.6.0",
@@ -70,13 +70,13 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.6.2",
+    "@biomejs/biome": "^2.6.3",
     "@types/node": "^24.19.2",
     "@types/node-cron": "^3.0.11",
     "@vitest/coverage-v8": "^5.0.5",
     "husky": "^9.1.7",
     "lint-staged": "^17.6.0",
-    "oxlint": "^1.89.0",
+    "oxlint": "^1.90.0",
     "shx": "^0.4.0",
     "tsx": "^4.23.15",
     "typescript": "~6.0.3",
@@ -106,7 +106,7 @@
       "postcss": ">=8.5.18 <9",
       "esbuild": ">=0.28.1 <0.29",
       "form-data": ">=4.0.6 <5",
-      "body-parser": ">=2.3.0 <3",
+      "body-parser": ">=2.4.0 <3",
       "nanoid": ">=3.3.18 <4"
     }
   },
