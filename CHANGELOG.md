@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.11.1] - 2026-10-29
+
+Dependency maintenance release. No source, tool, option or environment-variable change.
+
+### Changed
+
+- **Dependencies, inside their current majors:** `@modelcontextprotocol/sdk` ^1.32.1 -> ^1.32.2, `axios` ^1.20.0 -> ^1.21.0, `dotenv` ^18.0.8 -> ^18.0.9; development only: `oxlint` ^1.89.0 -> ^1.90.0, `@biomejs/biome` ^2.6.2 -> ^2.6.3 (`biome.json` schema moved to 2.6.3; formatted output unchanged).
+- **Transitive packages inside their ranges and overrides:** `body-parser` 2.3.0 -> 2.4.0 (override floor raised to `>=2.4.0 <3`, see Security), `follow-redirects` 1.16.1 -> 1.16.2, `hono` 4.13.13 -> 4.13.14, `ip-address` 10.7.4 -> 10.7.5, `on-finished` 2.4.1 -> 2.4.2, `postcss` 8.5.31 -> 8.5.32, `qs` 6.16.1 -> 6.17.0, `rollup` 4.64.12 -> 4.66.0, `magic-string` 1.4.3 -> 1.4.5, `@babel/parser` and `@babel/types` -> 7.29.11. Resolved with `minimum-release-age=1440`, so no release less than a day old was taken.
+- **Not taken:** `neo4j-driver` 6.3.0 and `@biomejs/biome` 2.6.4 (both under a day old), `typescript` 7 (the compiler is pinned to `~6.0`), `@types/node` 25/26 (the types follow the Node 24 runtime), `vite` 8.
+
+### Security
+
+- **`body-parser` GHSA-27r3-jxmh-p828 (high):** denial of service through trailing bytes after a compressed request body, in `>=2.0.0 <2.4.0`. It arrives through the MCP SDK's HTTP stack (`@modelcontextprotocol/sdk > express > body-parser`); this server uses the stdio transport only and never loads it, but the override floor is raised to `>=2.4.0 <3` so the tree carries the patched release.
+- `pnpm audit` and `pnpm audit --prod` now report no advisories. The `braces` advisory (GHSA-vfj7-8cjw-p6xm) listed under 2.10.2 and 2.11.0 is no longer reported; `braces` 3.0.3 is still in the tree through `shx`.
+
 ## [2.11.0] - 2026-10-21
 
 Dependency release. No tool, option or environment-variable change. 2.10.2 was never tagged or published; this release includes its changes.
