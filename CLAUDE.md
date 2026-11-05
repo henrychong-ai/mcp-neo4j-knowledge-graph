@@ -348,6 +348,10 @@ Test files use Vitest with comprehensive mocking:
 
 ## Version History & Recent Bugfixes
 
+### v2.11.1 (2026-11-05) - Dependency Maintenance
+
+In-range bumps: MCP SDK 1.32.2, axios 1.21.0, dotenv 18.0.9, neo4j-driver 6.3.0, Biome 2.6.5, oxlint 1.91.0, Vitest 5.1.0, plus transitive patches. `follow-redirects` floor raised to 1.16.2 (GHSA-mrwp-f3q8-3g9p, runtime-reachable via axios); `body-parser` floor 2.4.0. `pnpm audit` clean. No source changes. Full detail in CHANGELOG.md.
+
 ### v2.11.0 (2026-10-21) - Dependency Majors, prom-client Rename
 
 `prom-client` (deprecated on npm) replaced by its renamed successor `@prometheus-io/client` 0.16.1; the histogram field now names its label set (`Histogram<'cache_status' | 'operation'>`), because the new typings default to no labels. `dotenv` 18 (the "injected env" line moves from stdout to stderr; preloading and `.env.vault` removed, neither used here). `vitest`/`@vitest/coverage-v8` 5 (`vite` stays on 7, which Vitest 5 accepts). `src/**/__test-utils__/` is excluded from `tsc`: Vitest 5's mock types cannot be named in a declaration file, and the helpers had been published in `dist/` (8 files, importing the dev-only `vitest`). `@types/node` stays on 24 to match the runtime; Dependabot now ignores its majors. Full detail in CHANGELOG.md.
