@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.11.1] - 2026-11-05
+
+Dependency maintenance release. No source, tool, option or environment-variable change.
+
+### Changed
+
+- **Dependencies, inside their current majors:** `@modelcontextprotocol/sdk` ^1.32.1 -> ^1.32.2, `axios` ^1.20.0 -> ^1.21.0, `dotenv` ^18.0.8 -> ^18.0.9, `neo4j-driver` ^6.2.0 -> ^6.3.0; development only: `@biomejs/biome` ^2.6.2 -> ^2.6.5 (`biome.json` schema URL migrated; no formatting change), `oxlint` ^1.89.0 -> ^1.91.0, `vitest` and `@vitest/coverage-v8` ^5.0.5 -> ^5.1.0. `@types/node` stays on 24.19.2 (newest 24.x), `vite` on 7.3.7 (newest 7.x), `typescript` on `~6.0` (6.0.3).
+- **Transitive packages inside their ranges:** `@hono/node-server` 2.1.5 -> 2.1.6, `hono` 4.13.13 -> 4.13.16, `express-rate-limit` 8.7.1 -> 8.7.3, `ip-address` 10.7.4 -> 10.7.6, `jose` 6.2.13 -> 6.2.15, `postcss` 8.5.31 -> 8.5.32, `qs` 6.16.1 -> 6.17.1, `rollup` 4.64.12 -> 4.67.5, plus minor patches (`encodeurl`, `on-finished`, `tslib`, `semver`, `resolve` and others). Resolved with `minimum-release-age=1440`, so no release less than a day old was taken.
+- **Override floors:** `body-parser` raised to `>=2.4.0 <3` (2026-11-05, weekly security bump), `follow-redirects` raised to `>=1.16.2 <2`.
+- **Not taken (majors):** `typescript` 7, `@types/node` 25/26, `vite` 8.
+
+### Security
+
+- **`follow-redirects` 1.16.1 -> 1.16.2** (GHSA-mrwp-f3q8-3g9p, high: custom credential headers could follow a cross-host redirect). Runtime-reachable through `axios` (embedding and reranker calls). The override floor is raised so the lockfile cannot hold an affected copy.
+- `pnpm audit` and `pnpm audit --prod` are both clean. The earlier dev-only `braces` advisory (via `shx`) is no longer reported.
+
 ## [2.11.0] - 2026-10-21
 
 Dependency release. No tool, option or environment-variable change. 2.10.2 was never tagged or published; this release includes its changes.
