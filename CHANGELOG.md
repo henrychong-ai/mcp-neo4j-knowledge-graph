@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.11.1] - 2026-11-12
+
+Dependency maintenance release. No source, tool, option or environment-variable change.
+
+### Changed
+
+- **Dependencies, inside their current majors:** `@modelcontextprotocol/sdk` ^1.32.1 -> ^1.32.2, `axios` ^1.20.0 -> ^1.21.1, `dotenv` ^18.0.8 -> ^18.0.10, `neo4j-driver` ^6.2.0 -> ^6.3.0; development only: `@biomejs/biome` ^2.6.2 -> ^2.6.6 (`biome.json` `$schema` migrated, no formatting change), `oxlint` ^1.89.0 -> ^1.93.0, `vitest` and `@vitest/coverage-v8` ^5.0.5 -> ^5.1.0, `vite` ^7.3.7 -> ^7.3.8 (still declared directly so its override binds). `typescript` stays on `~6.0` (6.0.3) and `@types/node` on 24 (24.19.2).
+- **Transitive packages inside their ranges and overrides:** `follow-redirects` 1.16.1 -> 1.16.3, `hono` 4.13.13 -> 4.13.17, `@hono/node-server` 2.1.5 -> 2.1.6, `express-rate-limit` 8.7.1 -> 8.7.4, `ip-address` 10.7.4 -> 10.7.6, `jose` 6.2.13 -> 6.2.17, `postcss` 8.5.31 -> 8.5.32, `qs` 6.16.1 -> 6.17.1, `rollup` 4.64.12 -> 4.68.2, `tslib` 2.8.1 -> 2.9.1, and smaller patches (`encodeurl`, `on-finished`, `resolve`, `semver` 5, `@babel/*`). Resolved with `minimum-release-age=2880`, so no release less than two days old was taken (`neo4j-driver` 6.3.1/6.3.2 and `@biomejs/biome` 2.6.7 held back).
+- **Override floors raised:** `follow-redirects` `>=1.16.2 <2` (see Security); `body-parser` `>=2.4.0 <3` (merged in #112 after 2.11.0, recorded here).
+- **Not taken (majors):** `typescript` 7, `@types/node` 25/26, `vite` 8.
+
+### Security
+
+- **`follow-redirects` 1.16.0-1.16.1 (GHSA-mrwp-f3q8-3g9p, high):** cross-realm `sensitiveHeaders` arrays were discarded, so custom credential headers could follow a redirect. Reachable at runtime through `axios` (embedding and reranker requests). The override floor is now `>=1.16.2`; 1.16.3 is resolved.
+- `pnpm audit` and `pnpm audit --prod` are both clean. The `braces` advisory (GHSA-vfj7-8cjw-p6xm) recorded in 2.11.0 is no longer reported, with `braces` 3.0.3 unchanged under `shx`.
+
 ## [2.11.0] - 2026-10-21
 
 Dependency release. No tool, option or environment-variable change. 2.10.2 was never tagged or published; this release includes its changes.

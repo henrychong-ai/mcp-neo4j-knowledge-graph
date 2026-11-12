@@ -348,6 +348,10 @@ Test files use Vitest with comprehensive mocking:
 
 ## Version History & Recent Bugfixes
 
+### v2.11.1 (2026-11-12) - Dependency Maintenance
+
+In-range bumps: MCP SDK 1.32.2, axios 1.21.1, dotenv 18.0.10, neo4j-driver 6.3.0; dev: Biome 2.6.6, oxlint 1.93.0, Vitest 5.1.0, vite 7.3.8. `follow-redirects` override floor raised to `>=1.16.2 <2` (GHSA-mrwp-f3q8-3g9p, high, runtime-reachable via axios). No release under two days old taken. `pnpm audit` and `pnpm audit --prod` both clean (the dev-only `braces` advisory is no longer reported). No source changes. Full detail in CHANGELOG.md.
+
 ### v2.11.0 (2026-10-21) - Dependency Majors, prom-client Rename
 
 `prom-client` (deprecated on npm) replaced by its renamed successor `@prometheus-io/client` 0.16.1; the histogram field now names its label set (`Histogram<'cache_status' | 'operation'>`), because the new typings default to no labels. `dotenv` 18 (the "injected env" line moves from stdout to stderr; preloading and `.env.vault` removed, neither used here). `vitest`/`@vitest/coverage-v8` 5 (`vite` stays on 7, which Vitest 5 accepts). `src/**/__test-utils__/` is excluded from `tsc`: Vitest 5's mock types cannot be named in a declaration file, and the helpers had been published in `dist/` (8 files, importing the dev-only `vitest`). `@types/node` stays on 24 to match the runtime; Dependabot now ignores its majors. Full detail in CHANGELOG.md.
@@ -755,7 +759,7 @@ See `CHANGELOG.md` for complete history.
 
 **pnpm overrides do NOT apply to auto-installed peers (v2.8.1 landmine).** `vite` arrives only as an auto-installed peer of `vitest` (`autoInstallPeers: true`), so a `pnpm.overrides.vite` entry is silently ignored — resolution stays put even after deleting `pnpm-lock.yaml` and purging the pnpm metadata cache. Any transitive that reaches the tree only as an auto-installed peer must be declared as a **direct devDependency** for its override to bind. Symptom: an override that "does nothing" while every other override in the same block applies correctly.
 
-**Transitive advisories are mostly unreachable here.** `hono`, `@hono/node-server`, `express`, and `body-parser` come via the MCP SDK's HTTP stack; `src/index.ts` uses `StdioServerTransport` only and never loads them. Patch them to keep the Dependabot list actionable, but they are not runtime exposure. `axios` (embeddings + reranker) and `fast-uri` (via `ajv`, schema validation) **are** runtime-reachable — treat those advisories as material.
+**Transitive advisories are mostly unreachable here.** `hono`, `@hono/node-server`, `express`, and `body-parser` come via the MCP SDK's HTTP stack; `src/index.ts` uses `StdioServerTransport` only and never loads them. Patch them to keep the Dependabot list actionable, but they are not runtime exposure. `axios` (embeddings + reranker), its `follow-redirects`, and `fast-uri` (via `ajv`, schema validation) **are** runtime-reachable — treat those advisories as material.
 
 **Overrides pinning a transitive major need the parent's range checked first.** `@hono/node-server >=2.0.5` is only legitimate from MCP SDK 1.30.0, which widened its declared range to `^1.19.9 || ^2.0.5`; on 1.29.0 the same override violates the SDK's constraint.
 
